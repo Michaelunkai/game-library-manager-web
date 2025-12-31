@@ -1,6 +1,13 @@
 /**
  * Game Library Manager v3.5 - Web Application
  * A full-featured Docker game library manager
+ *
+ * Features:
+ * - Bulk selection and run multiple games
+ * - .bat file download for Windows (double-click to run)
+ * - Full Docker paths for michadockermisha/backup repo
+ * - Custom mount path selection
+ * - GitHub repo link
  */
 
 class GameLibrary {
@@ -9,6 +16,7 @@ class GameLibrary {
         this.tabs = [];
         this.times = {};
         this.filteredGames = [];
+        this.selectedGames = new Set();
         this.currentTab = 'all';
         this.searchQuery = '';
         this.sortBy = 'name';
@@ -29,6 +37,7 @@ class GameLibrary {
             this.renderTabs();
             this.filterAndRender();
             this.showLoading(false);
+            this.updateSelectedCount();
         } catch (error) {
             console.error('Failed to load data:', error);
             this.showToast('Failed to load game data', 'error');
@@ -37,7 +46,6 @@ class GameLibrary {
     }
 
     async loadData() {
-        // Load all data files in parallel
         const [gamesData, tabsData, timesData] = await Promise.all([
             fetch('data/games.json').then(r => r.json()),
             fetch('data/tabs.json').then(r => r.json()),
@@ -48,7 +56,6 @@ class GameLibrary {
         this.tabs = tabsData;
         this.times = timesData;
 
-        // Update stats
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
     }
@@ -79,12 +86,10 @@ class GameLibrary {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Ctrl+K for search
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 searchInput.focus();
             }
-            // Escape to close modals
             if (e.key === 'Escape') {
                 this.closeAllModals();
             }
@@ -126,7 +131,7 @@ class GameLibrary {
             this.copyToClipboard();
         });
 
-        // Run Docker
+        // Run Docker (single game)
         document.getElementById('runDockerBtn').addEventListener('click', () => {
             this.runInTerminal();
         });
@@ -134,6 +139,30 @@ class GameLibrary {
         // Copy Script
         document.getElementById('copyScriptBtn').addEventListener('click', () => {
             this.copyScript();
+        });
+
+        // Action bar buttons
+        document.getElementById('selectAllBtn').addEventListener('click', () => {
+            this.selectAllVisible();
+        });
+
+        document.getElementById('deselectAllBtn').addEventListener('click', () => {
+            this.deselectAll();
+        });
+
+        document.getElementById('runSelectedBtn').addEventListener('click', () => {
+            this.runSelectedGames();
+        });
+
+        document.getElementById('killContainersBtn').addEventListener('click', () => {
+            this.downloadKillScript();
+        });
+
+        // Global mount path
+        document.getElementById('globalMountPath').addEventListener('change', (e) => {
+            this.settings.mountPath = e.target.value;
+            this.saveSettings();
+            document.getElementById('mountPath').value = e.target.value;
         });
 
         // Settings controls
@@ -160,9 +189,15 @@ class GameLibrary {
             this.saveSettings();
         });
 
+        document.getElementById('repoName').addEventListener('change', (e) => {
+            this.settings.repoName = e.target.value;
+            this.saveSettings();
+        });
+
         document.getElementById('mountPath').addEventListener('change', (e) => {
             this.settings.mountPath = e.target.value;
             this.saveSettings();
+            document.getElementById('globalMountPath').value = e.target.value;
         });
 
         // Export/Import
@@ -222,12 +257,10 @@ class GameLibrary {
     }
 
     filterAndRender() {
-        // Filter by tab
         let filtered = this.currentTab === 'all'
             ? [...this.games]
             : this.games.filter(g => g.category === this.currentTab);
 
-        // Filter by search
         if (this.searchQuery) {
             filtered = filtered.filter(g =>
                 g.name.toLowerCase().includes(this.searchQuery) ||
@@ -236,7 +269,6 @@ class GameLibrary {
             );
         }
 
-        // Sort
         filtered.sort((a, b) => {
             let valA, valB;
 
@@ -282,16 +314,36 @@ class GameLibrary {
         noResults.style.display = 'none';
         grid.innerHTML = this.filteredGames.map(game => this.createGameCard(game)).join('');
 
-        // Add click handlers
+        // Add click handlers for info button
         grid.querySelectorAll('.game-card').forEach(card => {
-            card.addEventListener('click', () => {
+            const infoBtn = card.querySelector('.info-btn');
+            const checkbox = card.querySelector('.select-checkbox');
+
+            // Info button opens modal
+            infoBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const gameId = card.dataset.id;
                 const game = this.games.find(g => g.id === gameId);
                 if (game) this.openGameModal(game);
             });
+
+            // Checkbox toggles selection
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                const gameId = card.dataset.id;
+                this.toggleGameSelection(gameId, e.target.checked);
+            });
+
+            // Card click toggles selection
+            card.addEventListener('click', (e) => {
+                if (e.target !== checkbox && !e.target.closest('.info-btn')) {
+                    const gameId = card.dataset.id;
+                    checkbox.checked = !checkbox.checked;
+                    this.toggleGameSelection(gameId, checkbox.checked);
+                }
+            });
         });
 
-        // Lazy load images
         this.lazyLoadImages();
     }
 
@@ -299,9 +351,12 @@ class GameLibrary {
         const time = this.times[game.id];
         const timeStr = time ? `${time}h` : 'N/A';
         const imageName = game.id.toLowerCase();
+        const isSelected = this.selectedGames.has(game.id);
 
         return `
-            <div class="game-card" data-id="${game.id}">
+            <div class="game-card ${isSelected ? 'selected' : ''}" data-id="${game.id}">
+                <input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''}>
+                <button class="info-btn" title="View details">ℹ️</button>
                 <div class="image-container">
                     <img
                         data-src="images/${imageName}.png"
@@ -322,6 +377,47 @@ class GameLibrary {
         `;
     }
 
+    toggleGameSelection(gameId, isSelected) {
+        if (isSelected) {
+            this.selectedGames.add(gameId);
+        } else {
+            this.selectedGames.delete(gameId);
+        }
+
+        // Update card visual
+        const card = document.querySelector(`.game-card[data-id="${gameId}"]`);
+        if (card) {
+            card.classList.toggle('selected', isSelected);
+        }
+
+        this.updateSelectedCount();
+    }
+
+    updateSelectedCount() {
+        const count = this.selectedGames.size;
+        document.getElementById('selectedCount').textContent = count;
+
+        const runBtn = document.getElementById('runSelectedBtn');
+        runBtn.textContent = `▶️ Run Selected (${count})`;
+        runBtn.disabled = count === 0;
+    }
+
+    selectAllVisible() {
+        this.filteredGames.forEach(game => {
+            this.selectedGames.add(game.id);
+        });
+        this.filterAndRender();
+        this.updateSelectedCount();
+        this.showToast(`Selected ${this.filteredGames.length} games`, 'success');
+    }
+
+    deselectAll() {
+        this.selectedGames.clear();
+        this.filterAndRender();
+        this.updateSelectedCount();
+        this.showToast('All games deselected', 'info');
+    }
+
     lazyLoadImages() {
         const images = document.querySelectorAll('img[data-src]');
         const observer = new IntersectionObserver((entries) => {
@@ -337,6 +433,15 @@ class GameLibrary {
         images.forEach(img => observer.observe(img));
     }
 
+    getDockerCommand(gameId) {
+        const dockerUser = this.settings.dockerUsername || 'michadockermisha';
+        const repoName = this.settings.repoName || 'backup';
+        const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
+
+        // Full docker command with volume mount for F:/ drive
+        return `docker run -v "F:/:/f/" -it --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /f/Games/ && cd /f/Games && mv home ${gameId}"`;
+    }
+
     openGameModal(game) {
         const modal = document.getElementById('gameModal');
         const time = this.times[game.id];
@@ -350,10 +455,7 @@ class GameLibrary {
             this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E";
         };
 
-        // Generate Docker command
-        const dockerUser = this.settings.dockerUsername || 'myg1983';
-        const mountPath = this.settings.mountPath || '/f/Games';
-        const dockerCmd = `docker run -it --rm -v "${mountPath}:/games" ${dockerUser}/${game.id}`;
+        const dockerCmd = this.getDockerCommand(game.id);
         document.getElementById('dockerCommand').textContent = dockerCmd;
 
         this.currentGame = game;
@@ -380,91 +482,155 @@ class GameLibrary {
 
     runInTerminal() {
         if (!this.currentGame) return;
+        this.downloadRunScript([this.currentGame.id]);
+    }
 
-        const dockerUser = this.settings.dockerUsername || 'myg1983';
-        const mountPath = this.settings.mountPath || '/f/Games';
-        const cmd = `docker run -it --rm -v "${mountPath}:/games" ${dockerUser}/${this.currentGame.id}`;
+    runSelectedGames() {
+        if (this.selectedGames.size === 0) {
+            this.showToast('No games selected', 'error');
+            return;
+        }
+        this.downloadRunScript([...this.selectedGames]);
+    }
 
-        let script, filename, instructions;
+    downloadRunScript(gameIds) {
+        const dockerUser = this.settings.dockerUsername || 'michadockermisha';
+        const repoName = this.settings.repoName || 'backup';
+        const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
+
+        let script, filename;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const gameCount = gameIds.length;
 
         if (this.os === 'windows') {
-            // PowerShell script
-            script = `# Game Library Manager - Docker Runner
-# Game: ${this.currentGame.name}
-# Generated: ${new Date().toISOString()}
+            // Windows .bat file - double-click to run!
+            const commands = gameIds.map((id, idx) => {
+                const game = this.games.find(g => g.id === id);
+                const gameName = game ? game.name : id;
+                return `
+echo.
+echo [%date% %time%] Running game ${idx + 1}/${gameCount}: ${gameName}
+echo ============================================================
+docker run -v "F:/:/f/" -it --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /f/Games/ && cd /f/Games && mv home ${id}"
+if %ERRORLEVEL% EQU 0 (
+    echo [SUCCESS] ${gameName} completed successfully!
+) else (
+    echo [ERROR] ${gameName} failed with error code %ERRORLEVEL%
+)`;
+            }).join('\n');
 
-Write-Host "Starting Docker container for: ${this.currentGame.name}" -ForegroundColor Cyan
-Write-Host ""
+            script = `@echo off
+REM ============================================================
+REM Game Library Manager - Docker Runner
+REM Generated: ${new Date().toISOString()}
+REM Games: ${gameCount}
+REM ============================================================
+REM
+REM INSTRUCTIONS:
+REM 1. Make sure Docker Desktop is running
+REM 2. Double-click this .bat file to run
+REM 3. Games will be downloaded to F:\\Games\\
+REM
+REM ============================================================
 
-${cmd}
+echo.
+echo  ====================================
+echo   Game Library Manager v3.5
+echo   Running ${gameCount} game(s)
+echo  ====================================
+echo.
 
-Write-Host ""
-Write-Host "Container finished. Press any key to exit..." -ForegroundColor Yellow
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+REM Check if Docker is running
+docker info >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Docker is not running! Please start Docker Desktop first.
+    pause
+    exit /b 1
+)
+
+echo [OK] Docker is running
+echo.
+echo Starting downloads to: ${mountPath}
+echo.
+
+${commands}
+
+echo.
+echo ============================================================
+echo All ${gameCount} game(s) processed!
+echo Check ${mountPath} for your games.
+echo ============================================================
+echo.
+pause
 `;
-            filename = `run_${this.currentGame.id}.ps1`;
-            instructions = `
-<h3>Windows Instructions:</h3>
-<ol>
-    <li>Save the script as <code>${filename}</code></li>
-    <li>Right-click the file and select "Run with PowerShell"</li>
-    <li>Or open PowerShell and run: <code>.\\${filename}</code></li>
-</ol>
-<p><strong>Quick method:</strong> Press Win+R, type <code>powershell</code>, paste the command, and press Enter.</p>
-`;
-        } else if (this.os === 'mac') {
-            // Bash script for Mac
-            script = `#!/bin/bash
-# Game Library Manager - Docker Runner
-# Game: ${this.currentGame.name}
-# Generated: ${new Date().toISOString()}
+            filename = gameCount === 1
+                ? `run_${gameIds[0]}.bat`
+                : `run_${gameCount}_games_${timestamp}.bat`;
 
-echo "Starting Docker container for: ${this.currentGame.name}"
-echo ""
-
-${cmd}
-
-echo ""
-echo "Container finished. Press any key to exit..."
-read -n 1 -s
-`;
-            filename = `run_${this.currentGame.id}.sh`;
-            instructions = `
-<h3>macOS Instructions:</h3>
-<ol>
-    <li>Save the script as <code>${filename}</code></li>
-    <li>Open Terminal and run: <code>chmod +x ${filename} && ./${filename}</code></li>
-</ol>
-<p><strong>Quick method:</strong> Open Terminal (Cmd+Space, type "Terminal"), paste the command, and press Enter.</p>
-`;
         } else {
-            // Bash script for Linux
+            // macOS / Linux .sh file
+            const commands = gameIds.map((id, idx) => {
+                const game = this.games.find(g => g.id === id);
+                const gameName = game ? game.name : id;
+                return `
+echo ""
+echo "[$(date)] Running game $((${idx} + 1))/${gameCount}: ${gameName}"
+echo "============================================================"
+docker run -v "${mountPath}:/games" -it --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /games/ && cd /games && mv home ${id}"
+if [ $? -eq 0 ]; then
+    echo "[SUCCESS] ${gameName} completed successfully!"
+else
+    echo "[ERROR] ${gameName} failed!"
+fi`;
+            }).join('\n');
+
             script = `#!/bin/bash
+# ============================================================
 # Game Library Manager - Docker Runner
-# Game: ${this.currentGame.name}
 # Generated: ${new Date().toISOString()}
+# Games: ${gameCount}
+# ============================================================
+#
+# INSTRUCTIONS:
+# 1. Make sure Docker is running
+# 2. Make this script executable: chmod +x ${filename}
+# 3. Run: ./${filename}
+#
+# ============================================================
 
-echo "Starting Docker container for: ${this.currentGame.name}"
+echo ""
+echo " ===================================="
+echo "  Game Library Manager v3.5"
+echo "  Running ${gameCount} game(s)"
+echo " ===================================="
 echo ""
 
-${cmd}
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "[ERROR] Docker is not running! Please start Docker first."
+    exit 1
+fi
+
+echo "[OK] Docker is running"
+echo ""
+echo "Starting downloads to: ${mountPath}"
+echo ""
+
+${commands}
 
 echo ""
-echo "Container finished. Press any key to exit..."
-read -n 1 -s
+echo "============================================================"
+echo "All ${gameCount} game(s) processed!"
+echo "Check ${mountPath} for your games."
+echo "============================================================"
+echo ""
 `;
-            filename = `run_${this.currentGame.id}.sh`;
-            instructions = `
-<h3>Linux Instructions:</h3>
-<ol>
-    <li>Save the script as <code>${filename}</code></li>
-    <li>Open Terminal and run: <code>chmod +x ${filename} && ./${filename}</code></li>
-</ol>
-<p><strong>Quick method:</strong> Open your terminal, paste the command, and press Enter.</p>
-`;
+            filename = gameCount === 1
+                ? `run_${gameIds[0]}.sh`
+                : `run_${gameCount}_games_${timestamp}.sh`;
         }
 
-        // Create and download script file
+        // Download the file
         const blob = new Blob([script], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -473,19 +639,45 @@ read -n 1 -s
         a.click();
         URL.revokeObjectURL(url);
 
-        this.showToast(`Script downloaded: ${filename}`, 'success');
+        this.showToast(`Downloaded: ${filename} - Double-click to run!`, 'success');
+    }
 
-        // Also copy command to clipboard
-        navigator.clipboard.writeText(cmd);
+    downloadKillScript() {
+        let script, filename;
+
+        if (this.os === 'windows') {
+            script = `@echo off
+REM Kill all Docker containers
+echo Stopping and removing all Docker containers...
+docker rm -f $(docker ps -aq) 2>nul
+echo Done!
+pause
+`;
+            filename = 'kill_all_containers.bat';
+        } else {
+            script = `#!/bin/bash
+# Kill all Docker containers
+echo "Stopping and removing all Docker containers..."
+docker rm -f $(docker ps -aq) 2>/dev/null
+echo "Done!"
+`;
+            filename = 'kill_all_containers.sh';
+        }
+
+        const blob = new Blob([script], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        this.showToast(`Downloaded: ${filename}`, 'success');
     }
 
     copyScript() {
         if (!this.currentGame) return;
-
-        const dockerUser = this.settings.dockerUsername || 'myg1983';
-        const mountPath = this.settings.mountPath || '/f/Games';
-        const cmd = `docker run -it --rm -v "${mountPath}:/games" ${dockerUser}/${this.currentGame.id}`;
-
+        const cmd = this.getDockerCommand(this.currentGame.id);
         navigator.clipboard.writeText(cmd).then(() => {
             this.showToast('Docker command copied! Paste in your terminal.', 'success');
         });
@@ -505,7 +697,6 @@ read -n 1 -s
         this.sortBy = sortBy;
         this.sortOrder = order;
 
-        // Update UI
         document.querySelectorAll('.sort-option').forEach(btn => {
             btn.classList.toggle('active',
                 btn.dataset.sort === sortBy && btn.dataset.order === order);
@@ -538,6 +729,7 @@ read -n 1 -s
         document.getElementById('showTimes').checked = this.settings.showTimes;
         document.getElementById('showCategories').checked = this.settings.showCategories;
         document.getElementById('dockerUsername').value = this.settings.dockerUsername;
+        document.getElementById('repoName').value = this.settings.repoName;
         document.getElementById('mountPath').value = this.settings.mountPath;
         document.getElementById('settingsModal').classList.add('active');
     }
@@ -548,13 +740,24 @@ read -n 1 -s
             gridSize: 'medium',
             showTimes: true,
             showCategories: true,
-            dockerUsername: 'myg1983',
-            mountPath: '/f/Games'
+            dockerUsername: 'michadockermisha',
+            repoName: 'backup',
+            mountPath: 'F:/Games'
         };
 
         try {
             const saved = localStorage.getItem('gameLibrarySettings');
-            return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+            const settings = saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+
+            // Sync global mount path input
+            setTimeout(() => {
+                const globalPath = document.getElementById('globalMountPath');
+                if (globalPath) {
+                    globalPath.value = settings.mountPath;
+                }
+            }, 100);
+
+            return settings;
         } catch {
             return defaults;
         }
@@ -573,6 +776,7 @@ read -n 1 -s
     exportData() {
         const data = {
             settings: this.settings,
+            selectedGames: [...this.selectedGames],
             exportDate: new Date().toISOString()
         };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -601,9 +805,13 @@ read -n 1 -s
                         this.settings = { ...this.settings, ...data.settings };
                         this.saveSettings();
                         this.applySettings();
-                        this.filterAndRender();
-                        this.showToast('Settings imported!', 'success');
                     }
+                    if (data.selectedGames) {
+                        this.selectedGames = new Set(data.selectedGames);
+                        this.updateSelectedCount();
+                    }
+                    this.filterAndRender();
+                    this.showToast('Settings imported!', 'success');
                 } catch {
                     this.showToast('Invalid file format', 'error');
                 }
