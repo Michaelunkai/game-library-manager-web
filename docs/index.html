@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Library Manager v3.5</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>🎮 Game Library Manager</h1>
+                <span class="version">v3.5 Web</span>
+            </div>
+            <div class="header-center">
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="Search games... (Ctrl+K)" autocomplete="off">
+                    <span class="search-icon">🔍</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="stats">
+                    <span id="gameCount">0</span> games
+                    <span class="separator">|</span>
+                    <span id="filteredCount">0</span> shown
+                </div>
+                <button id="sortBtn" class="header-btn" title="Sort games">
+                    <span>Sort</span>
+                    <span id="sortIndicator">↓ Name</span>
+                </button>
+                <button id="themeBtn" class="header-btn" title="Toggle theme">🌙</button>
+                <button id="settingsBtn" class="header-btn" title="Settings">⚙️</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-container">
+            <!-- Tabs Sidebar -->
+            <aside class="sidebar">
+                <div class="tabs-header">
+                    <h3>Categories</h3>
+                    <span id="tabCount" class="tab-count">29 tabs</span>
+                </div>
+                <nav id="tabsContainer" class="tabs-nav">
+                    <!-- Tabs will be populated by JavaScript -->
+                </nav>
+            </aside>
+
+            <!-- Games Grid -->
+            <main class="content">
+                <div id="gamesGrid" class="games-grid">
+                    <!-- Games will be populated by JavaScript -->
+                </div>
+                <div id="loadingIndicator" class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading games...</p>
+                </div>
+                <div id="noResults" class="no-results" style="display: none;">
+                    <p>No games found matching your search.</p>
+                </div>
+            </main>
+        </div>
+
+        <!-- Game Details Modal -->
+        <div id="gameModal" class="modal">
+            <div class="modal-content">
+                <button class="modal-close" id="modalClose">&times;</button>
+                <div class="modal-body">
+                    <div class="modal-image">
+                        <img id="modalImage" src="" alt="Game cover">
+                    </div>
+                    <div class="modal-info">
+                        <h2 id="modalTitle">Game Title</h2>
+                        <div class="modal-meta">
+                            <span class="meta-item">
+                                <span class="meta-label">Category:</span>
+                                <span id="modalCategory" class="meta-value category-badge">Action</span>
+                            </span>
+                            <span class="meta-item">
+                                <span class="meta-label">HLTB Time:</span>
+                                <span id="modalTime" class="meta-value">~10 hours</span>
+                            </span>
+                        </div>
+                        <div class="docker-section">
+                            <h3>🐳 Docker Command</h3>
+                            <div class="command-box">
+                                <code id="dockerCommand">docker run...</code>
+                                <button id="copyCommand" class="copy-btn" title="Copy to clipboard">📋</button>
+                            </div>
+                            <div class="action-buttons">
+                                <button id="runDockerBtn" class="action-btn primary">
+                                    <span class="btn-icon">▶️</span>
+                                    <span>Run in Terminal</span>
+                                </button>
+                                <button id="copyScriptBtn" class="action-btn secondary">
+                                    <span class="btn-icon">📄</span>
+                                    <span>Copy Script</span>
+                                </button>
+                            </div>
+                            <div class="terminal-info">
+                                <p id="osInfo">Detected OS: <span id="detectedOS">Windows</span></p>
+                                <p class="terminal-hint">Click "Run in Terminal" to open a terminal with the Docker command ready.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content settings-modal">
+                <button class="modal-close" id="settingsClose">&times;</button>
+                <h2>⚙️ Settings</h2>
+                <div class="settings-body">
+                    <div class="setting-group">
+                        <h3>Display</h3>
+                        <label class="setting-item">
+                            <span>Grid Size</span>
+                            <select id="gridSize">
+                                <option value="small">Small</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="large">Large</option>
+                            </select>
+                        </label>
+                        <label class="setting-item">
+                            <span>Show HLTB Times</span>
+                            <input type="checkbox" id="showTimes" checked>
+                        </label>
+                        <label class="setting-item">
+                            <span>Show Categories</span>
+                            <input type="checkbox" id="showCategories" checked>
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <h3>Docker Settings</h3>
+                        <label class="setting-item">
+                            <span>Docker Hub Username</span>
+                            <input type="text" id="dockerUsername" value="myg1983" placeholder="Docker Hub username">
+                        </label>
+                        <label class="setting-item">
+                            <span>Default Mount Path</span>
+                            <input type="text" id="mountPath" value="/f/Games" placeholder="/path/to/games">
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <h3>Export/Import</h3>
+                        <div class="setting-actions">
+                            <button id="exportData" class="setting-btn">📤 Export Data</button>
+                            <button id="importData" class="setting-btn">📥 Import Data</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sort Menu -->
+        <div id="sortMenu" class="dropdown-menu" style="display: none;">
+            <button data-sort="name" data-order="asc" class="sort-option active">↓ Name (A-Z)</button>
+            <button data-sort="name" data-order="desc" class="sort-option">↑ Name (Z-A)</button>
+            <button data-sort="time" data-order="asc" class="sort-option">↓ Time (Low-High)</button>
+            <button data-sort="time" data-order="desc" class="sort-option">↑ Time (High-Low)</button>
+            <button data-sort="category" data-order="asc" class="sort-option">↓ Category</button>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
