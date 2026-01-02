@@ -504,6 +504,10 @@ class GameLibrary {
 
         if (this.os === 'windows') {
             // Windows .bat file - double-click to run!
+            // Build list of images to pull
+            const imageList = gameIds.map(id => `${dockerUser}/${repoName}:${id}`).join(' ');
+
+            // Build run commands for each game
             const commands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
@@ -516,10 +520,43 @@ if %ERRORLEVEL% EQU 0 (
     echo [SUCCESS] ${gameName} completed successfully!
 ) else (
     echo [ERROR] ${gameName} failed with error code %ERRORLEVEL%
+)
+REM Small delay to let network settle before next game
+if ${idx + 1} LSS ${gameCount} (
+    echo.
+    echo Waiting 3 seconds before next game...
+    timeout /t 3 /nobreak >nul
+)`;
+            }).join('\n');
+
+            // Build pull commands with retry logic
+            const pullCommands = gameIds.map((id, idx) => {
+                const game = this.games.find(g => g.id === id);
+                const gameName = game ? game.name : id;
+                return `
+echo.
+echo [%date% %time%] Pulling image ${idx + 1}/${gameCount}: ${gameName}
+set "PULL_SUCCESS=0"
+for /L %%i in (1,1,3) do (
+    if !PULL_SUCCESS! EQU 0 (
+        docker pull ${dockerUser}/${repoName}:${id}
+        if !ERRORLEVEL! EQU 0 (
+            set "PULL_SUCCESS=1"
+            echo [OK] Image pulled successfully!
+        ) else (
+            echo [RETRY %%i/3] Pull failed, flushing DNS and retrying...
+            ipconfig /flushdns >nul 2>&1
+            timeout /t 5 /nobreak >nul
+        )
+    )
+)
+if !PULL_SUCCESS! EQU 0 (
+    echo [WARNING] Failed to pull ${gameName} after 3 attempts, will try during run...
 )`;
             }).join('\n');
 
             script = `@echo off
+setlocal EnableDelayedExpansion
 REM ============================================================
 REM Game Library Manager - Docker Runner
 REM Generated: ${new Date().toISOString()}
@@ -530,6 +567,11 @@ REM INSTRUCTIONS:
 REM 1. Make sure Docker Desktop is running
 REM 2. Double-click this .bat file to run
 REM 3. Games will be downloaded to F:\\Games\\
+REM
+REM This script includes:
+REM - Pre-pulling all images with retry logic
+REM - DNS cache flush on network failures
+REM - Delays between games to prevent network issues
 REM
 REM ============================================================
 
@@ -550,8 +592,32 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo [OK] Docker is running
 echo.
-echo Starting downloads to: ${mountPath}
+
+REM Test network connectivity first
+echo Testing network connectivity...
+ping -n 1 registry-1.docker.io >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [WARNING] Cannot reach Docker Hub, flushing DNS...
+    ipconfig /flushdns >nul 2>&1
+    timeout /t 3 /nobreak >nul
+)
+
+REM ============================================================
+REM PHASE 1: Pre-pull all images with retry logic
+REM ============================================================
 echo.
+echo ============================================================
+echo PHASE 1: Pre-pulling ${gameCount} Docker image(s)...
+echo This helps prevent network issues during the run phase.
+echo ============================================================
+
+${pullCommands}
+
+echo.
+echo ============================================================
+echo PHASE 2: Running games and extracting files
+echo Starting downloads to: ${mountPath}
+echo ============================================================
 
 ${commands}
 
@@ -561,6 +627,7 @@ echo All ${gameCount} game(s) processed!
 echo Check ${mountPath} for your games.
 echo ============================================================
 echo.
+endlocal
 pause
 `;
             filename = gameCount === 1
@@ -569,9 +636,11 @@ pause
 
         } else {
             // macOS / Linux .sh file
+            // Build run commands with delays between games
             const commands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
+                const isLastGame = idx === gameCount - 1;
                 return `
 echo ""
 echo "[$(date)] Running game $((${idx} + 1))/${gameCount}: ${gameName}"
@@ -581,8 +650,48 @@ if [ $? -eq 0 ]; then
     echo "[SUCCESS] ${gameName} completed successfully!"
 else
     echo "[ERROR] ${gameName} failed!"
+fi${!isLastGame ? `
+# Small delay to let network settle before next game
+echo ""
+echo "Waiting 3 seconds before next game..."
+sleep 3` : ''}`;
+            }).join('\n');
+
+            // Build pull commands with retry logic
+            const pullCommands = gameIds.map((id, idx) => {
+                const game = this.games.find(g => g.id === id);
+                const gameName = game ? game.name : id;
+                return `
+echo ""
+echo "[$(date)] Pulling image $((${idx} + 1))/${gameCount}: ${gameName}"
+PULL_SUCCESS=0
+for i in 1 2 3; do
+    if [ $PULL_SUCCESS -eq 0 ]; then
+        if docker pull ${dockerUser}/${repoName}:${id}; then
+            PULL_SUCCESS=1
+            echo "[OK] Image pulled successfully!"
+        else
+            echo "[RETRY $i/3] Pull failed, flushing DNS and retrying..."
+            # Flush DNS cache (works on most systems)
+            if command -v systemd-resolve &> /dev/null; then
+                sudo systemd-resolve --flush-caches 2>/dev/null || true
+            elif command -v dscacheutil &> /dev/null; then
+                sudo dscacheutil -flushcache 2>/dev/null || true
+                sudo killall -HUP mDNSResponder 2>/dev/null || true
+            fi
+            sleep 5
+        fi
+    fi
+done
+if [ $PULL_SUCCESS -eq 0 ]; then
+    echo "[WARNING] Failed to pull ${gameName} after 3 attempts, will try during run..."
 fi`;
             }).join('\n');
+
+            // Determine filename early for instructions
+            const scriptFilename = gameCount === 1
+                ? `run_${gameIds[0]}.sh`
+                : `run_${gameCount}_games.sh`;
 
             script = `#!/bin/bash
 # ============================================================
@@ -593,8 +702,13 @@ fi`;
 #
 # INSTRUCTIONS:
 # 1. Make sure Docker is running
-# 2. Make this script executable: chmod +x ${filename}
-# 3. Run: ./${filename}
+# 2. Make this script executable: chmod +x ${scriptFilename}
+# 3. Run: ./${scriptFilename}
+#
+# This script includes:
+# - Pre-pulling all images with retry logic
+# - DNS cache flush on network failures
+# - Delays between games to prevent network issues
 #
 # ============================================================
 
@@ -613,8 +727,36 @@ fi
 
 echo "[OK] Docker is running"
 echo ""
-echo "Starting downloads to: ${mountPath}"
+
+# Test network connectivity first
+echo "Testing network connectivity..."
+if ! ping -c 1 registry-1.docker.io > /dev/null 2>&1; then
+    echo "[WARNING] Cannot reach Docker Hub, attempting DNS flush..."
+    if command -v systemd-resolve &> /dev/null; then
+        sudo systemd-resolve --flush-caches 2>/dev/null || true
+    elif command -v dscacheutil &> /dev/null; then
+        sudo dscacheutil -flushcache 2>/dev/null || true
+        sudo killall -HUP mDNSResponder 2>/dev/null || true
+    fi
+    sleep 3
+fi
+
+# ============================================================
+# PHASE 1: Pre-pull all images with retry logic
+# ============================================================
 echo ""
+echo "============================================================"
+echo "PHASE 1: Pre-pulling ${gameCount} Docker image(s)..."
+echo "This helps prevent network issues during the run phase."
+echo "============================================================"
+
+${pullCommands}
+
+echo ""
+echo "============================================================"
+echo "PHASE 2: Running games and extracting files"
+echo "Starting downloads to: ${mountPath}"
+echo "============================================================"
 
 ${commands}
 
