@@ -15,6 +15,8 @@ class GameLibrary {
         this.games = [];
         this.tabs = [];
         this.times = {};
+        this.imageSizes = {};
+        this.datesAdded = {};
         this.filteredGames = [];
         this.selectedGames = new Set();
         this.currentTab = 'all';
@@ -46,15 +48,19 @@ class GameLibrary {
     }
 
     async loadData() {
-        const [gamesData, tabsData, timesData] = await Promise.all([
+        const [gamesData, tabsData, timesData, imageSizesData, datesAddedData] = await Promise.all([
             fetch('data/games.json').then(r => r.json()),
             fetch('data/tabs.json').then(r => r.json()),
-            fetch('data/times.json').then(r => r.json())
+            fetch('data/times.json').then(r => r.json()),
+            fetch('data/image-sizes.json').then(r => r.json()),
+            fetch('data/dates-added.json').then(r => r.json())
         ]);
 
         this.games = gamesData;
         this.tabs = tabsData;
         this.times = timesData;
+        this.imageSizes = imageSizesData;
+        this.datesAdded = datesAddedData;
 
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
@@ -285,6 +291,14 @@ class GameLibrary {
                     valA = a.category || 'zzz';
                     valB = b.category || 'zzz';
                     break;
+                case 'size':
+                    valA = this.imageSizes[a.id] || 999;
+                    valB = this.imageSizes[b.id] || 999;
+                    break;
+                case 'date':
+                    valA = this.datesAdded[a.id] ? new Date(this.datesAdded[a.id]).getTime() : 0;
+                    valB = this.datesAdded[b.id] ? new Date(this.datesAdded[b.id]).getTime() : 0;
+                    break;
                 default:
                     valA = a.name.toLowerCase();
                     valB = b.name.toLowerCase();
@@ -350,6 +364,8 @@ class GameLibrary {
     createGameCard(game) {
         const time = this.times[game.id];
         const timeStr = time ? `${time}h` : 'N/A';
+        const size = this.imageSizes[game.id];
+        const sizeStr = size ? `${size} GB` : 'N/A';
         const imageName = game.id.toLowerCase();
         const isSelected = this.selectedGames.has(game.id);
 
@@ -371,6 +387,7 @@ class GameLibrary {
                     <div class="meta">
                         ${this.settings.showCategories ? `<span class="category-badge">${game.category || 'uncategorized'}</span>` : ''}
                         ${this.settings.showTimes ? `<span class="time-badge">⏱️ ${timeStr}</span>` : ''}
+                        <span class="size-badge">💾 ${sizeStr}</span>
                     </div>
                 </div>
             </div>
@@ -445,11 +462,13 @@ class GameLibrary {
     openGameModal(game) {
         const modal = document.getElementById('gameModal');
         const time = this.times[game.id];
+        const size = this.imageSizes[game.id];
         const imageName = game.id.toLowerCase();
 
         document.getElementById('modalTitle').textContent = game.name;
         document.getElementById('modalCategory').textContent = game.category || 'uncategorized';
         document.getElementById('modalTime').textContent = time ? `~${time} hours` : 'N/A';
+        document.getElementById('modalSize').textContent = size ? `${size} GB` : 'N/A';
         document.getElementById('modalImage').src = `images/${imageName}.png`;
         document.getElementById('modalImage').onerror = function() {
             this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E";
@@ -707,7 +726,11 @@ echo "Done!"
             'name-desc': '↑ Name',
             'time-asc': '↓ Time',
             'time-desc': '↑ Time',
-            'category-asc': '↓ Cat'
+            'category-asc': '↓ Cat',
+            'size-asc': '↓ Size',
+            'size-desc': '↑ Size',
+            'date-asc': '↓ Date',
+            'date-desc': '↑ Date'
         };
         document.getElementById('sortIndicator').textContent = indicators[`${sortBy}-${order}`] || '↓ Name';
 
