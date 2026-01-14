@@ -62,6 +62,9 @@ class GameLibrary {
         this.imageSizes = imageSizesData;
         this.datesAdded = datesAddedData;
 
+        // Load any saved game category changes from localStorage
+        this.loadSavedGameChanges();
+
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
     }
@@ -164,6 +167,11 @@ class GameLibrary {
             this.downloadKillScript();
         });
 
+        // Move To button
+        document.getElementById('moveToBtn').addEventListener('click', (e) => {
+            this.toggleMoveToMenu(e);
+        });
+
         // Global mount path
         document.getElementById('globalMountPath').addEventListener('change', (e) => {
             this.settings.mountPath = e.target.value;
@@ -221,6 +229,12 @@ class GameLibrary {
             const sortBtn = document.getElementById('sortBtn');
             if (!sortMenu.contains(e.target) && !sortBtn.contains(e.target)) {
                 sortMenu.style.display = 'none';
+            }
+
+            const moveToMenu = document.getElementById('moveToMenu');
+            const moveToBtn = document.getElementById('moveToBtn');
+            if (!moveToMenu.contains(e.target) && !moveToBtn.contains(e.target)) {
+                moveToMenu.style.display = 'none';
             }
         });
 
@@ -417,6 +431,9 @@ class GameLibrary {
         const runBtn = document.getElementById('runSelectedBtn');
         runBtn.textContent = `▶️ Run Selected (${count})`;
         runBtn.disabled = count === 0;
+
+        const moveToBtn = document.getElementById('moveToBtn');
+        moveToBtn.disabled = count === 0;
     }
 
     selectAllVisible() {
@@ -834,6 +851,93 @@ echo "Done!"
         URL.revokeObjectURL(url);
 
         this.showToast(`Downloaded: ${filename}`, 'success');
+    }
+
+    toggleMoveToMenu(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('moveToMenu');
+        const btn = document.getElementById('moveToBtn');
+        const rect = btn.getBoundingClientRect();
+
+        // Populate the menu with tabs
+        menu.innerHTML = this.tabs.map(tab => `
+            <button class="move-to-option" data-tab="${tab.id}">
+                ${tab.name} (${this.getTabCount(tab.id)})
+            </button>
+        `).join('');
+
+        // Add click handlers
+        menu.querySelectorAll('.move-to-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                const tabId = e.target.dataset.tab;
+                this.moveSelectedGamesToTab(tabId);
+                menu.style.display = 'none';
+            });
+        });
+
+        menu.style.top = `${rect.bottom + 5}px`;
+        menu.style.left = `${rect.left}px`;
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    moveSelectedGamesToTab(tabId) {
+        if (this.selectedGames.size === 0) {
+            this.showToast('No games selected', 'error');
+            return;
+        }
+
+        const tab = this.tabs.find(t => t.id === tabId);
+        const tabName = tab ? tab.name : tabId;
+        let movedCount = 0;
+
+        // Update each selected game's category
+        this.selectedGames.forEach(gameId => {
+            const game = this.games.find(g => g.id === gameId);
+            if (game && game.category !== tabId) {
+                game.category = tabId;
+                movedCount++;
+            }
+        });
+
+        if (movedCount > 0) {
+            // Save changes to localStorage for persistence
+            this.saveGameChanges();
+
+            // Refresh UI
+            this.renderTabs();
+            this.filterAndRender();
+
+            this.showToast(`Moved ${movedCount} game(s) to "${tabName}"`, 'success');
+        } else {
+            this.showToast('Games are already in this category', 'info');
+        }
+
+        // Optionally clear selection after move
+        this.deselectAll();
+    }
+
+    saveGameChanges() {
+        // Save modified games to localStorage
+        localStorage.setItem('gameLibraryGames', JSON.stringify(this.games));
+    }
+
+    loadSavedGameChanges() {
+        // Load any saved game modifications from localStorage
+        const savedGames = localStorage.getItem('gameLibraryGames');
+        if (savedGames) {
+            try {
+                const savedGameData = JSON.parse(savedGames);
+                // Merge saved changes with loaded games (preserve saved categories)
+                savedGameData.forEach(savedGame => {
+                    const game = this.games.find(g => g.id === savedGame.id);
+                    if (game) {
+                        game.category = savedGame.category;
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to load saved game changes:', e);
+            }
+        }
     }
 
     copyScript() {

@@ -55,6 +55,12 @@
                 <button id="selectAllBtn" class="action-bar-btn">☑️ Select All</button>
                 <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>
                 <button id="runSelectedBtn" class="action-bar-btn primary" disabled>▶️ Run Selected (0)</button>
+                <div class="move-to-container">
+                    <button id="moveToBtn" class="action-bar-btn" disabled>📁 Move To</button>
+                    <div id="moveToMenu" class="dropdown-menu move-to-menu" style="display: none;">
+                        <!-- Tabs will be populated by JavaScript -->
+                    </div>
+                </div>
             </div>
             <div class="action-bar-right">
                 <button id="killContainersBtn" class="action-bar-btn danger" title="Kill all Docker containers">🛑 Kill All</button>
