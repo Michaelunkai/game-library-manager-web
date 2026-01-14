@@ -1,5 +1,5 @@
 /**
- * Game Library Manager v3.5 - Web Application
+ * Game Library Manager v3.6 - Web Application
  * A full-featured Docker game library manager
  *
  * Features:
@@ -15,6 +15,8 @@ class GameLibrary {
         this.games = [];
         this.tabs = [];
         this.times = {};
+        this.imageSizes = {};
+        this.datesAdded = {};
         this.filteredGames = [];
         this.selectedGames = new Set();
         this.currentTab = 'all';
@@ -46,15 +48,22 @@ class GameLibrary {
     }
 
     async loadData() {
-        const [gamesData, tabsData, timesData] = await Promise.all([
+        const [gamesData, tabsData, timesData, imageSizesData, datesAddedData] = await Promise.all([
             fetch('data/games.json').then(r => r.json()),
             fetch('data/tabs.json').then(r => r.json()),
-            fetch('data/times.json').then(r => r.json())
+            fetch('data/times.json').then(r => r.json()),
+            fetch('data/image-sizes.json').then(r => r.json()),
+            fetch('data/dates-added.json').then(r => r.json())
         ]);
 
         this.games = gamesData;
         this.tabs = tabsData;
         this.times = timesData;
+        this.imageSizes = imageSizesData;
+        this.datesAdded = datesAddedData;
+
+        // Load any saved game category changes from localStorage
+        this.loadSavedGameChanges();
 
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
@@ -158,6 +167,11 @@ class GameLibrary {
             this.downloadKillScript();
         });
 
+        // Move To button
+        document.getElementById('moveToBtn').addEventListener('click', (e) => {
+            this.toggleMoveToMenu(e);
+        });
+
         // Global mount path
         document.getElementById('globalMountPath').addEventListener('change', (e) => {
             this.settings.mountPath = e.target.value;
@@ -215,6 +229,12 @@ class GameLibrary {
             const sortBtn = document.getElementById('sortBtn');
             if (!sortMenu.contains(e.target) && !sortBtn.contains(e.target)) {
                 sortMenu.style.display = 'none';
+            }
+
+            const moveToMenu = document.getElementById('moveToMenu');
+            const moveToBtn = document.getElementById('moveToBtn');
+            if (!moveToMenu.contains(e.target) && !moveToBtn.contains(e.target)) {
+                moveToMenu.style.display = 'none';
             }
         });
 
@@ -285,6 +305,14 @@ class GameLibrary {
                     valA = a.category || 'zzz';
                     valB = b.category || 'zzz';
                     break;
+                case 'size':
+                    valA = this.imageSizes[a.id] || 999;
+                    valB = this.imageSizes[b.id] || 999;
+                    break;
+                case 'date':
+                    valA = this.datesAdded[a.id] ? new Date(this.datesAdded[a.id]).getTime() : 0;
+                    valB = this.datesAdded[b.id] ? new Date(this.datesAdded[b.id]).getTime() : 0;
+                    break;
                 default:
                     valA = a.name.toLowerCase();
                     valB = b.name.toLowerCase();
@@ -350,6 +378,8 @@ class GameLibrary {
     createGameCard(game) {
         const time = this.times[game.id];
         const timeStr = time ? `${time}h` : 'N/A';
+        const size = this.imageSizes[game.id];
+        const sizeStr = size ? `${size} GB` : 'N/A';
         const imageName = game.id.toLowerCase();
         const isSelected = this.selectedGames.has(game.id);
 
@@ -371,6 +401,7 @@ class GameLibrary {
                     <div class="meta">
                         ${this.settings.showCategories ? `<span class="category-badge">${game.category || 'uncategorized'}</span>` : ''}
                         ${this.settings.showTimes ? `<span class="time-badge">⏱️ ${timeStr}</span>` : ''}
+                        <span class="size-badge">💾 ${sizeStr}</span>
                     </div>
                 </div>
             </div>
@@ -400,6 +431,9 @@ class GameLibrary {
         const runBtn = document.getElementById('runSelectedBtn');
         runBtn.textContent = `▶️ Run Selected (${count})`;
         runBtn.disabled = count === 0;
+
+        const moveToBtn = document.getElementById('moveToBtn');
+        moveToBtn.disabled = count === 0;
     }
 
     selectAllVisible() {
@@ -445,11 +479,13 @@ class GameLibrary {
     openGameModal(game) {
         const modal = document.getElementById('gameModal');
         const time = this.times[game.id];
+        const size = this.imageSizes[game.id];
         const imageName = game.id.toLowerCase();
 
         document.getElementById('modalTitle').textContent = game.name;
         document.getElementById('modalCategory').textContent = game.category || 'uncategorized';
         document.getElementById('modalTime').textContent = time ? `~${time} hours` : 'N/A';
+        document.getElementById('modalSize').textContent = size ? `${size} GB` : 'N/A';
         document.getElementById('modalImage').src = `images/${imageName}.png`;
         document.getElementById('modalImage').onerror = function() {
             this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E";
@@ -529,7 +565,7 @@ if ${idx + 1} LSS ${gameCount} (
 )`;
             }).join('\n');
 
-            // Build pull commands with retry logic
+            // Build pull commands with robust retry logic for Docker Desktop issues
             const pullCommands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
@@ -537,21 +573,44 @@ if ${idx + 1} LSS ${gameCount} (
 echo.
 echo [%date% %time%] Pulling image ${idx + 1}/${gameCount}: ${gameName}
 set "PULL_SUCCESS=0"
-for /L %%i in (1,1,3) do (
+set "RETRY_DELAY=5"
+for /L %%i in (1,1,5) do (
     if !PULL_SUCCESS! EQU 0 (
-        docker pull ${dockerUser}/${repoName}:${id}
+        REM Check Docker health before attempting pull
+        docker info >nul 2>&1
+        if !ERRORLEVEL! NEQ 0 (
+            echo [WARNING] Docker not responding, attempting recovery...
+            call :recover_docker
+        )
+
+        REM Attempt the pull and capture output for error detection
+        docker pull ${dockerUser}/${repoName}:${id} 2>&1
         if !ERRORLEVEL! EQU 0 (
             set "PULL_SUCCESS=1"
             echo [OK] Image pulled successfully!
         ) else (
-            echo [RETRY %%i/3] Pull failed, flushing DNS and retrying...
+            echo [RETRY %%i/5] Pull failed, attempting recovery...
+
+            REM Flush DNS cache
             ipconfig /flushdns >nul 2>&1
-            timeout /t 5 /nobreak >nul
+
+            REM Reset Windows network stack
+            netsh winsock reset >nul 2>&1
+            netsh int ip reset >nul 2>&1
+
+            REM Try to restart Docker Desktop if it's having issues
+            call :recover_docker
+
+            REM Exponential backoff: 5, 10, 20, 40, 60 seconds
+            echo [INFO] Waiting !RETRY_DELAY! seconds before retry...
+            timeout /t !RETRY_DELAY! /nobreak >nul
+            set /a "RETRY_DELAY=RETRY_DELAY*2"
+            if !RETRY_DELAY! GTR 60 set "RETRY_DELAY=60"
         )
     )
 )
 if !PULL_SUCCESS! EQU 0 (
-    echo [WARNING] Failed to pull ${gameName} after 3 attempts, will try during run...
+    echo [WARNING] Failed to pull ${gameName} after 5 attempts, will try during run...
 )`;
             }).join('\n');
 
@@ -569,25 +628,32 @@ REM 2. Double-click this .bat file to run
 REM 3. Games will be downloaded to F:\\Games\\
 REM
 REM This script includes:
-REM - Pre-pulling all images with retry logic
-REM - DNS cache flush on network failures
-REM - Delays between games to prevent network issues
+REM - Pre-pulling all images with robust retry logic
+REM - Automatic Docker Desktop recovery on pipe/connection errors
+REM - Network stack reset on failures
+REM - Exponential backoff between retries
 REM
 REM ============================================================
 
 echo.
 echo  ====================================
-echo   Game Library Manager v3.5
+echo   Game Library Manager v3.6
 echo   Running ${gameCount} game(s)
 echo  ====================================
 echo.
 
-REM Check if Docker is running
+REM Initial Docker health check with recovery
+echo Checking Docker status...
 docker info >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Docker is not running! Please start Docker Desktop first.
-    pause
-    exit /b 1
+    echo [WARNING] Docker is not responding, attempting to start/restart...
+    call :recover_docker
+    docker info >nul 2>&1
+    if !ERRORLEVEL! NEQ 0 (
+        echo [ERROR] Docker is not running! Please start Docker Desktop manually.
+        pause
+        exit /b 1
+    )
 )
 
 echo [OK] Docker is running
@@ -597,9 +663,16 @@ REM Test network connectivity first
 echo Testing network connectivity...
 ping -n 1 registry-1.docker.io >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [WARNING] Cannot reach Docker Hub, flushing DNS...
+    echo [WARNING] Cannot reach Docker Hub, resetting network...
     ipconfig /flushdns >nul 2>&1
-    timeout /t 3 /nobreak >nul
+    netsh winsock reset >nul 2>&1
+    timeout /t 5 /nobreak >nul
+
+    REM Test again
+    ping -n 1 registry-1.docker.io >nul 2>&1
+    if !ERRORLEVEL! NEQ 0 (
+        echo [WARNING] Still cannot reach Docker Hub, will retry during pulls...
+    )
 )
 
 REM ============================================================
@@ -627,6 +700,63 @@ echo All ${gameCount} game(s) processed!
 echo Check ${mountPath} for your games.
 echo ============================================================
 echo.
+goto :end
+
+REM ============================================================
+REM Docker Recovery Function
+REM Handles Docker Desktop pipe errors and connection issues
+REM ============================================================
+:recover_docker
+echo [RECOVERY] Attempting Docker Desktop recovery...
+
+REM First, try to restart the Docker service
+echo [RECOVERY] Restarting Docker service...
+net stop com.docker.service >nul 2>&1
+timeout /t 3 /nobreak >nul
+net start com.docker.service >nul 2>&1
+timeout /t 5 /nobreak >nul
+
+REM Check if Docker is responding now
+docker info >nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    echo [RECOVERY] Docker service restart successful!
+    goto :eof
+)
+
+REM If service restart didn't work, try killing and restarting Docker Desktop
+echo [RECOVERY] Restarting Docker Desktop application...
+taskkill /f /im "Docker Desktop.exe" >nul 2>&1
+taskkill /f /im "com.docker.backend.exe" >nul 2>&1
+taskkill /f /im "com.docker.proxy.exe" >nul 2>&1
+timeout /t 5 /nobreak >nul
+
+REM Try to start Docker Desktop
+start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe" >nul 2>&1
+if !ERRORLEVEL! NEQ 0 (
+    start "" "%PROGRAMFILES%\\Docker\\Docker\\Docker Desktop.exe" >nul 2>&1
+)
+
+echo [RECOVERY] Waiting for Docker to initialize (up to 60 seconds)...
+set "DOCKER_READY=0"
+for /L %%w in (1,1,12) do (
+    if !DOCKER_READY! EQU 0 (
+        timeout /t 5 /nobreak >nul
+        docker info >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            set "DOCKER_READY=1"
+            echo [RECOVERY] Docker Desktop is ready!
+        ) else (
+            echo [RECOVERY] Waiting... %%w/12
+        )
+    )
+)
+
+if !DOCKER_READY! EQU 0 (
+    echo [RECOVERY] Docker Desktop recovery may have failed, will continue trying...
+)
+goto :eof
+
+:end
 endlocal
 pause
 `;
@@ -657,7 +787,7 @@ echo "Waiting 3 seconds before next game..."
 sleep 3` : ''}`;
             }).join('\n');
 
-            // Build pull commands with retry logic
+            // Build pull commands with robust retry logic for Docker issues
             const pullCommands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
@@ -665,26 +795,47 @@ sleep 3` : ''}`;
 echo ""
 echo "[$(date)] Pulling image $((${idx} + 1))/${gameCount}: ${gameName}"
 PULL_SUCCESS=0
-for i in 1 2 3; do
+RETRY_DELAY=5
+for i in 1 2 3 4 5; do
     if [ $PULL_SUCCESS -eq 0 ]; then
-        if docker pull ${dockerUser}/${repoName}:${id}; then
+        # Check Docker health before attempting pull
+        if ! docker info > /dev/null 2>&1; then
+            echo "[WARNING] Docker not responding, attempting recovery..."
+            recover_docker
+        fi
+
+        # Attempt the pull
+        if docker pull ${dockerUser}/${repoName}:${id} 2>&1; then
             PULL_SUCCESS=1
             echo "[OK] Image pulled successfully!"
         else
-            echo "[RETRY $i/3] Pull failed, flushing DNS and retrying..."
+            echo "[RETRY $i/5] Pull failed, attempting recovery..."
+
             # Flush DNS cache (works on most systems)
             if command -v systemd-resolve &> /dev/null; then
                 sudo systemd-resolve --flush-caches 2>/dev/null || true
+            elif command -v resolvectl &> /dev/null; then
+                sudo resolvectl flush-caches 2>/dev/null || true
             elif command -v dscacheutil &> /dev/null; then
                 sudo dscacheutil -flushcache 2>/dev/null || true
                 sudo killall -HUP mDNSResponder 2>/dev/null || true
             fi
-            sleep 5
+
+            # Attempt Docker recovery
+            recover_docker
+
+            # Exponential backoff
+            echo "[INFO] Waiting $RETRY_DELAY seconds before retry..."
+            sleep $RETRY_DELAY
+            RETRY_DELAY=$((RETRY_DELAY * 2))
+            if [ $RETRY_DELAY -gt 60 ]; then
+                RETRY_DELAY=60
+            fi
         fi
     fi
 done
 if [ $PULL_SUCCESS -eq 0 ]; then
-    echo "[WARNING] Failed to pull ${gameName} after 3 attempts, will try during run..."
+    echo "[WARNING] Failed to pull ${gameName} after 5 attempts, will try during run..."
 fi`;
             }).join('\n');
 
@@ -706,23 +857,76 @@ fi`;
 # 3. Run: ./${scriptFilename}
 #
 # This script includes:
-# - Pre-pulling all images with retry logic
+# - Pre-pulling all images with robust retry logic
+# - Automatic Docker recovery on connection errors
 # - DNS cache flush on network failures
-# - Delays between games to prevent network issues
+# - Exponential backoff between retries
 #
 # ============================================================
 
+# ============================================================
+# Docker Recovery Function
+# Handles Docker daemon issues and connection errors
+# ============================================================
+recover_docker() {
+    echo "[RECOVERY] Attempting Docker recovery..."
+
+    # Detect if running Docker Desktop or native Docker
+    if [ -d "/Applications/Docker.app" ] || command -v "Docker" &> /dev/null; then
+        # macOS Docker Desktop
+        echo "[RECOVERY] Restarting Docker Desktop (macOS)..."
+        osascript -e 'quit app "Docker"' 2>/dev/null || true
+        sleep 3
+        open -a Docker 2>/dev/null || true
+        echo "[RECOVERY] Waiting for Docker to initialize..."
+        for w in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            sleep 5
+            if docker info > /dev/null 2>&1; then
+                echo "[RECOVERY] Docker is ready!"
+                return 0
+            fi
+            echo "[RECOVERY] Waiting... $w/12"
+        done
+    elif command -v systemctl &> /dev/null && systemctl list-unit-files | grep -q docker; then
+        # Linux with systemd
+        echo "[RECOVERY] Restarting Docker service (Linux)..."
+        sudo systemctl restart docker 2>/dev/null || true
+        sleep 5
+        if docker info > /dev/null 2>&1; then
+            echo "[RECOVERY] Docker service restart successful!"
+            return 0
+        fi
+    elif command -v service &> /dev/null; then
+        # Linux with init.d
+        echo "[RECOVERY] Restarting Docker service..."
+        sudo service docker restart 2>/dev/null || true
+        sleep 5
+        if docker info > /dev/null 2>&1; then
+            echo "[RECOVERY] Docker service restart successful!"
+            return 0
+        fi
+    fi
+
+    echo "[RECOVERY] Docker recovery attempted, continuing..."
+    return 1
+}
+
 echo ""
 echo " ===================================="
-echo "  Game Library Manager v3.5"
+echo "  Game Library Manager v3.6"
 echo "  Running ${gameCount} game(s)"
 echo " ===================================="
 echo ""
 
-# Check if Docker is running
+# Initial Docker health check with recovery
+echo "Checking Docker status..."
 if ! docker info > /dev/null 2>&1; then
-    echo "[ERROR] Docker is not running! Please start Docker first."
-    exit 1
+    echo "[WARNING] Docker is not responding, attempting to start/restart..."
+    recover_docker
+    if ! docker info > /dev/null 2>&1; then
+        echo "[ERROR] Docker is not running! Please start Docker manually."
+        exit 1
+    fi
 fi
 
 echo "[OK] Docker is running"
@@ -731,14 +935,24 @@ echo ""
 # Test network connectivity first
 echo "Testing network connectivity..."
 if ! ping -c 1 registry-1.docker.io > /dev/null 2>&1; then
-    echo "[WARNING] Cannot reach Docker Hub, attempting DNS flush..."
+    echo "[WARNING] Cannot reach Docker Hub, resetting network..."
+
+    # Flush DNS cache
     if command -v systemd-resolve &> /dev/null; then
         sudo systemd-resolve --flush-caches 2>/dev/null || true
+    elif command -v resolvectl &> /dev/null; then
+        sudo resolvectl flush-caches 2>/dev/null || true
     elif command -v dscacheutil &> /dev/null; then
         sudo dscacheutil -flushcache 2>/dev/null || true
         sudo killall -HUP mDNSResponder 2>/dev/null || true
     fi
-    sleep 3
+
+    sleep 5
+
+    # Test again
+    if ! ping -c 1 registry-1.docker.io > /dev/null 2>&1; then
+        echo "[WARNING] Still cannot reach Docker Hub, will retry during pulls..."
+    fi
 fi
 
 # ============================================================
@@ -817,6 +1031,93 @@ echo "Done!"
         this.showToast(`Downloaded: ${filename}`, 'success');
     }
 
+    toggleMoveToMenu(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('moveToMenu');
+        const btn = document.getElementById('moveToBtn');
+        const rect = btn.getBoundingClientRect();
+
+        // Populate the menu with tabs
+        menu.innerHTML = this.tabs.map(tab => `
+            <button class="move-to-option" data-tab="${tab.id}">
+                ${tab.name} (${this.getTabCount(tab.id)})
+            </button>
+        `).join('');
+
+        // Add click handlers
+        menu.querySelectorAll('.move-to-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                const tabId = e.target.dataset.tab;
+                this.moveSelectedGamesToTab(tabId);
+                menu.style.display = 'none';
+            });
+        });
+
+        menu.style.top = `${rect.bottom + 5}px`;
+        menu.style.left = `${rect.left}px`;
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    moveSelectedGamesToTab(tabId) {
+        if (this.selectedGames.size === 0) {
+            this.showToast('No games selected', 'error');
+            return;
+        }
+
+        const tab = this.tabs.find(t => t.id === tabId);
+        const tabName = tab ? tab.name : tabId;
+        let movedCount = 0;
+
+        // Update each selected game's category
+        this.selectedGames.forEach(gameId => {
+            const game = this.games.find(g => g.id === gameId);
+            if (game && game.category !== tabId) {
+                game.category = tabId;
+                movedCount++;
+            }
+        });
+
+        if (movedCount > 0) {
+            // Save changes to localStorage for persistence
+            this.saveGameChanges();
+
+            // Refresh UI
+            this.renderTabs();
+            this.filterAndRender();
+
+            this.showToast(`Moved ${movedCount} game(s) to "${tabName}"`, 'success');
+        } else {
+            this.showToast('Games are already in this category', 'info');
+        }
+
+        // Optionally clear selection after move
+        this.deselectAll();
+    }
+
+    saveGameChanges() {
+        // Save modified games to localStorage
+        localStorage.setItem('gameLibraryGames', JSON.stringify(this.games));
+    }
+
+    loadSavedGameChanges() {
+        // Load any saved game modifications from localStorage
+        const savedGames = localStorage.getItem('gameLibraryGames');
+        if (savedGames) {
+            try {
+                const savedGameData = JSON.parse(savedGames);
+                // Merge saved changes with loaded games (preserve saved categories)
+                savedGameData.forEach(savedGame => {
+                    const game = this.games.find(g => g.id === savedGame.id);
+                    if (game) {
+                        game.category = savedGame.category;
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to load saved game changes:', e);
+            }
+        }
+    }
+
     copyScript() {
         if (!this.currentGame) return;
         const cmd = this.getDockerCommand(this.currentGame.id);
@@ -849,7 +1150,11 @@ echo "Done!"
             'name-desc': '↑ Name',
             'time-asc': '↓ Time',
             'time-desc': '↑ Time',
-            'category-asc': '↓ Cat'
+            'category-asc': '↓ Cat',
+            'size-asc': '↓ Size',
+            'size-desc': '↑ Size',
+            'date-asc': '↓ Date',
+            'date-desc': '↑ Date'
         };
         document.getElementById('sortIndicator').textContent = indicators[`${sortBy}-${order}`] || '↓ Name';
 
