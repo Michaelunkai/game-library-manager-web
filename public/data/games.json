@@ -140,7 +140,7 @@
     {
         "category": "mybackup",
         "name": "Crimes Csv",
-        "id": "crimescsv",
+        "id": "CrimesCSV",
         "alias": null
     },
     {
@@ -152,7 +152,7 @@
     {
         "category": "mybackup",
         "name": "Projects",
-        "id": "projects",
+        "id": "Projects",
         "alias": null
     },
     {
@@ -422,7 +422,7 @@
     {
         "category": "mybackup",
         "name": "Ftpserver",
-        "id": "ftpserver",
+        "id": "FTPserver",
         "alias": null
     },
     {
@@ -572,7 +572,7 @@
     {
         "category": "oporationsystems",
         "name": "Parrot Os",
-        "id": "parrotos",
+        "id": "parrotOS",
         "alias": null
     },
     {
@@ -728,7 +728,7 @@
     {
         "category": "oporationsystems",
         "name": "Pure Os",
-        "id": "pureos",
+        "id": "pureOS",
         "alias": null
     },
     {
@@ -860,7 +860,7 @@
     {
         "category": "finished",
         "name": "The Plucky Squire",
-        "id": "thepluckysquire",
+        "id": "ThePluckySquire",
         "alias": null
     },
     {
@@ -872,7 +872,7 @@
     {
         "category": "not_for_me",
         "name": "Tiny Tinas Assaulton Dragon Keep",
-        "id": "tinytinasassaultondragonkeep",
+        "id": "TinyTinasAssaultonDragonKeep",
         "alias": null
     },
     {
@@ -1034,19 +1034,19 @@
     {
         "category": "action",
         "name": "13 Sentinels Aegis Rim",
-        "id": "13sentinelsaegisrim",
+        "id": "13SentinelsAegisRim",
         "alias": null
     },
     {
         "category": "action",
         "name": "Aithesomniumfiles",
-        "id": "aithesomniumfiles",
+        "id": "AITHESOMNIUMFILES",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "Akimbot",
-        "id": "akimbot",
+        "id": "Akimbot",
         "alias": null
     },
     {
@@ -1058,13 +1058,13 @@
     {
         "category": "not_for_me",
         "name": "Alan Wake 2",
-        "id": "alanwake2",
+        "id": "AlanWake2",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "Amandathe Adventurer",
-        "id": "amandatheadventurer",
+        "id": "AmandatheAdventurer",
         "alias": null
     },
     {
@@ -1082,7 +1082,7 @@
     {
         "category": "not_for_me",
         "name": "Anger Foot",
-        "id": "angerfoot",
+        "id": "AngerFoot",
         "alias": null
     },
     {
@@ -1106,7 +1106,7 @@
     {
         "category": "platformers",
         "name": "Astral Ascent",
-        "id": "astralascent",
+        "id": "AstralAscent",
         "alias": null
     },
     {
@@ -1124,7 +1124,7 @@
     {
         "category": "not_for_me",
         "name": "Balatro",
-        "id": "balatro",
+        "id": "Balatro",
         "alias": null
     },
     {
@@ -1232,7 +1232,7 @@
     {
         "category": "finished",
         "name": "Bug Fables The Everlasting Sapling",
-        "id": "bugfablestheeverlastingsapling",
+        "id": "BugFablesTheEverlastingSapling",
         "alias": null
     },
     {
@@ -1262,7 +1262,7 @@
     {
         "category": "action",
         "name": "Card Shark",
-        "id": "cardshark",
+        "id": "CardShark",
         "alias": null
     },
     {
@@ -1292,7 +1292,7 @@
     {
         "category": "action",
         "name": "Chicory Acolorful Tale",
-        "id": "chicoryacolorfultale",
+        "id": "ChicoryAcolorfulTale",
         "alias": null
     },
     {
@@ -1316,7 +1316,7 @@
     {
         "category": "not_for_me",
         "name": "Citizen Sleeper",
-        "id": "citizensleeper",
+        "id": "CitizenSleeper",
         "alias": null
     },
     {
@@ -1388,7 +1388,7 @@
     {
         "category": "action",
         "name": "Cris Tales",
-        "id": "cristales",
+        "id": "CrisTales",
         "alias": null
     },
     {
@@ -1406,7 +1406,7 @@
     {
         "category": "action",
         "name": "Danganronpa",
-        "id": "danganronpa",
+        "id": "Danganronpa",
         "alias": null
     },
     {
@@ -1526,7 +1526,7 @@
     {
         "category": "shooters",
         "name": "Doometernal",
-        "id": "doometernal",
+        "id": "DOOMEternal",
         "alias": null
     },
     {
@@ -1574,13 +1574,13 @@
     {
         "category": "action",
         "name": "Dysmantle",
-        "id": "dysmantle",
+        "id": "DYSMANTLE",
         "alias": null
     },
     {
         "category": "action",
         "name": "Eastshade",
-        "id": "eastshade",
+        "id": "Eastshade",
         "alias": null
     },
     {
@@ -1616,7 +1616,7 @@
     {
         "category": "action",
         "name": "Endling Extinctionis Forever",
-        "id": "endlingextinctionisforever",
+        "id": "EndlingExtinctionisForever",
         "alias": null
     },
     {
@@ -1676,7 +1676,7 @@
     {
         "category": "openworld",
         "name": "Fallout London",
-        "id": "falloutlondon",
+        "id": "FalloutLondon",
         "alias": null
     },
     {
@@ -1748,7 +1748,7 @@
     {
         "category": "shooters",
         "name": "Flintlock The Siegeof Dawn",
-        "id": "flintlockthesiegeofdawn",
+        "id": "FlintlockTheSiegeofDawn",
         "alias": null
     },
     {
@@ -1760,13 +1760,13 @@
     {
         "category": "oporationsystems",
         "name": "Free Bsd",
-        "id": "freebsd",
+        "id": "freeBSD",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "Frogun",
-        "id": "frogun",
+        "id": "Frogun",
         "alias": null
     },
     {
@@ -1838,7 +1838,7 @@
     {
         "category": "platformers",
         "name": "Gato Roboto",
-        "id": "gatoroboto",
+        "id": "GatoRoboto",
         "alias": null
     },
     {
@@ -1898,7 +1898,7 @@
     {
         "category": "action",
         "name": "Greak Memoriesof Azur",
-        "id": "greakmemoriesofazur",
+        "id": "GreakMemoriesofAzur",
         "alias": null
     },
     {
@@ -1910,7 +1910,7 @@
     {
         "category": "action",
         "name": "Griftlands",
-        "id": "griftlands",
+        "id": "Griftlands",
         "alias": null
     },
     {
@@ -1922,7 +1922,7 @@
     {
         "category": "action",
         "name": "Gunfire Reborn",
-        "id": "gunfirereborn",
+        "id": "GunfireReborn",
         "alias": null
     },
     {
@@ -1988,7 +1988,7 @@
     {
         "category": "hacknslash",
         "name": "Indivisible",
-        "id": "indivisible",
+        "id": "Indivisible",
         "alias": null
     },
     {
@@ -2006,7 +2006,7 @@
     {
         "category": "chill",
         "name": "Journeytothe Savage Planet",
-        "id": "journeytothesavageplanet",
+        "id": "JourneytotheSavagePlanet",
         "alias": null
     },
     {
@@ -2072,13 +2072,13 @@
     {
         "category": "localcoop",
         "name": "Lethal League Blaze",
-        "id": "lethalleagueblaze",
+        "id": "LethalLeagueBlaze",
         "alias": null
     },
     {
         "category": "nintendo/switch",
         "name": "Lifeis Strange Double Exposure",
-        "id": "lifeisstrangedoubleexposure",
+        "id": "LifeisStrangeDoubleExposure",
         "alias": null
     },
     {
@@ -2096,7 +2096,7 @@
     {
         "category": "action",
         "name": "Littlewood",
-        "id": "littlewood",
+        "id": "Littlewood",
         "alias": null
     },
     {
@@ -2108,13 +2108,13 @@
     {
         "category": "not_for_me",
         "name": "Loopmancer",
-        "id": "loopmancer",
+        "id": "Loopmancer",
         "alias": null
     },
     {
         "category": "action",
         "name": "Loreleiandthe Laser Eyes",
-        "id": "loreleiandthelasereyes",
+        "id": "loreleiandtheLaserEyes",
         "alias": null
     },
     {
@@ -2132,7 +2132,7 @@
     {
         "category": "nintendo/switch",
         "name": "Mariovs Donkey Kong",
-        "id": "mariovsdonkeykong",
+        "id": "MariovsDonkeyKong",
         "alias": null
     },
     {
@@ -2174,19 +2174,19 @@
     {
         "category": "action",
         "name": "Melatonin",
-        "id": "melatonin",
+        "id": "Melatonin",
         "alias": null
     },
     {
         "category": "action",
         "name": "Metal Gear Solid 2",
-        "id": "metalgearsolid2",
+        "id": "MetalGearSolid2",
         "alias": null
     },
     {
         "category": "action",
         "name": "Metal Gear Solid 3",
-        "id": "metalgearsolid3",
+        "id": "MetalGearSolid3",
         "alias": null
     },
     {
@@ -2234,7 +2234,7 @@
     {
         "category": "platformers",
         "name": "Minuteof Islands",
-        "id": "minuteofislands",
+        "id": "MinuteofIslands",
         "alias": null
     },
     {
@@ -2258,7 +2258,7 @@
     {
         "category": "not_for_me",
         "name": "Mossbook 2",
-        "id": "mossbook2",
+        "id": "Mossbook2",
         "alias": null
     },
     {
@@ -2276,7 +2276,7 @@
     {
         "category": "not_for_me",
         "name": "My Friendly Neighborhood",
-        "id": "myfriendlyneighborhood",
+        "id": "MyFriendlyNeighborhood",
         "alias": null
     },
     {
@@ -2294,7 +2294,7 @@
     {
         "category": "action",
         "name": "Neo Cab",
-        "id": "neocab",
+        "id": "NeoCab",
         "alias": null
     },
     {
@@ -2318,7 +2318,7 @@
     {
         "category": "action",
         "name": "Night Call",
-        "id": "nightcall",
+        "id": "NightCall",
         "alias": null
     },
     {
@@ -2342,7 +2342,7 @@
     {
         "category": "action",
         "name": "Nobody Wantsto Die",
-        "id": "nobodywantstodie",
+        "id": "NobodyWantstoDie",
         "alias": null
     },
     {
@@ -2360,7 +2360,7 @@
     {
         "category": "action",
         "name": "No Straight Roads",
-        "id": "nostraightroads",
+        "id": "NoStraightRoads",
         "alias": null
     },
     {
@@ -2378,7 +2378,7 @@
     {
         "category": "platformers",
         "name": "Octogeddon",
-        "id": "octogeddon",
+        "id": "Octogeddon",
         "alias": null
     },
     {
@@ -2396,7 +2396,7 @@
     {
         "category": "platformers",
         "name": "Onirism",
-        "id": "onirism",
+        "id": "Onirism",
         "alias": null
     },
     {
@@ -2420,7 +2420,7 @@
     {
         "category": "action",
         "name": "Paintthe Town Red",
-        "id": "paintthetownred",
+        "id": "PainttheTownRed",
         "alias": null
     },
     {
@@ -2456,7 +2456,7 @@
     {
         "category": "nintendo/switch",
         "name": "Pokemon Scarlet Violet",
-        "id": "pokemonscarletviolet",
+        "id": "PokemonScarletViolet",
         "alias": null
     },
     {
@@ -2504,7 +2504,7 @@
     {
         "category": "action",
         "name": "Red Factionguerrilla Re Marstered",
-        "id": "redfactionguerrillaremarstered",
+        "id": "RedFactionguerrillaReMarstered",
         "alias": null
     },
     {
@@ -2522,7 +2522,7 @@
     {
         "category": "shooters",
         "name": "Researchand Destroy",
-        "id": "researchanddestroy",
+        "id": "RESEARCHandDESTROY",
         "alias": null
     },
     {
@@ -2708,7 +2708,7 @@
     {
         "category": "platformers",
         "name": "Sonic Unleashed",
-        "id": "sonicunleashed",
+        "id": "SonicUnleashed",
         "alias": null
     },
     {
@@ -2744,7 +2744,7 @@
     {
         "category": "action",
         "name": "Steins Gate Elite",
-        "id": "steinsgateelite",
+        "id": "SteinsGateElite",
         "alias": null
     },
     {
@@ -2918,13 +2918,13 @@
     {
         "category": "action",
         "name": "The Legendof Heroes",
-        "id": "thelegendofheroes",
+        "id": "TheLegendofHeroes",
         "alias": null
     },
     {
         "category": "action",
         "name": "The Legendof Heroes Trailsto Azure",
-        "id": "thelegendofheroestrailstoazure",
+        "id": "TheLegendofHeroesTrailstoAzure",
         "alias": null
     },
     {
@@ -2936,7 +2936,7 @@
     {
         "category": "nintendo/switch",
         "name": "The Legendof Zelda The Wind Waker",
-        "id": "thelegendofzeldathewindwaker",
+        "id": "TheLegendofZeldaTheWindWaker",
         "alias": null
     },
     {
@@ -2978,7 +2978,7 @@
     {
         "category": "action",
         "name": "The Spiritandthe Mouse",
-        "id": "thespiritandthemouse",
+        "id": "TheSpiritandtheMouse",
         "alias": null
     },
     {
@@ -2990,7 +2990,7 @@
     {
         "category": "action",
         "name": "The Wildat Heart",
-        "id": "thewildatheart",
+        "id": "TheWildatHeart",
         "alias": null
     },
     {
@@ -3026,19 +3026,19 @@
     {
         "category": "nintendo/switch",
         "name": "Tlo Zechoesof Wisdom",
-        "id": "tlozechoesofwisdom",
+        "id": "TLoZEchoesofWisdom",
         "alias": null
     },
     {
         "category": "hacknslash",
         "name": "Tmntsplintered Fate",
-        "id": "tmntsplinteredfate",
+        "id": "TMNTSplinteredFate",
         "alias": null
     },
     {
         "category": "puzzle",
         "name": "Tomb Raider Ivviremastered",
-        "id": "tombraiderivviremastered",
+        "id": "TombRaiderIVVIRemastered",
         "alias": null
     },
     {
@@ -3110,7 +3110,7 @@
     {
         "category": "action",
         "name": "Trover Savesthe Universe",
-        "id": "troversavestheuniverse",
+        "id": "TroverSavestheUniverse",
         "alias": null
     },
     {
@@ -3140,7 +3140,7 @@
     {
         "category": "platformers",
         "name": "Unsighted",
-        "id": "unsighted",
+        "id": "UNSIGHTED",
         "alias": null
     },
     {
@@ -3182,13 +3182,13 @@
     {
         "category": "shooters",
         "name": "Void Bastards",
-        "id": "voidbastards",
+        "id": "VoidBastards",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Void Bastards Bang Tydy",
-        "id": "voidbastardsbangtydy",
+        "id": "VoidBastardsBangTydy",
         "alias": null
     },
     {
@@ -3254,7 +3254,7 @@
     {
         "category": "openworld",
         "name": "Yakuza 6",
-        "id": "yakuza6",
+        "id": "Yakuza6",
         "alias": null
     },
     {
@@ -3284,7 +3284,7 @@
     {
         "category": "hacknslash",
         "name": "Ys Ixmonstrum Nox",
-        "id": "ysixmonstrumnox",
+        "id": "YsIXMonstrumNox",
         "alias": null
     },
     {
@@ -3296,91 +3296,91 @@
     {
         "category": "localcoop",
         "name": "Overcooked 2",
-        "id": "overcooked2",
+        "id": "Overcooked2",
         "alias": null
     },
     {
         "category": "platformers",
         "name": "Mario Luigi Brothership",
-        "id": "marioluigibrothership",
+        "id": "MarioLuigiBrothership",
         "alias": null
     },
     {
         "category": "nintendo/switch",
         "name": "Sonicxshadowgenerations",
-        "id": "sonicxshadowgenerations",
+        "id": "SONICXSHADOWGENERATIONS",
         "alias": null
     },
     {
         "category": "action",
         "name": "Stick Fight The Game",
-        "id": "stickfightthegame",
+        "id": "StickFightTheGame",
         "alias": null
     },
     {
         "category": "action",
         "name": "Flat Heroes",
-        "id": "flatheroes",
+        "id": "FlatHeroes",
         "alias": null
     },
     {
         "category": "action",
         "name": "Nidhogg 2",
-        "id": "nidhogg2",
+        "id": "Nidhogg2",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Keep Talkingand Nobody Explodes",
-        "id": "keeptalkingandnobodyexplodes",
+        "id": "KeepTalkingandNobodyExplodes",
         "alias": null
     },
     {
         "category": "action",
         "name": "Moving Out 2",
-        "id": "movingout2",
+        "id": "MovingOut2",
         "alias": null
     },
     {
         "category": "action",
         "name": "Enterthe Gungeon Advanced Gungeonsand Draguns",
-        "id": "enterthegungeonadvancedgungeonsanddraguns",
+        "id": "EntertheGungeonAdvancedGungeonsandDraguns",
         "alias": null
     },
     {
         "category": "action",
         "name": "Moonglow Bay",
-        "id": "moonglowbay",
+        "id": "MoonglowBay",
         "alias": null
     },
     {
         "category": "action",
         "name": "Minecraft Dungeons",
-        "id": "minecraftdungeons",
+        "id": "MinecraftDungeons",
         "alias": null
     },
     {
         "category": "action",
         "name": "Observation",
-        "id": "observation",
+        "id": "Observation",
         "alias": null
     },
     {
         "category": "action",
         "name": "Metaphor Re Fantazio",
-        "id": "metaphorrefantazio",
+        "id": "MetaphorReFantazio",
         "alias": null
     },
     {
         "category": "action",
         "name": "Generation Zero",
-        "id": "generationzero",
+        "id": "GenerationZero",
         "alias": null
     },
     {
         "category": "hacknslash",
         "name": "Lollipop Chainsaw Re Pop",
-        "id": "lollipopchainsawrepop",
+        "id": "LollipopChainsawRePOP",
         "alias": null
     },
     {
@@ -3392,7 +3392,7 @@
     {
         "category": "not_for_me",
         "name": "Avowed",
-        "id": "avowed",
+        "id": "Avowed",
         "alias": null
     },
     {
@@ -3404,13 +3404,13 @@
     {
         "category": "action",
         "name": "Kingdom Come Deliverance 2",
-        "id": "kingdomcomedeliverance2",
+        "id": "KingdomComeDeliverance2",
         "alias": null
     },
     {
         "category": "action",
         "name": "Lost Records Bloom Rage",
-        "id": "lostrecordsbloomrage",
+        "id": "LostRecordsBloomRage",
         "alias": null
     },
     {
@@ -3422,13 +3422,13 @@
     {
         "category": "not_for_me",
         "name": "Achilles Legends Untold",
-        "id": "achilleslegendsuntold",
+        "id": "AchillesLegendsUntold",
         "alias": null
     },
     {
         "category": "finished",
         "name": "Red Dead Redemption",
-        "id": "reddeadredemption",
+        "id": "RedDeadRedemption",
         "alias": null
     },
     {
@@ -3440,25 +3440,25 @@
     {
         "category": "not_for_me",
         "name": "Dragon Ball Sparking Zero",
-        "id": "dragonballsparkingzero",
+        "id": "DragonBallSparkingZERO",
         "alias": null
     },
     {
         "category": "action",
         "name": "Outward",
-        "id": "outward",
+        "id": "Outward",
         "alias": null
     },
     {
         "category": "storydriven",
         "name": "Senuas Saga Hellblade 2",
-        "id": "senuassagahellblade2",
+        "id": "SenuasSagaHellblade2",
         "alias": null
     },
     {
         "category": "nintendo/switch",
         "name": "Bayonetta Origins Cerezaandthe Lost Demon",
-        "id": "bayonettaoriginscerezaandthelostdemon",
+        "id": "BayonettaOriginsCerezaandtheLostDemon",
         "alias": null
     },
     {
@@ -3476,67 +3476,67 @@
     {
         "category": "action",
         "name": "Magicka 2",
-        "id": "magicka2",
+        "id": "Magicka2",
         "alias": null
     },
     {
         "category": "action",
         "name": "Hammerwatch Ii",
-        "id": "hammerwatchii",
+        "id": "HammerwatchII",
         "alias": null
     },
     {
         "category": "action",
         "name": "Duck Game",
-        "id": "duckgame",
+        "id": "DuckGame",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Death Squared",
-        "id": "deathsquared",
+        "id": "DeathSquared",
         "alias": null
     },
     {
         "category": "action",
         "name": "Gang Beasts",
-        "id": "gangbeasts",
+        "id": "GangBeasts",
         "alias": null
     },
     {
         "category": "action",
         "name": "Human Fall Flat",
-        "id": "humanfallflat",
+        "id": "HumanFallFlat",
         "alias": null
     },
     {
         "category": "action",
         "name": "Magicka",
-        "id": "magicka",
+        "id": "Magicka",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Legobatman 3 Beyond Gotham",
-        "id": "legobatman3beyondgotham",
+        "id": "LEGOBatman3BeyondGotham",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "River City Girls 2",
-        "id": "rivercitygirls2",
+        "id": "RiverCityGirls2",
         "alias": null
     },
     {
         "category": "action",
         "name": "Heave Ho",
-        "id": "heaveho",
+        "id": "HeaveHo",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Superbombermanr 2",
-        "id": "superbombermanr2",
+        "id": "SUPERBOMBERMANR2",
         "alias": null
     },
     {
@@ -3548,79 +3548,79 @@
     {
         "category": "action",
         "name": "Flat Out",
-        "id": "flatout",
+        "id": "FlatOut",
         "alias": null
     },
     {
         "category": "action",
         "name": "Killer Instinct",
-        "id": "killerinstinct",
+        "id": "KillerInstinct",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Lego City Undercover",
-        "id": "legocityundercover",
+        "id": "LegoCityUndercover",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "River City Girls Zero",
-        "id": "rivercitygirlszero",
+        "id": "RiverCityGirlsZero",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Legoworlds",
-        "id": "legoworlds",
+        "id": "LEGOWorlds",
         "alias": null
     },
     {
         "category": "action",
         "name": "Nine Parchments",
-        "id": "nineparchments",
+        "id": "NineParchments",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Super Bomberman R",
-        "id": "superbombermanr",
+        "id": "SuperBombermanR",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Unruly Heroes",
-        "id": "unrulyheroes",
+        "id": "UnrulyHeroes",
         "alias": null
     },
     {
         "category": "action",
         "name": "Double Dragon Neon",
-        "id": "doubledragonneon",
+        "id": "DoubleDragonNeon",
         "alias": null
     },
     {
         "category": "action",
         "name": "Screencheat",
-        "id": "screencheat",
+        "id": "Screencheat",
         "alias": null
     },
     {
         "category": "action",
         "name": "Flat Out 2",
-        "id": "flatout2",
+        "id": "FlatOut2",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Full Metal Furies",
-        "id": "fullmetalfuries",
+        "id": "FullMetalFuries",
         "alias": null
     },
     {
         "category": "action",
         "name": "Helldivers",
-        "id": "helldivers",
+        "id": "HELLDIVERS",
         "alias": null
     },
     {
@@ -3632,25 +3632,25 @@
     {
         "category": "fighting",
         "name": "Blaz Blue Central Fiction",
-        "id": "blazbluecentralfiction",
+        "id": "BlazBlueCentralFiction",
         "alias": null
     },
     {
         "category": "action",
         "name": "Cassette Beasts",
-        "id": "cassettebeasts",
+        "id": "CassetteBeasts",
         "alias": null
     },
     {
         "category": "action",
         "name": "Cross Code",
-        "id": "crosscode",
+        "id": "CrossCode",
         "alias": null
     },
     {
         "category": "finished",
         "name": "Days Gone",
-        "id": "daysgone",
+        "id": "DaysGone",
         "alias": null
     },
     {
@@ -3662,13 +3662,13 @@
     {
         "category": "action",
         "name": "Enshrouded",
-        "id": "enshrouded",
+        "id": "Enshrouded",
         "alias": null
     },
     {
         "category": "simulators",
         "name": "Goat Simulator 3",
-        "id": "goatsimulator3",
+        "id": "GoatSimulator3",
         "alias": null
     },
     {
@@ -3686,193 +3686,193 @@
     {
         "category": "shooters",
         "name": "Nex Machina",
-        "id": "nexmachina",
+        "id": "NexMachina",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "The Jackbox Party Pack 7",
-        "id": "thejackboxpartypack7",
+        "id": "TheJackboxPartyPack7",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "Bully",
-        "id": "bully",
+        "id": "Bully",
         "alias": null
     },
     {
         "category": "action",
         "name": "Pathfinder Wrathofthe Righteous",
-        "id": "pathfinderwrathoftherighteous",
+        "id": "PathfinderWrathoftheRighteous",
         "alias": null
     },
     {
         "category": "action",
         "name": "The Life And Suffering Of Sir Brante",
-        "id": "thelifeandsufferingofsirbrante",
+        "id": "TheLifeAndSufferingOfSirBrante",
         "alias": null
     },
     {
         "category": "simulators",
         "name": "Ambulance Life Aparamedic Simulator",
-        "id": "ambulancelifeaparamedicsimulator",
+        "id": "AmbulanceLifeAParamedicSimulator",
         "alias": null
     },
     {
         "category": "action",
         "name": "Lmsh 2",
-        "id": "lmsh2",
+        "id": "LMSH2",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Legoindiana Jones The Original Adventures",
-        "id": "legoindianajonestheoriginaladventures",
+        "id": "LEGOIndianaJonesTheOriginalAdventures",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Six Daysin Fallujah",
-        "id": "sixdaysinfallujah",
+        "id": "SixDaysinFallujah",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Legojurassic World",
-        "id": "legojurassicworld",
+        "id": "LEGOJurassicWorld",
         "alias": null
     },
     {
         "category": "action",
         "name": "The Escapists 2",
-        "id": "theescapists2",
+        "id": "TheEscapists2",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "The Legoninjagomovie Video Game",
-        "id": "thelegoninjagomovievideogame",
+        "id": "TheLEGONINJAGOMovieVideoGame",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Wobbly Life",
-        "id": "wobblylife",
+        "id": "WobblyLife",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Lego Batman 2",
-        "id": "legobatman2",
+        "id": "legoBatman2",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Legoharry Potter 57",
-        "id": "legoharrypotter57",
+        "id": "LEGOHarryPotter57",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Lego Star Wars The Complete Saga",
-        "id": "legostarwarsthecompletesaga",
+        "id": "LegoStarWarsTheCompleteSaga",
         "alias": null
     },
     {
         "category": "finished",
         "name": "Tdpathe Devilin Me",
-        "id": "tdpathedevilinme",
+        "id": "TDPATheDevilinMe",
         "alias": null
     },
     {
         "category": "simulators",
         "name": "My Timeat Sandrock",
-        "id": "mytimeatsandrock",
+        "id": "MyTimeatSandrock",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Ashen",
-        "id": "ashen",
+        "id": "Ashen",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Ailimit",
-        "id": "ailimit",
+        "id": "AILIMIT",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Asterigos",
-        "id": "asterigos",
+        "id": "Asterigos",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Dark Devotion",
-        "id": "darkdevotion",
+        "id": "DarkDevotion",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Dark Souls 2",
-        "id": "darksouls2",
+        "id": "DarkSouls2",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Darksouls 3",
-        "id": "darksouls3",
+        "id": "Darksouls3",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Dark Souls Remastered",
-        "id": "darksoulsremastered",
+        "id": "DarkSoulsRemastered",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Deathbound",
-        "id": "deathbound",
+        "id": "Deathbound",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Demonsouls",
-        "id": "demonsouls",
+        "id": "Demonsouls",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Eldenring Shadowofthe Erdtree",
-        "id": "eldenringshadowoftheerdtree",
+        "id": "eldenringShadowoftheErdtree",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Eldest Souls",
-        "id": "eldestsouls",
+        "id": "EldestSouls",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Enotria",
-        "id": "enotria",
+        "id": "Enotria",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Enotria The Last Song",
-        "id": "enotriathelastsong",
+        "id": "EnotriaTheLastSong",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Hellpoint",
-        "id": "hellpoint",
+        "id": "Hellpoint",
         "alias": null
     },
     {
@@ -3884,85 +3884,85 @@
     {
         "category": "soulslike",
         "name": "Mortal Shell",
-        "id": "mortalshell",
+        "id": "MortalShell",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Nioh",
-        "id": "nioh",
+        "id": "Nioh",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Nioh 2",
-        "id": "nioh2",
+        "id": "Nioh2",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Stray Blade",
-        "id": "strayblade",
+        "id": "StrayBlade",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Tailsof Iron",
-        "id": "tailsofiron",
+        "id": "TailsofIron",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Tailsof Iron 2",
-        "id": "tailsofiron2",
+        "id": "TailsofIron2",
         "alias": null
     },
     {
         "category": "soulslike",
         "name": "Wo Long Fallen Dynasty",
-        "id": "wolongfallendynasty",
+        "id": "WoLongFallenDynasty",
         "alias": null
     },
     {
         "category": "action",
         "name": "Battletoads",
-        "id": "battletoads",
+        "id": "Battletoads",
         "alias": null
     },
     {
         "category": "action",
         "name": "Blanc",
-        "id": "blanc",
+        "id": "Blanc",
         "alias": null
     },
     {
         "category": "action",
         "name": "Degreesof Separation",
-        "id": "degreesofseparation",
+        "id": "DegreesofSeparation",
         "alias": null
     },
     {
         "category": "sports",
         "name": "Dragon Ball Fighter Z",
-        "id": "dragonballfighterz",
+        "id": "DragonBallFighterZ",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Hypercharge",
-        "id": "hypercharge",
+        "id": "HYPERCHARGE",
         "alias": null
     },
     {
         "category": "action",
         "name": "Monster Hunter Rise",
-        "id": "monsterhunterrise",
+        "id": "MonsterHunterRise",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Phogs",
-        "id": "phogs",
+        "id": "PHOGS",
         "alias": null
     },
     {
@@ -3974,193 +3974,193 @@
     {
         "category": "localcoop",
         "name": "Samurai Gunn 2",
-        "id": "samuraigunn2",
+        "id": "SamuraiGunn2",
         "alias": null
     },
     {
         "category": "localcoop",
         "name": "Scott Pilgrim Completedition",
-        "id": "scottpilgrimcompletedition",
+        "id": "ScottPilgrimCompletedition",
         "alias": null
     },
     {
         "category": "action",
         "name": "Skullgirls 2 Nd Encore",
-        "id": "skullgirls2ndencore",
+        "id": "Skullgirls2ndEncore",
         "alias": null
     },
     {
         "category": "action",
         "name": "Speed Runners",
-        "id": "speedrunners",
+        "id": "SpeedRunners",
         "alias": null
     },
     {
         "category": "action",
         "name": "Unrailed",
-        "id": "unrailed",
+        "id": "Unrailed",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Wizardwitha Gun",
-        "id": "wizardwithagun",
+        "id": "WizardwithaGun",
         "alias": null
     },
     {
         "category": "nintendo/switch",
         "name": "Luigis Mansion 2 Hd",
-        "id": "luigismansion2hd",
+        "id": "LuigisMansion2HD",
         "alias": null
     },
     {
         "category": "nintendo/switch",
         "name": "Luigis Mansion 3",
-        "id": "luigismansion3",
+        "id": "LuigisMansion3",
         "alias": null
     },
     {
         "category": "nintendo/switch",
         "name": "Pokemon Brilliant Diamondand Shining Pearl",
-        "id": "pokemonbrilliantdiamondandshiningpearl",
+        "id": "PokemonBrilliantDiamondandShiningPearl",
         "alias": null
     },
     {
         "category": "nintendo/switch",
         "name": "Pokemon Sword Shield",
-        "id": "pokemonswordshield",
+        "id": "PokemonSwordShield",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Arc Runner",
-        "id": "arcrunner",
+        "id": "ArcRunner",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Bright Memory Infinite",
-        "id": "brightmemoryinfinite",
+        "id": "BrightMemoryInfinite",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Chernobylite",
-        "id": "chernobylite",
+        "id": "Chernobylite",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Crime Boss Rockay City",
-        "id": "crimebossrockaycity",
+        "id": "CrimeBossRockayCity",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Phantom Fury",
-        "id": "phantomfury",
+        "id": "PhantomFury",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Resistance 3",
-        "id": "resistance3",
+        "id": "Resistance3",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Roboquest",
-        "id": "roboquest",
+        "id": "Roboquest",
         "alias": null
     },
     {
         "category": "shooters",
         "name": "Squirrelwitha Gun",
-        "id": "squirrelwithagun",
+        "id": "SquirrelwithaGun",
         "alias": null
     },
     {
         "category": "action",
         "name": "Assassins Creed Brotherhood",
-        "id": "assassinscreedbrotherhood",
+        "id": "AssassinsCreedBrotherhood",
         "alias": null
     },
     {
         "category": "racing",
         "name": "Burnout Paradise Remastered",
-        "id": "burnoutparadiseremastered",
+        "id": "BurnoutParadiseRemastered",
         "alias": null
     },
     {
         "category": "sports",
         "name": "Dragon Ball Zkakarot",
-        "id": "dragonballzkakarot",
+        "id": "DragonBallZKakarot",
         "alias": null
     },
     {
         "category": "action",
         "name": "Eternal Strands",
-        "id": "eternalstrands",
+        "id": "EternalStrands",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "Kingdom Come Deliverance",
-        "id": "kingdomcomedeliverance",
+        "id": "KingdomComeDeliverance",
         "alias": null
     },
     {
         "category": "action",
         "name": "Kings Bounty 2",
-        "id": "kingsbounty2",
+        "id": "KingsBounty2",
         "alias": null
     },
     {
         "category": "action",
         "name": "Middleearth Shadowof War",
-        "id": "middleearthshadowofwar",
+        "id": "MiddleearthShadowofWar",
         "alias": null
     },
     {
         "category": "action",
         "name": "Outcast",
-        "id": "outcast",
+        "id": "Outcast",
         "alias": null
     },
     {
         "category": "action",
         "name": "Shadow Of The Colossus",
-        "id": "shadowofthecolossus",
+        "id": "ShadowOfTheColossus",
         "alias": null
     },
     {
         "category": "action",
         "name": "The Precinct",
-        "id": "theprecinct",
+        "id": "ThePrecinct",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "Devil May Cry Hdcollection",
-        "id": "devilmaycryhdcollection",
+        "id": "DevilMayCryHDCollection",
         "alias": null
     },
     {
         "category": "sports",
         "name": "Dragon Ball Xenoverse 2",
-        "id": "dragonballxenoverse2",
+        "id": "DragonBallXenoverse2",
         "alias": null
     },
     {
         "category": "hacknslash",
         "name": "Dungeonsof Hinterberg",
-        "id": "dungeonsofhinterberg",
+        "id": "DungeonsofHinterberg",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "En Garde",
-        "id": "engarde",
+        "id": "EnGarde",
         "alias": null
     },
     {
@@ -4172,289 +4172,289 @@
     {
         "category": "hacknslash",
         "name": "Neckbreak",
-        "id": "neckbreak",
+        "id": "Neckbreak",
         "alias": null
     },
     {
         "category": "hacknslash",
         "name": "Omensight",
-        "id": "omensight",
+        "id": "Omensight",
         "alias": null
     },
     {
         "category": "hacknslash",
         "name": "Raji An Ancient Epic",
-        "id": "rajianancientepic",
+        "id": "RajiAnAncientEpic",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "Alittletothe Left",
-        "id": "alittletotheleft",
+        "id": "ALittletotheLeft",
         "alias": null
     },
     {
         "category": "action",
         "name": "Dune Imperium",
-        "id": "duneimperium",
+        "id": "DuneImperium",
         "alias": null
     },
     {
         "category": "action",
         "name": "Farchanging Tides",
-        "id": "farchangingtides",
+        "id": "FARChangingTides",
         "alias": null
     },
     {
         "category": "action",
         "name": "Garden Paws",
-        "id": "gardenpaws",
+        "id": "GardenPaws",
         "alias": null
     },
     {
         "category": "action",
         "name": "Sunless Sea",
-        "id": "sunlesssea",
+        "id": "SunlessSea",
         "alias": null
     },
     {
         "category": "action",
         "name": "Sunless Skies",
-        "id": "sunlessskies",
+        "id": "SunlessSkies",
         "alias": null
     },
     {
         "category": "action",
         "name": "Talos Principle",
-        "id": "talosprinciple",
+        "id": "TalosPrinciple",
         "alias": null
     },
     {
         "category": "action",
         "name": "Tiny Glade",
-        "id": "tinyglade",
+        "id": "TinyGlade",
         "alias": null
     },
     {
         "category": "platformers",
         "name": "Yokus Island Express",
-        "id": "yokusislandexpress",
+        "id": "YokusIslandExpress",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "1000 X Resist",
-        "id": "1000xresist",
+        "id": "1000xRESIST",
         "alias": null
     },
     {
         "category": "action",
         "name": "Atelier Yumia",
-        "id": "atelieryumia",
+        "id": "AtelierYumia",
         "alias": null
     },
     {
         "category": "action",
         "name": "Deus Ex Invisible War",
-        "id": "deusexinvisiblewar",
+        "id": "DeusExInvisibleWar",
         "alias": null
     },
     {
         "category": "action",
         "name": "Enadream Bbq",
-        "id": "enadreambbq",
+        "id": "ENADreamBBQ",
         "alias": null
     },
     {
         "category": "action",
         "name": "Enderal Forgotten Stories",
-        "id": "enderalforgottenstories",
+        "id": "EnderalForgottenStories",
         "alias": null
     },
     {
         "category": "action",
         "name": "Expedition 33",
-        "id": "expedition33",
+        "id": "Expedition33",
         "alias": null
     },
     {
         "category": "action",
         "name": "Fahrenheit Indigo Prophecy Remastered",
-        "id": "fahrenheitindigoprophecyremastered",
+        "id": "FahrenheitIndigoProphecyRemastered",
         "alias": null
     },
     {
         "category": "action",
         "name": "Kona 2",
-        "id": "kona2",
+        "id": "Kona2",
         "alias": null
     },
     {
         "category": "action",
         "name": "Obduction",
-        "id": "obduction",
+        "id": "Obduction",
         "alias": null
     },
     {
         "category": "action",
         "name": "Open Roads",
-        "id": "openroads",
+        "id": "OpenRoads",
         "alias": null
     },
     {
         "category": "action",
         "name": "Scarlet Hollow",
-        "id": "scarlethollow",
+        "id": "ScarletHollow",
         "alias": null
     },
     {
         "category": "action",
         "name": "Selfloss",
-        "id": "selfloss",
+        "id": "Selfloss",
         "alias": null
     },
     {
         "category": "action",
         "name": "Somerville",
-        "id": "somerville",
+        "id": "Somerville",
         "alias": null
     },
     {
         "category": "action",
         "name": "Southof Midnight",
-        "id": "southofmidnight",
+        "id": "SouthofMidnight",
         "alias": null
     },
     {
         "category": "action",
         "name": "Spell Force 3 Reforced",
-        "id": "spellforce3reforced",
+        "id": "SpellForce3Reforced",
         "alias": null
     },
     {
         "category": "action",
         "name": "Syberia The World Before",
-        "id": "syberiatheworldbefore",
+        "id": "SyberiaTheWorldBefore",
         "alias": null
     },
     {
         "category": "action",
         "name": "Tdpahouseof Ashes",
-        "id": "tdpahouseofashes",
+        "id": "TDPAHouseofAshes",
         "alias": null
     },
     {
         "category": "action",
         "name": "The Castingof Frank Stone",
-        "id": "thecastingoffrankstone",
+        "id": "TheCastingofFrankStone",
         "alias": null
     },
     {
         "category": "action",
         "name": "The Cosmic Wheel Sisterhood",
-        "id": "thecosmicwheelsisterhood",
+        "id": "TheCosmicWheelSisterhood",
         "alias": null
     },
     {
         "category": "action",
         "name": "The Dark Pictures Anthology Littlehope",
-        "id": "thedarkpicturesanthologylittlehope",
+        "id": "TheDarkPicturesAnthologyLittlehope",
         "alias": null
     },
     {
         "category": "action",
         "name": "The Dark Pictures Anthology Manof Medan",
-        "id": "thedarkpicturesanthologymanofmedan",
+        "id": "TheDarkPicturesAnthologyManofMedan",
         "alias": null
     },
     {
         "category": "action",
         "name": "Three Minutes To Eight",
-        "id": "threeminutestoeight",
+        "id": "ThreeMinutesToEight",
         "alias": null
     },
     {
         "category": "action",
         "name": "Under The Waves",
-        "id": "underthewaves",
+        "id": "UnderTheWaves",
         "alias": null
     },
     {
         "category": "action",
         "name": "Wanderstop",
-        "id": "wanderstop",
+        "id": "Wanderstop",
         "alias": null
     },
     {
         "category": "platformers",
         "name": "Aeterna Noctis",
-        "id": "aeternanoctis",
+        "id": "AeternaNoctis",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "Hollow Knight",
-        "id": "hollowknight",
+        "id": "HollowKnight",
         "alias": null
     },
     {
         "category": "not_for_me",
         "name": "Kaothe Kangaroo",
-        "id": "kaothekangaroo",
+        "id": "KaotheKangaroo",
         "alias": null
     },
     {
         "category": "platformers",
         "name": "Princeof Persia The Sandsof Time",
-        "id": "princeofpersiathesandsoftime",
+        "id": "PrinceofPersiaTheSandsofTime",
         "alias": null
     },
     {
         "category": "simulators",
         "name": "In Zoi",
-        "id": "inzoi",
+        "id": "inZOI",
         "alias": null
     },
     {
         "category": "simulators",
         "name": "Jurassic World Evolution 2",
-        "id": "jurassicworldevolution2",
+        "id": "JurassicWorldEvolution2",
         "alias": null
     },
     {
         "category": "simulators",
         "name": "My Summer Car",
-        "id": "mysummercar",
+        "id": "MySummerCar",
         "alias": null
     },
     {
         "category": "simulators",
         "name": "Spintires Mud Runner",
-        "id": "spintiresmudrunner",
+        "id": "SpintiresMudRunner",
         "alias": null
     },
     {
         "category": "mybackup",
         "name": "Steep",
-        "id": "steep",
+        "id": "Steep",
         "alias": null
     },
     {
         "category": "simulators",
         "name": "Transport Fever 2",
-        "id": "transportfever2",
+        "id": "TransportFever2",
         "alias": null
     },
     {
         "category": "simulators",
         "name": "Zoo Tycoon",
-        "id": "zootycoon",
+        "id": "ZooTycoon",
         "alias": null
     },
     {
         "category": "mybackup",
         "name": "Backuppers",
-        "id": "backuppers",
+        "id": "Backuppers",
         "alias": null
     },
     {
@@ -4490,7 +4490,7 @@
     {
         "category": "3th_party_tools",
         "name": "Chrome",
-        "id": "chrome",
+        "id": "Chrome",
         "alias": null
     },
     {
@@ -4988,7 +4988,7 @@
     {
         "category": "finished",
         "name": "Cyberpunk 2077",
-        "id": "cyberpunk2077",
+        "id": "Cyberpunk2077",
         "alias": null
     },
     {
@@ -5402,67 +5402,67 @@
     {
         "category": "action",
         "name": "Tainted Grail The Fallof Avalon",
-        "id": "taintedgrailthefallofavalon",
+        "id": "taintedGrailTheFallofAvalon",
         "alias": null
     },
     {
         "category": "action",
         "name": "The Midnight Walk",
-        "id": "themidnightwalk",
+        "id": "TheMidnightWalk",
         "alias": null
     },
     {
         "category": "openworld",
         "name": "Mafia Definitive Edition",
-        "id": "mafiadefinitiveedition",
+        "id": "MafiaDefinitiveEdition",
         "alias": null
     },
     {
         "category": "action",
         "name": "Going Under",
-        "id": "goingunder",
+        "id": "GoingUnder",
         "alias": null
     },
     {
         "category": "action",
         "name": "Kenshi",
-        "id": "kenshi",
+        "id": "Kenshi",
         "alias": null
     },
     {
         "category": "action",
         "name": "Sifu",
-        "id": "sifu",
+        "id": "SIFU",
         "alias": null
     },
     {
         "category": "action",
         "name": "Bendyandthe Dark Revival",
-        "id": "bendyandthedarkrevival",
+        "id": "BendyandtheDarkRevival",
         "alias": null
     },
     {
         "category": "action",
         "name": "Ninjagaidenmaster Collection",
-        "id": "ninjagaidenmastercollection",
+        "id": "NINJAGAIDENMasterCollection",
         "alias": null
     },
     {
         "category": "action",
         "name": "Eldenringnightreign",
-        "id": "eldenringnightreign",
+        "id": "ELDENRINGNIGHTREIGN",
         "alias": null
     },
     {
         "category": "action",
         "name": "60 Seconds Reatomized",
-        "id": "60secondsreatomized",
+        "id": "60SecondsReatomized",
         "alias": null
     },
     {
         "category": "action",
         "name": "Minds Eye",
-        "id": "mindseye",
+        "id": "MindsEye",
         "alias": null
     },
     {
@@ -5474,13 +5474,13 @@
     {
         "category": "action",
         "name": "Mortal Kombat 1",
-        "id": "mortalkombat1",
+        "id": "MortalKombat1",
         "alias": null
     },
     {
         "category": "action",
         "name": "Schedule I",
-        "id": "schedulei",
+        "id": "ScheduleI",
         "alias": null
     },
     {
