@@ -291,6 +291,41 @@ body {
     background: #dc2626;
 }
 
+/* Move To Container */
+.move-to-container {
+    position: relative;
+    display: inline-block;
+}
+
+.move-to-menu {
+    max-height: 400px;
+    overflow-y: auto;
+    min-width: 200px;
+}
+
+.move-to-option {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: var(--transition);
+    font-size: 0.9rem;
+}
+
+.move-to-option:hover {
+    background: var(--bg-tertiary);
+}
+
+.move-to-option:active {
+    background: var(--accent);
+    color: white;
+}
+
 /* Main Container */
 .main-container {
     display: flex;
