@@ -19,10 +19,12 @@ class GameLibrary {
         this.datesAdded = {};
         this.filteredGames = [];
         this.selectedGames = new Set();
+        this.installedGames = new Set();
         this.currentTab = 'all';
         this.searchQuery = '';
         this.sortBy = 'name';
         this.sortOrder = 'asc';
+        this.showInstalledOnly = false;
         this.settings = this.loadSettings();
 
         this.init();
@@ -64,6 +66,9 @@ class GameLibrary {
 
         // Load any saved game category changes from localStorage
         this.loadSavedGameChanges();
+
+        // Load installed games from localStorage
+        this.loadInstalledGames();
 
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
@@ -151,6 +156,10 @@ class GameLibrary {
         });
 
         // Action bar buttons
+        document.getElementById('showInstalledBtn').addEventListener('click', () => {
+            this.toggleInstalledFilter();
+        });
+
         document.getElementById('selectAllBtn').addEventListener('click', () => {
             this.selectAllVisible();
         });
@@ -289,6 +298,11 @@ class GameLibrary {
             );
         }
 
+        // Filter by installed status if enabled
+        if (this.showInstalledOnly) {
+            filtered = filtered.filter(g => this.installedGames.has(g.id));
+        }
+
         filtered.sort((a, b) => {
             let valA, valB;
 
@@ -345,6 +359,7 @@ class GameLibrary {
         // Add click handlers for info button
         grid.querySelectorAll('.game-card').forEach(card => {
             const infoBtn = card.querySelector('.info-btn');
+            const installBtn = card.querySelector('.install-btn');
             const checkbox = card.querySelector('.select-checkbox');
 
             // Info button opens modal
@@ -353,6 +368,13 @@ class GameLibrary {
                 const gameId = card.dataset.id;
                 const game = this.games.find(g => g.id === gameId);
                 if (game) this.openGameModal(game);
+            });
+
+            // Install button toggles installed status
+            installBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const gameId = card.dataset.id;
+                this.toggleInstalled(gameId);
             });
 
             // Checkbox toggles selection
@@ -364,7 +386,7 @@ class GameLibrary {
 
             // Card click toggles selection
             card.addEventListener('click', (e) => {
-                if (e.target !== checkbox && !e.target.closest('.info-btn')) {
+                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn')) {
                     const gameId = card.dataset.id;
                     checkbox.checked = !checkbox.checked;
                     this.toggleGameSelection(gameId, checkbox.checked);
@@ -382,11 +404,14 @@ class GameLibrary {
         const sizeStr = size ? `${size} GB` : 'N/A';
         const imageName = game.id.toLowerCase();
         const isSelected = this.selectedGames.has(game.id);
+        const isInstalled = this.installedGames.has(game.id);
 
         return `
-            <div class="game-card ${isSelected ? 'selected' : ''}" data-id="${game.id}">
+            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''}" data-id="${game.id}">
                 <input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''}>
                 <button class="info-btn" title="View details">ℹ️</button>
+                <button class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}">${isInstalled ? '✅' : '📥'}</button>
+                ${isInstalled ? '<div class="installed-badge">✓ Installed</div>' : ''}
                 <div class="image-container">
                     <img
                         data-src="images/${imageName}.png"
@@ -1212,6 +1237,48 @@ echo "Done!"
 
     saveSettings() {
         localStorage.setItem('gameLibrarySettings', JSON.stringify(this.settings));
+    }
+
+    loadInstalledGames() {
+        try {
+            const saved = localStorage.getItem('installedGames');
+            if (saved) {
+                this.installedGames = new Set(JSON.parse(saved));
+            }
+        } catch {
+            this.installedGames = new Set();
+        }
+    }
+
+    saveInstalledGames() {
+        localStorage.setItem('installedGames', JSON.stringify([...this.installedGames]));
+    }
+
+    toggleInstalled(gameId) {
+        if (this.installedGames.has(gameId)) {
+            this.installedGames.delete(gameId);
+            this.showToast(`${gameId} marked as not installed`, 'info');
+        } else {
+            this.installedGames.add(gameId);
+            this.showToast(`${gameId} marked as installed`, 'success');
+        }
+        this.saveInstalledGames();
+        this.filterAndRender();
+    }
+
+    toggleInstalledFilter() {
+        this.showInstalledOnly = !this.showInstalledOnly;
+        const btn = document.getElementById('showInstalledBtn');
+        if (this.showInstalledOnly) {
+            btn.textContent = '📋 Show All';
+            btn.classList.add('active');
+            this.showToast(`Showing ${this.installedGames.size} installed games`, 'info');
+        } else {
+            btn.textContent = '✅ Show Installed';
+            btn.classList.remove('active');
+            this.showToast('Showing all games', 'info');
+        }
+        this.filterAndRender();
     }
 
     applySettings() {
