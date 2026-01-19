@@ -42,10 +42,73 @@ class GameLibrary {
             this.filterAndRender();
             this.showLoading(false);
             this.updateSelectedCount();
+
+            // Start automatic Docker Hub sync (every 30 seconds)
+            this.startAutoSync();
         } catch (error) {
             console.error('Failed to load data:', error);
             this.showToast('Failed to load game data', 'error');
             this.showLoading(false);
+        }
+    }
+
+    startAutoSync() {
+        // Poll every 30 seconds for new tags
+        this.syncInterval = setInterval(() => {
+            this.autoSyncDockerHub();
+        }, 30000);
+
+        // Also update sync button to show auto-sync is active
+        const syncBtn = document.getElementById('syncDockerBtn');
+        if (syncBtn) {
+            syncBtn.title = 'Auto-syncing every 30s (click to sync now)';
+        }
+
+        console.log('🔄 Auto-sync started: checking Docker Hub every 30 seconds');
+    }
+
+    async autoSyncDockerHub() {
+        try {
+            const dockerUser = this.settings.dockerUsername || 'michadockermisha';
+            const repoName = this.settings.repoName || 'backup';
+
+            const allTags = await this.fetchAllDockerTags(dockerUser, repoName);
+            if (allTags.length === 0) return;
+
+            const existingIds = new Set(this.games.map(g => g.id.toLowerCase()));
+            const newTags = allTags.filter(tag => !existingIds.has(tag.name.toLowerCase()));
+
+            if (newTags.length > 0) {
+                console.log(`🆕 Auto-sync found ${newTags.length} new tags!`);
+
+                for (const tag of newTags) {
+                    this.games.push({
+                        id: tag.name,
+                        name: this.formatGameName(tag.name),
+                        category: 'new'
+                    });
+
+                    if (tag.full_size) {
+                        this.imageSizes[tag.name] = Math.round(tag.full_size / 1073741824 * 100) / 100;
+                    }
+                    this.datesAdded[tag.name] = new Date().toISOString().split('T')[0];
+                }
+
+                // Add 'new' tab if needed
+                if (!this.tabs.find(t => t.id === 'new')) {
+                    this.tabs.push({ id: 'new', name: 'New', icon: '🆕' });
+                    this.renderTabs();
+                }
+
+                this.saveNewGames(newTags.map(t => t.name));
+                document.getElementById('gameCount').textContent = this.games.length;
+                this.filterAndRender();
+
+                // Show notification
+                this.showToast(`🆕 ${newTags.length} new game(s) synced from Docker Hub!`, 'success');
+            }
+        } catch (error) {
+            console.error('Auto-sync error:', error);
         }
     }
 
