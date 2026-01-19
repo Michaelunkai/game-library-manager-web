@@ -201,18 +201,42 @@ class GameLibrary {
         let page = 1;
         const pageSize = 100;
 
+        // Use CORS proxy to bypass browser restrictions
+        const corsProxies = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+        ];
+
         try {
             while (true) {
-                const url = `https://hub.docker.com/v2/repositories/${dockerUser}/${repoName}/tags?page=${page}&page_size=${pageSize}`;
+                const dockerUrl = `https://hub.docker.com/v2/repositories/${dockerUser}/${repoName}/tags?page=${page}&page_size=${pageSize}`;
 
-                const response = await fetch(url);
-                if (!response.ok) {
+                let response = null;
+                let data = null;
+
+                // Try direct fetch first, then proxies
+                const urlsToTry = [dockerUrl, ...corsProxies.map(p => p + encodeURIComponent(dockerUrl))];
+
+                for (const url of urlsToTry) {
+                    try {
+                        response = await fetch(url, {
+                            headers: { 'Accept': 'application/json' },
+                            mode: url === dockerUrl ? 'cors' : 'cors'
+                        });
+                        if (response.ok) {
+                            data = await response.json();
+                            break;
+                        }
+                    } catch (e) {
+                        continue;
+                    }
+                }
+
+                if (!data || !data.results) {
                     break;
                 }
 
-                const data = await response.json();
-
-                if (data.results && data.results.length > 0) {
+                if (data.results.length > 0) {
                     allTags.push(...data.results);
                 }
 
@@ -221,8 +245,6 @@ class GameLibrary {
                 }
 
                 page++;
-
-                // Safety limit
                 if (page > 20) break;
             }
         } catch (error) {
