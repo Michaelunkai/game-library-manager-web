@@ -50,11 +50,19 @@
                     <span>📁 Mount Path:</span>
                     <input type="text" id="globalMountPath" value="F:/Games" placeholder="F:/Games">
                 </label>
+                <button id="syncDockerBtn" class="action-bar-btn sync-btn" title="Sync with Docker Hub to find new tags">🔄 Sync</button>
             </div>
             <div class="action-bar-center">
+                <button id="showInstalledBtn" class="action-bar-btn">✅ Show Installed</button>
                 <button id="selectAllBtn" class="action-bar-btn">☑️ Select All</button>
                 <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>
                 <button id="runSelectedBtn" class="action-bar-btn primary" disabled>▶️ Run Selected (0)</button>
+                <div class="move-to-container">
+                    <button id="moveToBtn" class="action-bar-btn" disabled>📁 Move To</button>
+                    <div id="moveToMenu" class="dropdown-menu move-to-menu" style="display: none;">
+                        <!-- Tabs will be populated by JavaScript -->
+                    </div>
+                </div>
             </div>
             <div class="action-bar-right">
                 <button id="killContainersBtn" class="action-bar-btn danger" title="Kill all Docker containers">🛑 Kill All</button>
@@ -107,6 +115,10 @@
                             <span class="meta-item">
                                 <span class="meta-label">HLTB Time:</span>
                                 <span id="modalTime" class="meta-value">~10 hours</span>
+                            </span>
+                            <span class="meta-item">
+                                <span class="meta-label">Docker Image Size:</span>
+                                <span id="modalSize" class="meta-value">0.0 GB</span>
                             </span>
                         </div>
                         <div class="docker-section">
@@ -192,6 +204,10 @@
             <button data-sort="name" data-order="desc" class="sort-option">↑ Name (Z-A)</button>
             <button data-sort="time" data-order="asc" class="sort-option">↓ Time (Low-High)</button>
             <button data-sort="time" data-order="desc" class="sort-option">↑ Time (High-Low)</button>
+            <button data-sort="size" data-order="asc" class="sort-option">↓ Size (Small-Large)</button>
+            <button data-sort="size" data-order="desc" class="sort-option">↑ Size (Large-Small)</button>
+            <button data-sort="date" data-order="desc" class="sort-option">↓ Date (Newest-Oldest)</button>
+            <button data-sort="date" data-order="asc" class="sort-option">↑ Date (Oldest-Newest)</button>
             <button data-sort="category" data-order="asc" class="sort-option">↓ Category</button>
         </div>
 

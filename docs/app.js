@@ -19,10 +19,12 @@ class GameLibrary {
         this.datesAdded = {};
         this.filteredGames = [];
         this.selectedGames = new Set();
+        this.installedGames = new Set();
         this.currentTab = 'all';
         this.searchQuery = '';
         this.sortBy = 'name';
         this.sortOrder = 'asc';
+        this.showInstalledOnly = false;
         this.settings = this.loadSettings();
 
         this.init();
@@ -65,8 +67,167 @@ class GameLibrary {
         // Load any saved game category changes from localStorage
         this.loadSavedGameChanges();
 
+        // Load installed games from localStorage
+        this.loadInstalledGames();
+
+        // Sync with Docker Hub to detect new tags
+        await this.syncDockerHubTags();
+
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
+    }
+
+    async syncDockerHubTags() {
+        try {
+            const dockerUser = this.settings.dockerUsername || 'michadockermisha';
+            const repoName = this.settings.repoName || 'backup';
+
+            // Fetch all tags from Docker Hub
+            const allTags = await this.fetchAllDockerTags(dockerUser, repoName);
+
+            if (allTags.length === 0) {
+                console.log('No tags fetched from Docker Hub');
+                return;
+            }
+
+            // Get existing game IDs
+            const existingIds = new Set(this.games.map(g => g.id.toLowerCase()));
+
+            // Find new tags
+            const newTags = allTags.filter(tag => !existingIds.has(tag.name.toLowerCase()));
+
+            if (newTags.length > 0) {
+                console.log(`Found ${newTags.length} new tags from Docker Hub`);
+
+                // Add new games
+                for (const tag of newTags) {
+                    const newGame = {
+                        id: tag.name,
+                        name: this.formatGameName(tag.name),
+                        category: 'new'
+                    };
+
+                    this.games.push(newGame);
+
+                    // Store size if available
+                    if (tag.full_size) {
+                        this.imageSizes[tag.name] = Math.round(tag.full_size / 1073741824 * 100) / 100;
+                    }
+
+                    // Mark as added today
+                    this.datesAdded[tag.name] = new Date().toISOString().split('T')[0];
+                }
+
+                // Add 'new' tab if it doesn't exist
+                if (!this.tabs.find(t => t.id === 'new')) {
+                    this.tabs.push({ id: 'new', name: 'New', icon: '🆕' });
+                }
+
+                // Save new games to localStorage
+                this.saveNewGames(newTags.map(t => t.name));
+
+                this.showToast(`Found ${newTags.length} new games from Docker Hub!`, 'success');
+            }
+        } catch (error) {
+            console.error('Failed to sync Docker Hub tags:', error);
+        }
+    }
+
+    async fetchAllDockerTags(dockerUser, repoName) {
+        const allTags = [];
+        let page = 1;
+        const pageSize = 100;
+
+        try {
+            while (true) {
+                const url = `https://hub.docker.com/v2/repositories/${dockerUser}/${repoName}/tags?page=${page}&page_size=${pageSize}`;
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    break;
+                }
+
+                const data = await response.json();
+
+                if (data.results && data.results.length > 0) {
+                    allTags.push(...data.results);
+                }
+
+                if (!data.next) {
+                    break;
+                }
+
+                page++;
+
+                // Safety limit
+                if (page > 20) break;
+            }
+        } catch (error) {
+            console.error('Error fetching Docker tags:', error);
+        }
+
+        return allTags;
+    }
+
+    formatGameName(tagName) {
+        // Convert tag name to readable game name
+        let name = tagName;
+
+        // Add spaces before numbers
+        name = name.replace(/(\d+)/g, ' $1');
+
+        // Add spaces before capital letters
+        name = name.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+        // Capitalize first letter of each word
+        name = name.split(' ').map(word =>
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+
+        // Clean up multiple spaces
+        name = name.replace(/\s+/g, ' ').trim();
+
+        return name;
+    }
+
+    saveNewGames(newGameIds) {
+        try {
+            const saved = localStorage.getItem('newGamesFromDocker') || '[]';
+            const existing = JSON.parse(saved);
+            const combined = [...new Set([...existing, ...newGameIds])];
+            localStorage.setItem('newGamesFromDocker', JSON.stringify(combined));
+        } catch (e) {
+            console.error('Failed to save new games:', e);
+        }
+    }
+
+    loadSavedNewGames() {
+        try {
+            const saved = localStorage.getItem('newGamesFromDocker');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    }
+
+    async manualSync() {
+        const btn = document.getElementById('syncDockerBtn');
+        const originalText = btn.textContent;
+
+        btn.textContent = '⏳ Syncing...';
+        btn.disabled = true;
+
+        try {
+            await this.syncDockerHubTags();
+            document.getElementById('gameCount').textContent = this.games.length;
+            this.renderTabs();
+            this.filterAndRender();
+        } catch (error) {
+            this.showToast('Sync failed: ' + error.message, 'error');
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
     }
 
     detectOS() {
@@ -151,6 +312,14 @@ class GameLibrary {
         });
 
         // Action bar buttons
+        document.getElementById('syncDockerBtn').addEventListener('click', () => {
+            this.manualSync();
+        });
+
+        document.getElementById('showInstalledBtn').addEventListener('click', () => {
+            this.toggleInstalledFilter();
+        });
+
         document.getElementById('selectAllBtn').addEventListener('click', () => {
             this.selectAllVisible();
         });
@@ -289,6 +458,11 @@ class GameLibrary {
             );
         }
 
+        // Filter by installed status if enabled
+        if (this.showInstalledOnly) {
+            filtered = filtered.filter(g => this.installedGames.has(g.id));
+        }
+
         filtered.sort((a, b) => {
             let valA, valB;
 
@@ -345,6 +519,7 @@ class GameLibrary {
         // Add click handlers for info button
         grid.querySelectorAll('.game-card').forEach(card => {
             const infoBtn = card.querySelector('.info-btn');
+            const installBtn = card.querySelector('.install-btn');
             const checkbox = card.querySelector('.select-checkbox');
 
             // Info button opens modal
@@ -353,6 +528,13 @@ class GameLibrary {
                 const gameId = card.dataset.id;
                 const game = this.games.find(g => g.id === gameId);
                 if (game) this.openGameModal(game);
+            });
+
+            // Install button toggles installed status
+            installBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const gameId = card.dataset.id;
+                this.toggleInstalled(gameId);
             });
 
             // Checkbox toggles selection
@@ -364,7 +546,7 @@ class GameLibrary {
 
             // Card click toggles selection
             card.addEventListener('click', (e) => {
-                if (e.target !== checkbox && !e.target.closest('.info-btn')) {
+                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn')) {
                     const gameId = card.dataset.id;
                     checkbox.checked = !checkbox.checked;
                     this.toggleGameSelection(gameId, checkbox.checked);
@@ -382,11 +564,16 @@ class GameLibrary {
         const sizeStr = size ? `${size} GB` : 'N/A';
         const imageName = game.id.toLowerCase();
         const isSelected = this.selectedGames.has(game.id);
+        const isInstalled = this.installedGames.has(game.id);
+        const isNew = game.category === 'new';
 
         return `
-            <div class="game-card ${isSelected ? 'selected' : ''}" data-id="${game.id}">
+            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}">
                 <input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''}>
                 <button class="info-btn" title="View details">ℹ️</button>
+                <button class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}">${isInstalled ? '✅' : '📥'}</button>
+                ${isNew ? '<div class="new-badge">🆕 NEW</div>' : ''}
+                ${isInstalled ? '<div class="installed-badge">✓ Installed</div>' : ''}
                 <div class="image-container">
                     <img
                         data-src="images/${imageName}.png"
@@ -1212,6 +1399,48 @@ echo "Done!"
 
     saveSettings() {
         localStorage.setItem('gameLibrarySettings', JSON.stringify(this.settings));
+    }
+
+    loadInstalledGames() {
+        try {
+            const saved = localStorage.getItem('installedGames');
+            if (saved) {
+                this.installedGames = new Set(JSON.parse(saved));
+            }
+        } catch {
+            this.installedGames = new Set();
+        }
+    }
+
+    saveInstalledGames() {
+        localStorage.setItem('installedGames', JSON.stringify([...this.installedGames]));
+    }
+
+    toggleInstalled(gameId) {
+        if (this.installedGames.has(gameId)) {
+            this.installedGames.delete(gameId);
+            this.showToast(`${gameId} marked as not installed`, 'info');
+        } else {
+            this.installedGames.add(gameId);
+            this.showToast(`${gameId} marked as installed`, 'success');
+        }
+        this.saveInstalledGames();
+        this.filterAndRender();
+    }
+
+    toggleInstalledFilter() {
+        this.showInstalledOnly = !this.showInstalledOnly;
+        const btn = document.getElementById('showInstalledBtn');
+        if (this.showInstalledOnly) {
+            btn.textContent = '📋 Show All';
+            btn.classList.add('active');
+            this.showToast(`Showing ${this.installedGames.size} installed games`, 'info');
+        } else {
+            btn.textContent = '✅ Show Installed';
+            btn.classList.remove('active');
+            this.showToast('Showing all games', 'info');
+        }
+        this.filterAndRender();
     }
 
     applySettings() {
