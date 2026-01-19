@@ -133,11 +133,12 @@ class GameLibrary {
         // Load installed games from localStorage
         this.loadInstalledGames();
 
-        // Sync with Docker Hub to detect new tags
-        await this.syncDockerHubTags();
-
+        // Update counts immediately (don't wait for Docker sync)
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
+
+        // Sync with Docker Hub in BACKGROUND (non-blocking)
+        this.syncDockerHubTags();
     }
 
     async syncDockerHubTags() {
