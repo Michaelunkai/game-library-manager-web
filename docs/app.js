@@ -142,6 +142,11 @@ class GameLibrary {
 
         // Sync with Docker Hub in BACKGROUND (non-blocking)
         this.syncDockerHubTags();
+
+        // Auto-refresh every 30 seconds to catch new uploads
+        setInterval(() => {
+            this.syncDockerHubTags();
+        }, 30000);
     }
 
     async syncDockerHubTags() {
@@ -157,8 +162,25 @@ class GameLibrary {
                 return;
             }
 
+            console.log(`Fetched ${allTags.length} tags from Docker Hub`);
+
             // Get existing game IDs
             const existingIds = new Set(this.games.map(g => g.id.toLowerCase()));
+
+            // Update dates and sizes for ALL tags (including existing ones)
+            let datesUpdated = 0;
+            for (const tag of allTags) {
+                if (tag.last_updated) {
+                    const date = tag.last_updated.split('T')[0];
+                    if (this.datesAdded[tag.name] !== date) {
+                        this.datesAdded[tag.name] = date;
+                        datesUpdated++;
+                    }
+                }
+                if (tag.full_size) {
+                    this.imageSizes[tag.name] = Math.round(tag.full_size / 1073741824 * 100) / 100;
+                }
+            }
 
             // Find new tags
             const newTags = allTags.filter(tag => !existingIds.has(tag.name.toLowerCase()));
@@ -176,13 +198,12 @@ class GameLibrary {
 
                     this.games.push(newGame);
 
-                    // Store size if available
-                    if (tag.full_size) {
-                        this.imageSizes[tag.name] = Math.round(tag.full_size / 1073741824 * 100) / 100;
+                    // Use actual Docker Hub date if available
+                    if (tag.last_updated) {
+                        this.datesAdded[tag.name] = tag.last_updated.split('T')[0];
+                    } else {
+                        this.datesAdded[tag.name] = new Date().toISOString().split('T')[0];
                     }
-
-                    // Mark as added today
-                    this.datesAdded[tag.name] = new Date().toISOString().split('T')[0];
                 }
 
                 // Add 'new' tab if it doesn't exist
@@ -193,7 +214,15 @@ class GameLibrary {
                 // Save new games to localStorage
                 this.saveNewGames(newTags.map(t => t.name));
 
+                // Update UI
+                document.getElementById('gameCount').textContent = this.games.length;
+                this.renderTabs();
+                this.filterAndRender();
+
                 this.showToast(`Found ${newTags.length} new games from Docker Hub!`, 'success');
+            } else if (datesUpdated > 0) {
+                // Re-render if dates were updated for proper sorting
+                this.filterAndRender();
             }
         } catch (error) {
             console.error('Failed to sync Docker Hub tags:', error);
@@ -209,6 +238,8 @@ class GameLibrary {
         const corsProxies = [
             'https://corsproxy.io/?',
             'https://api.allorigins.win/raw?url=',
+            'https://api.codetabs.com/v1/proxy?quest=',
+            'https://thingproxy.freeboard.io/fetch/',
         ];
 
         try {
