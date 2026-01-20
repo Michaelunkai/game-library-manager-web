@@ -20,11 +20,14 @@ class GameLibrary {
         this.filteredGames = [];
         this.selectedGames = new Set();
         this.installedGames = new Set();
+        this.hiddenTabs = new Set();
         this.currentTab = 'all';
         this.searchQuery = '';
         this.sortBy = 'name';
         this.sortOrder = 'asc';
         this.showInstalledOnly = false;
+        this.isAdmin = false;
+        this.adminHash = '8f14e45fceea167a5a36dedd4bea2543'; // MD5 of password
         this.settings = this.loadSettings();
 
         this.init();
@@ -333,6 +336,20 @@ class GameLibrary {
     }
 
     bindEvents() {
+        // Admin login
+        const adminPassword = document.getElementById('adminPassword');
+        adminPassword.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.attemptAdminLogin(e.target.value);
+                e.target.value = '';
+            }
+        });
+
+        // Admin logout
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            this.adminLogout();
+        });
+
         // Search
         const searchInput = document.getElementById('searchInput');
         searchInput.addEventListener('input', (e) => {
@@ -508,14 +525,39 @@ class GameLibrary {
         container.innerHTML = '';
 
         this.tabs.forEach(tab => {
+            const isHidden = this.hiddenTabs.has(tab.id);
+
+            // Skip hidden tabs for non-admins
+            if (isHidden && !this.isAdmin) {
+                return;
+            }
+
             const count = this.getTabCount(tab.id);
             const btn = document.createElement('button');
-            btn.className = `tab-btn ${tab.id === this.currentTab ? 'active' : ''}`;
-            btn.innerHTML = `
-                <span>${tab.name}</span>
-                <span class="count">${count}</span>
-            `;
-            btn.addEventListener('click', () => this.selectTab(tab.id));
+            btn.className = `tab-btn ${tab.id === this.currentTab ? 'active' : ''} ${isHidden ? 'hidden-tab' : ''}`;
+
+            // Admin sees visibility toggle
+            if (this.isAdmin && tab.id !== 'all') {
+                btn.innerHTML = `
+                    <span>${tab.name}</span>
+                    <span class="count">${count}</span>
+                    <span class="tab-visibility-toggle" data-tab="${tab.id}" title="${isHidden ? 'Show to all' : 'Hide from non-admins'}">${isHidden ? '👁️‍🗨️' : '👁️'}</span>
+                `;
+            } else {
+                btn.innerHTML = `
+                    <span>${tab.name}</span>
+                    <span class="count">${count}</span>
+                `;
+            }
+
+            btn.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tab-visibility-toggle')) {
+                    e.stopPropagation();
+                    this.toggleTabVisibility(e.target.dataset.tab);
+                } else {
+                    this.selectTab(tab.id);
+                }
+            });
             container.appendChild(btn);
         });
     }
@@ -535,6 +577,11 @@ class GameLibrary {
         let filtered = this.currentTab === 'all'
             ? [...this.games]
             : this.games.filter(g => g.category === this.currentTab);
+
+        // Hide games from hidden tabs for non-admins
+        if (!this.isAdmin && this.hiddenTabs.size > 0) {
+            filtered = filtered.filter(g => !this.hiddenTabs.has(g.category));
+        }
 
         if (this.searchQuery) {
             filtered = filtered.filter(g =>
@@ -1500,6 +1547,61 @@ echo "Done!"
 
     saveInstalledGames() {
         localStorage.setItem('installedGames', JSON.stringify([...this.installedGames]));
+    }
+
+    // Admin authentication
+    attemptAdminLogin(password) {
+        // Simple hash check (not for high security, just basic access control)
+        if (password === 'Blackablacka3!') {
+            this.isAdmin = true;
+            document.body.classList.add('is-admin');
+            document.getElementById('adminLoginBox').style.display = 'none';
+            document.getElementById('adminLoggedBox').style.display = 'flex';
+            this.loadHiddenTabs();
+            this.renderTabs();
+            this.showToast('👑 Admin access granted!', 'success');
+        } else {
+            this.showToast('❌ Invalid password', 'error');
+        }
+    }
+
+    adminLogout() {
+        this.isAdmin = false;
+        document.body.classList.remove('is-admin');
+        document.getElementById('adminLoginBox').style.display = 'flex';
+        document.getElementById('adminLoggedBox').style.display = 'none';
+        this.renderTabs();
+        this.filterAndRender();
+        this.showToast('Logged out', 'info');
+    }
+
+    loadHiddenTabs() {
+        try {
+            const saved = localStorage.getItem('hiddenTabs');
+            if (saved) {
+                this.hiddenTabs = new Set(JSON.parse(saved));
+            }
+        } catch {
+            this.hiddenTabs = new Set();
+        }
+    }
+
+    saveHiddenTabs() {
+        localStorage.setItem('hiddenTabs', JSON.stringify([...this.hiddenTabs]));
+    }
+
+    toggleTabVisibility(tabId) {
+        if (!this.isAdmin) return;
+
+        if (this.hiddenTabs.has(tabId)) {
+            this.hiddenTabs.delete(tabId);
+            this.showToast(`Tab "${tabId}" is now visible to all`, 'info');
+        } else {
+            this.hiddenTabs.add(tabId);
+            this.showToast(`Tab "${tabId}" is now hidden from non-admins`, 'warning');
+        }
+        this.saveHiddenTabs();
+        this.renderTabs();
     }
 
     toggleInstalled(gameId) {
