@@ -234,13 +234,22 @@ class GameLibrary {
         let page = 1;
         const pageSize = 100;
 
-        // Use CORS proxy to bypass browser restrictions
+        // Multiple CORS proxies for reliability - try them in order
         const corsProxies = [
             'https://corsproxy.io/?',
             'https://api.allorigins.win/raw?url=',
             'https://api.codetabs.com/v1/proxy?quest=',
+            'https://cors-anywhere.herokuapp.com/',
+            'https://crossorigin.me/',
             'https://thingproxy.freeboard.io/fetch/',
         ];
+
+        // Show sync status
+        const syncBtn = document.getElementById('syncDockerBtn');
+        if (syncBtn) {
+            syncBtn.classList.add('syncing');
+            syncBtn.textContent = '🔄 Syncing...';
+        }
 
         try {
             while (true) {
@@ -249,25 +258,35 @@ class GameLibrary {
                 let response = null;
                 let data = null;
 
-                // Try direct fetch first, then proxies
-                const urlsToTry = [dockerUrl, ...corsProxies.map(p => p + encodeURIComponent(dockerUrl))];
+                // Build list of URLs to try - proxies first since direct likely blocked by CORS
+                const urlsToTry = corsProxies.map(p => p + encodeURIComponent(dockerUrl));
 
                 for (const url of urlsToTry) {
                     try {
+                        console.log(`Trying proxy: ${url.split('?')[0]}...`);
                         response = await fetch(url, {
                             headers: { 'Accept': 'application/json' },
-                            mode: url === dockerUrl ? 'cors' : 'cors'
+                            cache: 'no-store'  // Prevent caching to always get fresh data
                         });
                         if (response.ok) {
-                            data = await response.json();
-                            break;
+                            const text = await response.text();
+                            try {
+                                data = JSON.parse(text);
+                                console.log(`Success with proxy, got ${data.results?.length || 0} tags`);
+                                break;
+                            } catch (parseErr) {
+                                console.log('Response was not valid JSON');
+                                continue;
+                            }
                         }
                     } catch (e) {
+                        console.log(`Proxy failed: ${e.message}`);
                         continue;
                     }
                 }
 
                 if (!data || !data.results) {
+                    console.log('No valid data received from any proxy');
                     break;
                 }
 
@@ -284,8 +303,15 @@ class GameLibrary {
             }
         } catch (error) {
             console.error('Error fetching Docker tags:', error);
+        } finally {
+            // Reset sync button
+            if (syncBtn) {
+                syncBtn.classList.remove('syncing');
+                syncBtn.textContent = '🔄 Sync';
+            }
         }
 
+        console.log(`Total tags fetched: ${allTags.length}`);
         return allTags;
     }
 
