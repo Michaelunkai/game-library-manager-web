@@ -596,6 +596,16 @@ body {
     cursor: wait;
 }
 
+.sync-btn.syncing {
+    animation: syncPulse 1s infinite;
+    background: linear-gradient(135deg, #22c55e, #3b82f6);
+}
+
+@keyframes syncPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.98); }
+}
+
 /* New game badge */
 .new-badge {
     position: absolute;
@@ -1092,6 +1102,16 @@ body {
         display: none;
     }
 
+    .admin-login {
+        margin-left: 8px;
+    }
+
+    .admin-login input {
+        width: 100px;
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+
     .action-bar {
         flex-wrap: wrap;
         height: auto;
@@ -1147,4 +1167,104 @@ body {
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+}
+
+/* Admin Login Styles - TOP RIGHT */
+.admin-login {
+    display: flex !important;
+    align-items: center;
+    margin-right: 15px;
+    position: relative;
+}
+
+.admin-login input {
+    width: 140px;
+    padding: 8px 14px;
+    border: 2px solid #f59e0b;
+    border-radius: 6px;
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-login input::placeholder {
+    color: #f59e0b;
+    opacity: 1;
+    font-weight: 600;
+}
+
+.admin-login input:focus {
+    outline: none;
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.15);
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
+}
+
+.admin-logged {
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+    gap: 8px;
+}
+
+.admin-badge {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    animation: adminGlow 2s infinite;
+}
+
+@keyframes adminGlow {
+    0%, 100% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.5); }
+    50% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.8); }
+}
+
+.logout-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.logout-btn:hover {
+    background: var(--error);
+    border-color: var(--error);
+}
+
+/* Hide admin-only features when not admin */
+body:not(.is-admin) .admin-only {
+    display: none !important;
+}
+
+body:not(.is-admin) .move-to-container {
+    display: none !important;
+}
+
+/* Hidden tabs (admin only) */
+body:not(.is-admin) .tab-btn.hidden-tab {
+    display: none !important;
+}
+
+/* Admin tab visibility toggle */
+.tab-visibility-toggle {
+    margin-left: auto;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.tab-visibility-toggle:hover {
+    opacity: 1;
+}
+
+.tab-btn.hidden-tab {
+    opacity: 0.5;
+    border-left: 3px solid var(--warning);
 }
