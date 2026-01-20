@@ -1151,25 +1151,33 @@ body {
 
 /* Admin Login Styles */
 .admin-login {
-    display: flex;
+    display: flex !important;
     align-items: center;
     margin-left: 15px;
+    position: relative;
 }
 
 .admin-login input {
-    width: 120px;
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--bg-tertiary);
+    width: 130px;
+    padding: 8px 12px;
+    border: 2px solid #f59e0b;
+    border-radius: 6px;
+    background: rgba(245, 158, 11, 0.1);
     color: var(--text-primary);
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.admin-login input::placeholder {
+    color: #f59e0b;
+    opacity: 0.8;
 }
 
 .admin-login input:focus {
     outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 5px rgba(99, 102, 241, 0.3);
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
 }
 
 .admin-logged {
