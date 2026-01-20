@@ -1092,6 +1092,16 @@ body {
         display: none;
     }
 
+    .admin-login {
+        margin-left: 8px;
+    }
+
+    .admin-login input {
+        width: 100px;
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+
     .action-bar {
         flex-wrap: wrap;
         height: auto;
