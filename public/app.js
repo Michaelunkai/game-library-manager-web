@@ -739,8 +739,8 @@ class GameLibrary {
             const btn = document.createElement('button');
             btn.className = `tab-btn ${tab.id === this.currentTab ? 'active' : ''} ${isHidden ? 'hidden-tab' : ''}`;
 
-            // Admin sees visibility toggle
-            if (this.isAdmin && tab.id !== 'all') {
+            // ONLY admins see visibility toggle - NEVER show to non-admins
+            if (this.isAdmin === true && tab.id !== 'all') {
                 btn.innerHTML = `
                     <span>${tab.name}</span>
                     <span class="count">${count}</span>
@@ -990,7 +990,16 @@ class GameLibrary {
         runBtn.disabled = count === 0;
 
         const moveToBtn = document.getElementById('moveToBtn');
-        moveToBtn.disabled = count === 0;
+        const moveToContainer = document.querySelector('.move-to-container');
+        
+        // Hide Move To button for non-admins
+        if (moveToContainer) {
+            moveToContainer.style.display = this.isAdmin ? 'block' : 'none';
+        }
+        
+        if (moveToBtn) {
+            moveToBtn.disabled = count === 0 || !this.isAdmin;
+        }
     }
 
     selectAllVisible() {
@@ -1489,6 +1498,13 @@ echo "Done!"
 
     toggleMoveToMenu(e) {
         e.stopPropagation();
+        
+        // CRITICAL: Only admins can access Move To functionality
+        if (!this.isAdmin) {
+            this.showToast('Admin access required to move games', 'error');
+            return;
+        }
+        
         const menu = document.getElementById('moveToMenu');
         const btn = document.getElementById('moveToBtn');
         const rect = btn.getBoundingClientRect();
@@ -1515,6 +1531,12 @@ echo "Done!"
     }
 
     moveSelectedGamesToTab(tabId) {
+        // CRITICAL: Only admins can move games between categories
+        if (!this.isAdmin) {
+            this.showToast('Admin access required to move games', 'error');
+            return;
+        }
+
         if (this.selectedGames.size === 0) {
             this.showToast('No games selected', 'error');
             return;
@@ -1696,8 +1718,17 @@ echo "Done!"
             document.body.classList.add('is-admin');
             document.getElementById('adminLoginBox').style.display = 'none';
             document.getElementById('adminLoggedBox').style.display = 'flex';
+            
+            // Show admin-only features
+            const moveToContainer = document.querySelector('.move-to-container');
+            if (moveToContainer) {
+                moveToContainer.style.display = 'block';
+            }
+            
             this.loadHiddenTabs();
             this.renderTabs();
+            this.filterAndRender(); // Re-render to show admin features
+            this.updateSelectedCount(); // Update UI to show admin features
             this.showToast('👑 Admin access granted!', 'success');
         } else {
             this.showToast('❌ Invalid password', 'error');
@@ -1718,8 +1749,16 @@ echo "Done!"
         document.body.classList.remove('is-admin');
         document.getElementById('adminLoginBox').style.display = 'flex';
         document.getElementById('adminLoggedBox').style.display = 'none';
+        
+        // Hide admin-only features
+        const moveToContainer = document.querySelector('.move-to-container');
+        if (moveToContainer) {
+            moveToContainer.style.display = 'none';
+        }
+        
         this.renderTabs();
         this.filterAndRender();
+        this.updateSelectedCount(); // Update UI to hide admin features
         this.showToast('Logged out', 'info');
     }
 
@@ -1731,6 +1770,12 @@ echo "Done!"
         const loggedBox = document.getElementById('adminLoggedBox');
         if (loginBox) loginBox.style.display = 'flex';
         if (loggedBox) loggedBox.style.display = 'none';
+        
+        // CRITICAL: Hide all admin-only features on page load
+        const moveToContainer = document.querySelector('.move-to-container');
+        if (moveToContainer) {
+            moveToContainer.style.display = 'none';
+        }
     }
 
     loadHiddenTabs() {
