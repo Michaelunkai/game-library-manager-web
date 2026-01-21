@@ -1584,8 +1584,8 @@ echo "Done!"
             'category-asc': '↓ Cat',
             'size-asc': '↓ Size',
             'size-desc': '↑ Size',
-            'date-asc': '↓ Date',
-            'date-desc': '↑ Date'
+            'date-desc': '↓ Date',
+            'date-asc': '↑ Date'
         };
         document.getElementById('sortIndicator').textContent = indicators[`${sortBy}-${order}`] || '↓ Name';
 
