@@ -136,6 +136,15 @@ class GameLibrary {
 
         console.log(`📦 Loaded ${this.games.length} games from games.json`);
 
+        // Clear old localStorage if game count changed significantly (new version deployed)
+        const savedCount = localStorage.getItem('lastGameCount');
+        if (savedCount && Math.abs(parseInt(savedCount) - this.games.length) > 10) {
+            console.log(`🔄 Game count changed (${savedCount} → ${this.games.length}), clearing cache`);
+            localStorage.removeItem('gameLibraryGames');
+            localStorage.removeItem('newGamesFromDocker');
+        }
+        localStorage.setItem('lastGameCount', this.games.length.toString());
+
         // Load any saved game category changes from localStorage (only categories, not game list)
         this.loadSavedGameChanges();
 
