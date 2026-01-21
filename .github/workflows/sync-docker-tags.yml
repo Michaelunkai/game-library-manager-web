@@ -1,0 +1,71 @@
+name: Auto-Sync Docker Hub Tags
+
+on:
+  # Run every hour
+  schedule:
+    - cron: '0 * * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+  
+  # Also run on push to main (to sync immediately after deploys)
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'public/data/games.json'
+      - 'public/data/image-sizes.json'
+      - 'public/data/dates-added.json'
+      - 'docs/data/games.json'
+      - 'docs/data/image-sizes.json'
+      - 'docs/data/dates-added.json'
+
+jobs:
+  sync-docker-tags:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Sync Docker Hub Tags
+        run: node sync_all_docker_data.js
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git diff --quiet public/data/ docs/data/ || echo "changes=true" >> $GITHUB_OUTPUT
+      
+      - name: Commit and push if changed
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Get count of new games
+          NEW_COUNT=$(node -e "const g=require('./public/data/games.json');console.log(g.filter(x=>x.category==='new').length)")
+          TOTAL_COUNT=$(node -e "const g=require('./public/data/games.json');console.log(g.length)")
+          
+          git add public/data/*.json docs/data/*.json
+          git commit -m "🔄 Auto-sync: ${TOTAL_COUNT} games (${NEW_COUNT} new) from Docker Hub"
+          git push
+      
+      - name: Summary
+        run: |
+          echo "### Docker Hub Sync Complete! 🎮" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          TOTAL=$(node -e "const g=require('./public/data/games.json');console.log(g.length)")
+          NEW=$(node -e "const g=require('./public/data/games.json');console.log(g.filter(x=>x.category==='new').length)")
+          SIZES=$(node -e "const s=require('./public/data/image-sizes.json');console.log(Object.keys(s).length)")
+          echo "- **Total Games:** ${TOTAL}" >> $GITHUB_STEP_SUMMARY
+          echo "- **New/Uncategorized:** ${NEW}" >> $GITHUB_STEP_SUMMARY
+          echo "- **With Size Data:** ${SIZES}" >> $GITHUB_STEP_SUMMARY
