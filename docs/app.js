@@ -1029,8 +1029,15 @@ class GameLibrary {
         const repoName = this.settings.repoName || 'backup';
         const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
 
+        // Parse mountPath to get Docker mount format for Windows
+        // e.g., "F:/Games" -> drive mount "F:/:/f/", internal path "/f/Games/"
+        const driveLetter = mountPath.match(/^([A-Za-z]):/)?.[1]?.toLowerCase() || 'f';
+        const pathAfterDrive = mountPath.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/') || '/Games';
+        const dockerMount = `${driveLetter.toUpperCase()}:/:/${driveLetter}/`;
+        const internalPath = `/${driveLetter}${pathAfterDrive}`;
+
         // Full docker command with volume mount
-        return `docker run -v "${mountPath}:/games" -it --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /games/ && cd /games && mv home ${gameId}"`;
+        return `docker run -v "${dockerMount}" -it --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${gameId}"`;
     }
 
     openGameModal(game) {
@@ -1091,6 +1098,13 @@ class GameLibrary {
         const repoName = this.settings.repoName || 'backup';
         const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
 
+        // Parse mountPath to get Docker mount format for Windows
+        // e.g., "F:/Games" -> drive mount "F:/:/f/", internal path "/f/Games/"
+        const driveLetter = mountPath.match(/^([A-Za-z]):/)?.[1]?.toLowerCase() || 'f';
+        const pathAfterDrive = mountPath.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/') || '/Games';
+        const dockerMount = `${driveLetter.toUpperCase()}:/:/${driveLetter}/`;
+        const internalPath = `/${driveLetter}${pathAfterDrive}`;
+
         let script, filename;
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const gameCount = gameIds.length;
@@ -1108,7 +1122,7 @@ class GameLibrary {
 echo.
 echo [%date% %time%] Running game ${idx + 1}/${gameCount}: ${gameName}
 echo ============================================================
-docker run -v "${mountPath}:/games" -it --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /games/ && cd /games && mv home ${id}"
+docker run -v "${dockerMount}" -it --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${id}"
 if %ERRORLEVEL% EQU 0 (
     echo [SUCCESS] ${gameName} completed successfully!
 ) else (
