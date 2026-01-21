@@ -39,6 +39,12 @@ class GameLibrary {
         this.detectOS();
         this.bindEvents();
         this.applySettings();
+        
+        // CRITICAL: Ensure non-admin state on page load - users must login to get admin access
+        this.ensureNonAdminState();
+        
+        // Load hidden tabs configuration BEFORE rendering (needed even for non-admins to filter correctly)
+        this.loadHiddenTabs();
 
         try {
             await this.loadData();
@@ -252,6 +258,13 @@ class GameLibrary {
             'https://thingproxy.freeboard.io/fetch/'
         ];
 
+        // Show sync status
+        const syncBtn = document.getElementById('syncDockerBtn');
+        if (syncBtn) {
+            syncBtn.classList.add('syncing');
+            syncBtn.textContent = '🔄 Syncing...';
+        }
+
         // Helper to fetch a single URL with timeout
         const fetchWithTimeout = async (url, timeout = 8000) => {
             const controller = new AbortController();
@@ -259,7 +272,8 @@ class GameLibrary {
             try {
                 const response = await fetch(url, {
                     headers: { 'Accept': 'application/json' },
-                    signal: controller.signal
+                    signal: controller.signal,
+                    cache: 'no-store'
                 });
                 clearTimeout(timeoutId);
                 if (response.ok) return await response.json();
@@ -331,6 +345,12 @@ class GameLibrary {
         } catch (error) {
             console.error('Error fetching Docker tags:', error);
             return [];
+        } finally {
+            // Reset sync button
+            if (syncBtn) {
+                syncBtn.classList.remove('syncing');
+                syncBtn.textContent = '🔄 Sync';
+            }
         }
     }
 
@@ -700,10 +720,23 @@ class GameLibrary {
                     valB = hasB ? this.imageSizes[b.id] : null;
                     break;
                 case 'date':
+                    // Use current timestamp for comparison so "new" category games appear first when sorting newest-to-oldest
+                    const nowTimestamp = Date.now();
+                    
                     hasA = !!this.datesAdded[a.id];
                     hasB = !!this.datesAdded[b.id];
                     valA = hasA ? new Date(this.datesAdded[a.id]).getTime() : null;
                     valB = hasB ? new Date(this.datesAdded[b.id]).getTime() : null;
+                    
+                    // Games with "new" category but no date should be treated as newest (Date.now())
+                    if (a.category === 'new' && !hasA) {
+                        valA = nowTimestamp;
+                        hasA = true;
+                    }
+                    if (b.category === 'new' && !hasB) {
+                        valB = nowTimestamp;
+                        hasB = true;
+                    }
                     break;
                 default:
                     valA = a.name.toLowerCase();
@@ -1570,8 +1603,8 @@ echo "Done!"
             'category-asc': '↓ Cat',
             'size-asc': '↓ Size',
             'size-desc': '↑ Size',
-            'date-asc': '↓ Date',
-            'date-desc': '↑ Date'
+            'date-desc': '↓ Date',  // Newest-Oldest (descending = highest date first)
+            'date-asc': '↑ Date'    // Oldest-Newest (ascending = lowest date first)
         };
         document.getElementById('sortIndicator').textContent = indicators[`${sortBy}-${order}`] || '↓ Name';
 
@@ -1682,6 +1715,16 @@ echo "Done!"
         this.renderTabs();
         this.filterAndRender();
         this.showToast('Logged out', 'info');
+    }
+
+    // Ensures non-admin state on page load - CRITICAL for security
+    ensureNonAdminState() {
+        this.isAdmin = false;
+        document.body.classList.remove('is-admin');
+        const loginBox = document.getElementById('adminLoginBox');
+        const loggedBox = document.getElementById('adminLoggedBox');
+        if (loginBox) loginBox.style.display = 'flex';
+        if (loggedBox) loggedBox.style.display = 'none';
     }
 
     loadHiddenTabs() {

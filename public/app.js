@@ -39,6 +39,12 @@ class GameLibrary {
         this.detectOS();
         this.bindEvents();
         this.applySettings();
+        
+        // CRITICAL: Ensure non-admin state on page load - users must login to get admin access
+        this.ensureNonAdminState();
+        
+        // Load hidden tabs configuration BEFORE rendering (needed even for non-admins to filter correctly)
+        this.loadHiddenTabs();
 
         try {
             await this.loadData();
@@ -714,10 +720,23 @@ class GameLibrary {
                     valB = hasB ? this.imageSizes[b.id] : null;
                     break;
                 case 'date':
+                    // Use current timestamp for comparison so "new" category games appear first when sorting newest-to-oldest
+                    const nowTimestamp = Date.now();
+                    
                     hasA = !!this.datesAdded[a.id];
                     hasB = !!this.datesAdded[b.id];
                     valA = hasA ? new Date(this.datesAdded[a.id]).getTime() : null;
                     valB = hasB ? new Date(this.datesAdded[b.id]).getTime() : null;
+                    
+                    // Games with "new" category but no date should be treated as newest (Date.now())
+                    if (a.category === 'new' && !hasA) {
+                        valA = nowTimestamp;
+                        hasA = true;
+                    }
+                    if (b.category === 'new' && !hasB) {
+                        valB = nowTimestamp;
+                        hasB = true;
+                    }
                     break;
                 default:
                     valA = a.name.toLowerCase();
@@ -1584,8 +1603,8 @@ echo "Done!"
             'category-asc': '↓ Cat',
             'size-asc': '↓ Size',
             'size-desc': '↑ Size',
-            'date-asc': '↓ Date',
-            'date-desc': '↑ Date'
+            'date-desc': '↓ Date',  // Newest-Oldest (descending = highest date first)
+            'date-asc': '↑ Date'    // Oldest-Newest (ascending = lowest date first)
         };
         document.getElementById('sortIndicator').textContent = indicators[`${sortBy}-${order}`] || '↓ Name';
 
@@ -1696,6 +1715,16 @@ echo "Done!"
         this.renderTabs();
         this.filterAndRender();
         this.showToast('Logged out', 'info');
+    }
+
+    // Ensures non-admin state on page load - CRITICAL for security
+    ensureNonAdminState() {
+        this.isAdmin = false;
+        document.body.classList.remove('is-admin');
+        const loginBox = document.getElementById('adminLoginBox');
+        const loggedBox = document.getElementById('adminLoggedBox');
+        if (loginBox) loginBox.style.display = 'flex';
+        if (loggedBox) loggedBox.style.display = 'none';
     }
 
     loadHiddenTabs() {
