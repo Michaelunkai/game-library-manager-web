@@ -249,24 +249,33 @@ class GameLibrary {
         const pageSize = 100;
         const cacheBuster = Date.now();
 
-        // Use multiple CORS proxies - race them for fastest response
+        // ROBUST CORS proxy list - multiple fallbacks for reliability
+        // Prioritized by reliability and speed
         const corsProxies = [
             'https://corsproxy.io/?',
             'https://api.allorigins.win/raw?url=',
+            'https://proxy.cors.sh/',
             'https://api.codetabs.com/v1/proxy?quest=',
-            'https://cors-anywhere.herokuapp.com/',
-            'https://thingproxy.freeboard.io/fetch/'
+            'https://corsproxy.org/?',
+            'https://thingproxy.freeboard.io/fetch/',
+            'https://cors-anywhere.herokuapp.com/'
         ];
+
+        // Track which proxy works best (persisted in memory for this session)
+        if (!this._workingProxyIndex) this._workingProxyIndex = 0;
 
         // Show sync status
         const syncBtn = document.getElementById('syncDockerBtn');
-        if (syncBtn) {
-            syncBtn.classList.add('syncing');
-            syncBtn.textContent = '🔄 Syncing...';
-        }
+        const updateSyncStatus = (msg) => {
+            if (syncBtn) {
+                syncBtn.classList.add('syncing');
+                syncBtn.textContent = msg;
+            }
+        };
+        updateSyncStatus('🔄 Syncing...');
 
-        // Helper to fetch a single URL with timeout
-        const fetchWithTimeout = async (url, timeout = 8000) => {
+        // Helper to fetch with timeout
+        const fetchWithTimeout = async (url, timeout = 15000) => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeout);
             try {
@@ -276,71 +285,169 @@ class GameLibrary {
                     cache: 'no-store'
                 });
                 clearTimeout(timeoutId);
-                if (response.ok) return await response.json();
-                throw new Error('Not OK');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                if (!data || typeof data !== 'object') throw new Error('Invalid JSON');
+                return data;
             } catch (e) {
                 clearTimeout(timeoutId);
                 throw e;
             }
         };
 
-        // Fetch a single page using racing proxies for speed
-        const fetchPage = async (page) => {
-            const dockerUrl = `https://hub.docker.com/v2/repositories/${dockerUser}/${repoName}/tags?page=${page}&page_size=${pageSize}&_=${cacheBuster}`;
+        // Try a single proxy for a URL
+        const tryProxy = async (proxy, url) => {
+            const fullUrl = proxy + encodeURIComponent(url);
+            return await fetchWithTimeout(fullUrl);
+        };
 
-            // Race all proxies - fastest wins
-            const proxyPromises = corsProxies.map(proxy =>
-                fetchWithTimeout(proxy + encodeURIComponent(dockerUrl))
-            );
-
-            // Also try direct (may fail due to CORS but worth trying)
-            proxyPromises.push(fetchWithTimeout(dockerUrl).catch(() => null));
-
+        // Fetch a page with AGGRESSIVE retry logic - NEVER give up easily
+        const fetchPageWithRetry = async (page, maxRetries = 5) => {
+            const dockerUrl = `https://hub.docker.com/v2/repositories/${dockerUser}/${repoName}/tags?page=${page}&page_size=${pageSize}&_=${cacheBuster}_${page}`;
+            
+            // Try 1: Race all proxies (fastest wins)
             try {
-                // Promise.any returns first successful result
-                const data = await Promise.any(proxyPromises);
-                return data;
+                const racePromises = corsProxies.map((proxy, idx) => 
+                    tryProxy(proxy, dockerUrl).then(data => ({ data, proxyIdx: idx }))
+                );
+                const result = await Promise.any(racePromises);
+                if (result.data && result.data.results) {
+                    this._workingProxyIndex = result.proxyIdx; // Remember working proxy
+                    return result.data;
+                }
             } catch (e) {
-                return null;
+                console.log(`Page ${page}: Race failed, trying sequential...`);
             }
+
+            // Try 2: Sequential fallback with retries - start with last working proxy
+            for (let retry = 0; retry < maxRetries; retry++) {
+                const startIdx = this._workingProxyIndex || 0;
+                for (let i = 0; i < corsProxies.length; i++) {
+                    const proxyIdx = (startIdx + i) % corsProxies.length;
+                    const proxy = corsProxies[proxyIdx];
+                    try {
+                        const data = await tryProxy(proxy, dockerUrl);
+                        if (data && data.results) {
+                            this._workingProxyIndex = proxyIdx;
+                            console.log(`Page ${page}: Success with proxy ${proxyIdx} on retry ${retry}`);
+                            return data;
+                        }
+                    } catch (e) {
+                        // Continue to next proxy
+                    }
+                }
+                // Wait before retry with exponential backoff
+                if (retry < maxRetries - 1) {
+                    const delay = Math.min(1000 * Math.pow(2, retry), 8000);
+                    await new Promise(r => setTimeout(r, delay));
+                }
+            }
+
+            console.error(`Page ${page}: ALL retries exhausted!`);
+            return null;
         };
 
         try {
-            // Step 1: Fetch first page to get total count
-            const firstPage = await fetchPage(1);
+            // Step 1: Fetch first page to get total count (CRITICAL - retry more)
+            updateSyncStatus('🔄 Connecting...');
+            let firstPage = null;
+            for (let attempt = 0; attempt < 10; attempt++) {
+                firstPage = await fetchPageWithRetry(1, 3);
+                if (firstPage && firstPage.results) break;
+                console.log(`First page attempt ${attempt + 1} failed, retrying...`);
+                await new Promise(r => setTimeout(r, 2000));
+            }
+
             if (!firstPage || !firstPage.results) {
-                console.log('Failed to fetch first page from Docker Hub');
+                console.error('❌ Failed to fetch first page from Docker Hub after all retries');
+                this.showToast('Failed to connect to Docker Hub. Try again later.', 'error');
                 return [];
             }
 
-            const allTags = [...firstPage.results];
             const totalCount = firstPage.count || 0;
             const totalPages = Math.ceil(totalCount / pageSize);
+            console.log(`📦 Docker Hub: ${totalCount} total tags across ${totalPages} pages`);
+            updateSyncStatus(`🔄 0/${totalPages}`);
 
-            console.log(`Docker Hub: ${totalCount} total tags, ${totalPages} pages`);
+            // Step 2: Collect all tags, tracking which pages we got
+            const tagsByPage = new Map();
+            tagsByPage.set(1, firstPage.results);
 
-            // Step 2: Fetch ALL remaining pages in PARALLEL (no limit!)
+            // Fetch remaining pages in small batches with retry
             if (totalPages > 1) {
-                const pageNumbers = [];
+                const remainingPages = [];
                 for (let p = 2; p <= totalPages; p++) {
-                    pageNumbers.push(p);
+                    remainingPages.push(p);
                 }
 
-                // Fetch in batches of 5 to avoid overwhelming proxies
-                const batchSize = 5;
-                for (let i = 0; i < pageNumbers.length; i += batchSize) {
-                    const batch = pageNumbers.slice(i, i + batchSize);
-                    const batchResults = await Promise.all(batch.map(p => fetchPage(p)));
+                // Process in batches of 3 (conservative to avoid rate limits)
+                const batchSize = 3;
+                for (let i = 0; i < remainingPages.length; i += batchSize) {
+                    const batch = remainingPages.slice(i, i + batchSize);
+                    updateSyncStatus(`🔄 ${tagsByPage.size}/${totalPages}`);
+                    
+                    const batchResults = await Promise.all(
+                        batch.map(p => fetchPageWithRetry(p, 5).then(data => ({ page: p, data })))
+                    );
 
-                    for (const data of batchResults) {
-                        if (data && data.results) {
-                            allTags.push(...data.results);
+                    for (const { page, data } of batchResults) {
+                        if (data && data.results && data.results.length > 0) {
+                            tagsByPage.set(page, data.results);
                         }
+                    }
+
+                    // Small delay between batches to be nice to proxies
+                    if (i + batchSize < remainingPages.length) {
+                        await new Promise(r => setTimeout(r, 500));
                     }
                 }
             }
 
-            console.log(`✅ Fetched ${allTags.length} tags from Docker Hub`);
+            // Step 3: Check for missing pages and retry them
+            const missingPages = [];
+            for (let p = 1; p <= totalPages; p++) {
+                if (!tagsByPage.has(p)) {
+                    missingPages.push(p);
+                }
+            }
+
+            if (missingPages.length > 0) {
+                console.log(`⚠️ Missing ${missingPages.length} pages: ${missingPages.join(', ')}. Retrying...`);
+                updateSyncStatus(`🔄 Retrying ${missingPages.length} pages...`);
+                
+                for (const page of missingPages) {
+                    // Extra aggressive retry for missing pages
+                    const data = await fetchPageWithRetry(page, 10);
+                    if (data && data.results) {
+                        tagsByPage.set(page, data.results);
+                        console.log(`✅ Recovered page ${page}`);
+                    } else {
+                        console.error(`❌ Could not recover page ${page}`);
+                    }
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+
+            // Step 4: Combine all tags in page order
+            const allTags = [];
+            for (let p = 1; p <= totalPages; p++) {
+                const pageTags = tagsByPage.get(p);
+                if (pageTags) {
+                    allTags.push(...pageTags);
+                }
+            }
+
+            // Final verification
+            const expectedCount = totalCount;
+            const actualCount = allTags.length;
+            const missingCount = expectedCount - actualCount;
+
+            if (missingCount > 0) {
+                console.warn(`⚠️ Fetched ${actualCount}/${expectedCount} tags (${missingCount} missing)`);
+            } else {
+                console.log(`✅ Successfully fetched ALL ${actualCount} tags from Docker Hub!`);
+            }
+
             return allTags;
         } catch (error) {
             console.error('Error fetching Docker tags:', error);
