@@ -5,6 +5,11 @@
         "category": "action"
     },
     {
+        "id": "deliverusmars",
+        "name": "Deliverusmars",
+        "category": "new"
+    },
+    {
         "id": "bravelydefaultii",
         "name": "Bravelydefaultii",
         "category": "new"
