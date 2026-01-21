@@ -5,6 +5,16 @@
         "category": "action"
     },
     {
+        "id": "twopointcampus",
+        "name": "Twopointcampus",
+        "category": "new"
+    },
+    {
+        "id": "primordia",
+        "name": "Primordia",
+        "category": "new"
+    },
+    {
         "id": "plantsvszombiesreplanted",
         "name": "Plantsvszombiesreplanted",
         "category": "new"
