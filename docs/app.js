@@ -63,18 +63,18 @@ class GameLibrary {
     }
 
     startAutoSync() {
-        // Poll every 5 seconds for new tags - INSTANT updates!
+        // Poll every 60 seconds for new tags - Reduced rate limiting on CORS proxies
         this.syncInterval = setInterval(() => {
             this.autoSyncDockerHub();
-        }, 5000);
+        }, 60000);
 
         // Also update sync button to show auto-sync is active
         const syncBtn = document.getElementById('syncDockerBtn');
         if (syncBtn) {
-            syncBtn.title = 'Auto-syncing every 5s (click to sync now)';
+            syncBtn.title = 'Auto-syncing every 60s (click to sync now)';
         }
 
-        console.log('🔄 Auto-sync started: checking Docker Hub every 5 seconds');
+        console.log('🔄 Auto-sync started: checking Docker Hub every 60 seconds');
     }
 
     async autoSyncDockerHub() {
