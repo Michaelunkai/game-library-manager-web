@@ -28,8 +28,8 @@ class GameLibrary {
         this.showInstalledOnly = false;
         this.isAdmin = false;
         // SHA-256 hash of admin password - NEVER store plaintext passwords in source code
-        // Password: admin2024
-        this.adminHash = 'b8b8eb83374c0bf3b1c3224159f6119dbfff1b7ed6dfecdd80d4e8a895790a34';
+        // Password: Blackablacka3!
+        this.adminHash = 'fba92b2c989a5072544ca49d7f75db2005e6479bf286a38902de90e487230762';
         this.settings = this.loadSettings();
 
         this.init();
