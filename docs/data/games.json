@@ -5,6 +5,16 @@
         "category": "action"
     },
     {
+        "id": "plantsvszombiesreplanted",
+        "name": "Plantsvszombiesreplanted",
+        "category": "new"
+    },
+    {
+        "id": "parkitect",
+        "name": "Parkitect",
+        "category": "new"
+    },
+    {
         "id": "beyondblue",
         "name": "Beyondblue",
         "category": "new"
