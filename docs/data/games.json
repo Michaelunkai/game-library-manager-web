@@ -5576,5 +5576,215 @@
         "name": "Thesims 4",
         "id": "thesims4",
         "alias": "sims4"
+    },
+    {
+        "id": "histadrut",
+        "name": "Histadrut",
+        "category": "new"
+    },
+    {
+        "id": "pokemonlegendsza",
+        "name": "Pokemonlegendsza",
+        "category": "new"
+    },
+    {
+        "id": "lostrecordsbloomrage",
+        "name": "Lostrecordsbloomrage",
+        "category": "new"
+    },
+    {
+        "id": "dispatch",
+        "name": "Dispatch",
+        "category": "new"
+    },
+    {
+        "id": "swordofthesea",
+        "name": "Swordofthesea",
+        "category": "new"
+    },
+    {
+        "id": "megabonk",
+        "name": "Megabonk",
+        "category": "new"
+    },
+    {
+        "id": "newsuperluckystale",
+        "name": "Newsuperluckystale",
+        "category": "new"
+    },
+    {
+        "id": "moonglowbay",
+        "name": "Moonglowbay",
+        "category": "new"
+    },
+    {
+        "id": "MacriumReflect",
+        "name": "Macrium Reflect",
+        "category": "new"
+    },
+    {
+        "id": "Cuphead",
+        "name": "Cuphead",
+        "category": "new"
+    },
+    {
+        "id": "TheDarkness",
+        "name": "The Darkness",
+        "category": "new"
+    },
+    {
+        "id": "TheDarkness2",
+        "name": "The Darkness 2",
+        "category": "new"
+    },
+    {
+        "id": "Road96",
+        "name": "Road 96",
+        "category": "new"
+    },
+    {
+        "id": "ValiantHeartsCominghome",
+        "name": "Valiant Hearts Cominghome",
+        "category": "new"
+    },
+    {
+        "id": "ThankGoodnessYoureHere",
+        "name": "Thank Goodness Youre Here",
+        "category": "new"
+    },
+    {
+        "id": "ValiantHeartsComingHome",
+        "name": "Valiant Hearts Coming Home",
+        "category": "new"
+    },
+    {
+        "id": "BluePrince",
+        "name": "Blue Prince",
+        "category": "new"
+    },
+    {
+        "id": "TheDarkPicturesAnthologyLittleHope",
+        "name": "The Dark Pictures Anthology Little Hope",
+        "category": "new"
+    },
+    {
+        "id": "RedFactionGuerrillaReMarstered",
+        "name": "Red Faction Guerrilla Re Marstered",
+        "category": "new"
+    },
+    {
+        "id": "Wreckfest",
+        "name": "Wreckfest",
+        "category": "new"
+    },
+    {
+        "id": "DeadRising4",
+        "name": "Dead Rising 4",
+        "category": "new"
+    },
+    {
+        "id": "Grounded",
+        "name": "Grounded",
+        "category": "new"
+    },
+    {
+        "id": "Sable",
+        "name": "Sable",
+        "category": "new"
+    },
+    {
+        "id": "NORCO",
+        "name": "NORCO",
+        "category": "new"
+    },
+    {
+        "id": "YakuzaKiwami2",
+        "name": "Yakuza Kiwami 2",
+        "category": "new"
+    },
+    {
+        "id": "YakuzaKiwami",
+        "name": "Yakuza Kiwami",
+        "category": "new"
+    },
+    {
+        "id": "Yakuza5",
+        "name": "Yakuza 5",
+        "category": "new"
+    },
+    {
+        "id": "Yakuza0",
+        "name": "Yakuza 0",
+        "category": "new"
+    },
+    {
+        "id": "YakuzaLikeaDragon",
+        "name": "Yakuza Likea Dragon",
+        "category": "new"
+    },
+    {
+        "id": "MetalHellsinger",
+        "name": "Metal Hellsinger",
+        "category": "new"
+    },
+    {
+        "id": "Bayonetta3",
+        "name": "Bayonetta 3",
+        "category": "new"
+    },
+    {
+        "id": "CultoftheLamb",
+        "name": "Cultofthe Lamb",
+        "category": "new"
+    },
+    {
+        "id": "MyfriendlyNeighborhood",
+        "name": "Myfriendly Neighborhood",
+        "category": "new"
+    },
+    {
+        "id": "JourneytothesavagePlanet",
+        "name": "Journeytothesavage Planet",
+        "category": "new"
+    },
+    {
+        "id": "Creaks",
+        "name": "Creaks",
+        "category": "new"
+    },
+    {
+        "id": "ThePathless",
+        "name": "The Pathless",
+        "category": "new"
+    },
+    {
+        "id": "TalesofArise",
+        "name": "Talesof Arise",
+        "category": "new"
+    },
+    {
+        "id": "Webinars",
+        "name": "Webinars",
+        "category": "new"
+    },
+    {
+        "id": "whisperPROX",
+        "name": "Whisper PROX",
+        "category": "new"
+    },
+    {
+        "id": "Immortalsofaveum",
+        "name": "Immortalsofaveum",
+        "category": "new"
+    },
+    {
+        "id": "Islets",
+        "name": "Islets",
+        "category": "new"
+    },
+    {
+        "id": "Witchfire",
+        "name": "Witchfire",
+        "category": "new"
     }
 ]
