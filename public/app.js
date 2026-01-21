@@ -43,8 +43,8 @@ class GameLibrary {
         // CRITICAL: Ensure non-admin state on page load - users must login to get admin access
         this.ensureNonAdminState();
         
-        // Load hidden tabs configuration BEFORE rendering (needed even for non-admins to filter correctly)
-        this.loadHiddenTabs();
+        // Load admin configuration from SERVER (not localStorage) - this affects ALL users
+        await this.loadAdminConfigFromServer();
 
         try {
             await this.loadData();
@@ -55,11 +55,34 @@ class GameLibrary {
 
             // Start automatic Docker Hub sync (every 30 seconds)
             this.startAutoSync();
+            
+            // Start polling for admin config changes (every 5 seconds)
+            this.startAdminConfigPolling();
         } catch (error) {
             console.error('Failed to load data:', error);
             this.showToast('Failed to load game data', 'error');
             this.showLoading(false);
         }
+    }
+    
+    // Poll server for admin configuration changes
+    startAdminConfigPolling() {
+        // Check for updates every 5 seconds
+        this.configPollInterval = setInterval(async () => {
+            if (!this.isAdmin) { // Non-admins need to check for updates
+                const previousHiddenCount = this.hiddenTabs.size;
+                await this.loadAdminConfigFromServer();
+                
+                // If config changed, re-render
+                if (previousHiddenCount !== this.hiddenTabs.size) {
+                    this.renderTabs();
+                    this.filterAndRender();
+                    this.showToast('📡 Admin rules updated from server', 'info');
+                }
+            }
+        }, 5000);
+        
+        console.log('🔄 Admin config polling started: checking every 5 seconds');
     }
 
     startAutoSync() {
@@ -1573,8 +1596,13 @@ echo "Done!"
     }
 
     saveGameChanges() {
-        // Save modified games to localStorage
+        // Save modified games to localStorage for immediate UI update
         localStorage.setItem('gameLibraryGames', JSON.stringify(this.games));
+        
+        // If admin, also save to server to affect all users
+        if (this.isAdmin) {
+            this.saveAdminConfigToServer();
+        }
     }
 
     loadSavedGameChanges() {
@@ -1778,6 +1806,84 @@ echo "Done!"
         }
     }
 
+    // Load admin configuration from server - affects ALL users immediately
+    async loadAdminConfigFromServer() {
+        try {
+            const response = await fetch('/api/admin-config', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.config) {
+                    // Apply server admin rules to ALL users
+                    this.hiddenTabs = new Set(data.config.hiddenTabs || []);
+                    
+                    // Apply game category overrides from admin
+                    if (data.config.gameCategories) {
+                        Object.entries(data.config.gameCategories).forEach(([gameId, category]) => {
+                            const game = this.games.find(g => g.id === gameId);
+                            if (game) {
+                                game.category = category;
+                            }
+                        });
+                    }
+                    
+                    console.log('📡 Loaded admin config from server:', data.config);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load admin config from server:', error);
+            // Fallback to localStorage for offline mode
+            this.loadHiddenTabs();
+        }
+    }
+
+    // Save admin configuration to server - immediately affects ALL users
+    async saveAdminConfigToServer() {
+        if (!this.isAdmin) {
+            console.error('Only admins can save configuration');
+            return;
+        }
+
+        try {
+            // Collect all game category changes
+            const gameCategories = {};
+            this.games.forEach(game => {
+                if (game.category) {
+                    gameCategories[game.id] = game.category;
+                }
+            });
+
+            const response = await fetch('/api/admin-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Admin-Token': 'glm-admin-2024' // In production, use secure token from login
+                },
+                body: JSON.stringify({
+                    hiddenTabs: [...this.hiddenTabs],
+                    gameCategories: gameCategories
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Admin config saved to server:', data);
+                this.showToast('🌐 Changes saved to server - affecting all users!', 'success');
+            } else {
+                throw new Error('Failed to save to server');
+            }
+        } catch (error) {
+            console.error('Failed to save admin config to server:', error);
+            this.showToast('❌ Failed to save to server', 'error');
+        }
+    }
+
+    // Legacy localStorage methods (kept for fallback)
     loadHiddenTabs() {
         try {
             const saved = localStorage.getItem('hiddenTabs');
@@ -1790,7 +1896,10 @@ echo "Done!"
     }
 
     saveHiddenTabs() {
+        // Save to localStorage for immediate UI update
         localStorage.setItem('hiddenTabs', JSON.stringify([...this.hiddenTabs]));
+        // Then save to server to affect all users
+        this.saveAdminConfigToServer();
     }
 
     toggleTabVisibility(tabId) {
@@ -1803,7 +1912,7 @@ echo "Done!"
             this.hiddenTabs.add(tabId);
             this.showToast(`Tab "${tabId}" is now hidden from non-admins`, 'warning');
         }
-        this.saveHiddenTabs();
+        this.saveHiddenTabs(); // This now saves to server and affects ALL users
         this.renderTabs();
     }
 
