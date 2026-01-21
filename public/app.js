@@ -1558,7 +1558,12 @@ echo ""
         }
 
         // Download the file
-        const blob = new Blob([script], { type: 'text/plain' });
+        // For Windows .bat files, convert LF to CRLF line endings
+        const finalScript = this.os === 'windows' 
+            ? script.replace(/\r?\n/g, '\r\n')  // Normalize to CRLF for Windows batch files
+            : script;
+        
+        const blob = new Blob([finalScript], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
