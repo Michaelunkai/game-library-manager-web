@@ -1029,8 +1029,8 @@ class GameLibrary {
         const repoName = this.settings.repoName || 'backup';
         const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
 
-        // Full docker command with volume mount for F:/ drive
-        return `docker run -v "F:/:/f/" -it --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /f/Games/ && cd /f/Games && mv home ${gameId}"`;
+        // Full docker command with volume mount
+        return `docker run -v "${mountPath}:/games" -it --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /games/ && cd /games && mv home ${gameId}"`;
     }
 
     openGameModal(game) {
@@ -1108,7 +1108,7 @@ class GameLibrary {
 echo.
 echo [%date% %time%] Running game ${idx + 1}/${gameCount}: ${gameName}
 echo ============================================================
-docker run -v "F:/:/f/" -it --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /f/Games/ && cd /f/Games && mv home ${id}"
+docker run -v "${mountPath}:/games" -it --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /games/ && cd /games && mv home ${id}"
 if %ERRORLEVEL% EQU 0 (
     echo [SUCCESS] ${gameName} completed successfully!
 ) else (
@@ -1182,7 +1182,7 @@ REM
 REM INSTRUCTIONS:
 REM 1. Make sure Docker Desktop is running
 REM 2. Double-click this .bat file to run
-REM 3. Games will be downloaded to F:\\Games\\
+REM 3. Games will be downloaded to ${mountPath}
 REM
 REM This script includes:
 REM - Pre-pulling all images with robust retry logic
