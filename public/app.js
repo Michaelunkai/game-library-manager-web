@@ -1,5 +1,5 @@
 /**
- * Game Library Manager v3.6 - Web Application
+ * Game Library Manager v3.7 - Web Application
  * A full-featured Docker game library manager
  *
  * Features:
@@ -1136,52 +1136,25 @@ if ${idx + 1} LSS ${gameCount} (
 )`;
             }).join('\n');
 
-            // Build pull commands with robust retry logic for Docker Desktop issues
+            // Build pull commands with simple retry logic
             const pullCommands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
                 return `
 echo.
 echo [%date% %time%] Pulling image ${idx + 1}/${gameCount}: ${gameName}
-set "PULL_SUCCESS=0"
-set "RETRY_DELAY=5"
-for /L %%i in (1,1,5) do (
-    if !PULL_SUCCESS! EQU 0 (
-        REM Check Docker health before attempting pull
-        docker info >nul 2>&1
-        if !ERRORLEVEL! NEQ 0 (
-            echo [WARNING] Docker not responding, attempting recovery...
-            call :recover_docker
-        )
-
-        REM Attempt the pull and capture output for error detection
-        docker pull ${dockerUser}/${repoName}:${id} 2>&1
-        if !ERRORLEVEL! EQU 0 (
-            set "PULL_SUCCESS=1"
-            echo [OK] Image pulled successfully!
-        ) else (
-            echo [RETRY %%i/5] Pull failed, attempting recovery...
-
-            REM Flush DNS cache
-            ipconfig /flushdns >nul 2>&1
-
-            REM Reset Windows network stack
-            netsh winsock reset >nul 2>&1
-            netsh int ip reset >nul 2>&1
-
-            REM Try to restart Docker Desktop if it's having issues
-            call :recover_docker
-
-            REM Exponential backoff: 5, 10, 20, 40, 60 seconds
-            echo [INFO] Waiting !RETRY_DELAY! seconds before retry...
-            timeout /t !RETRY_DELAY! /nobreak >nul
-            set /a "RETRY_DELAY=RETRY_DELAY*2"
-            if !RETRY_DELAY! GTR 60 set "RETRY_DELAY=60"
-        )
+docker pull ${dockerUser}/${repoName}:${id}
+if %ERRORLEVEL% EQU 0 (
+    echo [OK] ${gameName} pulled successfully!
+) else (
+    echo [RETRY] First attempt failed, retrying in 5 seconds...
+    timeout /t 5 /nobreak >nul
+    docker pull ${dockerUser}/${repoName}:${id}
+    if !ERRORLEVEL! EQU 0 (
+        echo [OK] ${gameName} pulled successfully on retry!
+    ) else (
+        echo [WARNING] Failed to pull ${gameName}, will try during run...
     )
-)
-if !PULL_SUCCESS! EQU 0 (
-    echo [WARNING] Failed to pull ${gameName} after 5 attempts, will try during run...
 )`;
             }).join('\n');
 
@@ -1198,61 +1171,31 @@ REM 1. Make sure Docker Desktop is running
 REM 2. Double-click this .bat file to run
 REM 3. Games will be downloaded to ${mountPath}
 REM
-REM This script includes:
-REM - Pre-pulling all images with robust retry logic
-REM - Automatic Docker Desktop recovery on pipe/connection errors
-REM - Network stack reset on failures
-REM - Exponential backoff between retries
-REM
 REM ============================================================
 
 echo.
 echo  ====================================
-echo   Game Library Manager v3.6
+echo   Game Library Manager v3.7
 echo   Running ${gameCount} game(s)
 echo  ====================================
 echo.
 
-REM Initial Docker health check with recovery
+REM Check if Docker is running
 echo Checking Docker status...
 docker info >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [WARNING] Docker is not responding, attempting to start/restart...
-    call :recover_docker
-    docker info >nul 2>&1
-    if !ERRORLEVEL! NEQ 0 (
-        echo [ERROR] Docker is not running! Please start Docker Desktop manually.
-        pause
-        exit /b 1
-    )
+    echo [ERROR] Docker is not running! Please start Docker Desktop and try again.
+    pause
+    exit /b 1
 )
-
 echo [OK] Docker is running
 echo.
 
-REM Test network connectivity first
-echo Testing network connectivity...
-ping -n 1 registry-1.docker.io >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [WARNING] Cannot reach Docker Hub, resetting network...
-    ipconfig /flushdns >nul 2>&1
-    netsh winsock reset >nul 2>&1
-    timeout /t 5 /nobreak >nul
-
-    REM Test again
-    ping -n 1 registry-1.docker.io >nul 2>&1
-    if !ERRORLEVEL! NEQ 0 (
-        echo [WARNING] Still cannot reach Docker Hub, will retry during pulls...
-    )
-)
-
 REM ============================================================
-REM PHASE 1: Pre-pull all images with retry logic
+REM PHASE 1: Pre-pull images
 REM ============================================================
-echo.
 echo ============================================================
 echo PHASE 1: Pre-pulling ${gameCount} Docker image(s)...
-echo This helps prevent network issues during the run phase.
 echo ============================================================
 
 ${pullCommands}
@@ -1260,7 +1203,7 @@ ${pullCommands}
 echo.
 echo ============================================================
 echo PHASE 2: Running games and extracting files
-echo Starting downloads to: ${mountPath}
+echo Downloading to: ${mountPath}
 echo ============================================================
 
 ${commands}
@@ -1271,65 +1214,10 @@ echo All ${gameCount} game(s) processed!
 echo Check ${mountPath} for your games.
 echo ============================================================
 echo.
-goto :end
 
-REM ============================================================
-REM Docker Recovery Function
-REM Handles Docker Desktop pipe errors and connection issues
-REM ============================================================
-:recover_docker
-echo [RECOVERY] Attempting Docker Desktop recovery...
-
-REM First, try to restart the Docker service
-echo [RECOVERY] Restarting Docker service...
-net stop com.docker.service >nul 2>&1
-timeout /t 3 /nobreak >nul
-net start com.docker.service >nul 2>&1
-timeout /t 5 /nobreak >nul
-
-REM Check if Docker is responding now
-docker info >nul 2>&1
-if !ERRORLEVEL! EQU 0 (
-    echo [RECOVERY] Docker service restart successful!
-    goto :eof
-)
-
-REM If service restart didn't work, try killing and restarting Docker Desktop
-echo [RECOVERY] Restarting Docker Desktop application...
-taskkill /f /im "Docker Desktop.exe" >nul 2>&1
-taskkill /f /im "com.docker.backend.exe" >nul 2>&1
-taskkill /f /im "com.docker.proxy.exe" >nul 2>&1
-timeout /t 5 /nobreak >nul
-
-REM Try to start Docker Desktop
-start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe" >nul 2>&1
-if !ERRORLEVEL! NEQ 0 (
-    start "" "%PROGRAMFILES%\\Docker\\Docker\\Docker Desktop.exe" >nul 2>&1
-)
-
-echo [RECOVERY] Waiting for Docker to initialize (up to 60 seconds)...
-set "DOCKER_READY=0"
-for /L %%w in (1,1,12) do (
-    if !DOCKER_READY! EQU 0 (
-        timeout /t 5 /nobreak >nul
-        docker info >nul 2>&1
-        if !ERRORLEVEL! EQU 0 (
-            set "DOCKER_READY=1"
-            echo [RECOVERY] Docker Desktop is ready!
-        ) else (
-            echo [RECOVERY] Waiting... %%w/12
-        )
-    )
-)
-
-if !DOCKER_READY! EQU 0 (
-    echo [RECOVERY] Docker Desktop recovery may have failed, will continue trying...
-)
-goto :eof
-
-:end
 endlocal
 pause
+exit /b 0
 `;
             filename = gameCount === 1
                 ? `run_${gameIds[0]}.bat`
@@ -1484,7 +1372,7 @@ recover_docker() {
 
 echo ""
 echo " ===================================="
-echo "  Game Library Manager v3.6"
+echo "  Game Library Manager v3.7"
 echo "  Running ${gameCount} game(s)"
 echo " ===================================="
 echo ""
