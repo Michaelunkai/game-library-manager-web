@@ -1037,7 +1037,7 @@ class GameLibrary {
         const internalPath = `/${driveLetter}${pathAfterDrive}`;
 
         // Full docker command with volume mount
-        return `docker run -v "${dockerMount}" -it --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${gameId}"`;
+        return `docker run -v "${dockerMount}" --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${gameId}"`;
     }
 
     openGameModal(game) {
@@ -1122,7 +1122,7 @@ class GameLibrary {
 echo.
 echo [%date% %time%] Running game ${idx + 1}/${gameCount}: ${gameName}
 echo ============================================================
-docker run -v "${dockerMount}" -it --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${id}"
+docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${id}"
 if %ERRORLEVEL% EQU 0 (
     echo [SUCCESS] ${gameName} completed successfully!
 ) else (
