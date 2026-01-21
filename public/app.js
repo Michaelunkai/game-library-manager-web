@@ -688,36 +688,57 @@ class GameLibrary {
 
         filtered.sort((a, b) => {
             let valA, valB;
+            let hasA, hasB; // Track if values exist for proper fallback handling
 
             switch (this.sortBy) {
                 case 'name':
                     valA = a.name.toLowerCase();
                     valB = b.name.toLowerCase();
+                    hasA = hasB = true;
                     break;
                 case 'time':
-                    valA = this.times[a.id] || 999;
-                    valB = this.times[b.id] || 999;
+                    hasA = this.times[a.id] !== undefined && this.times[a.id] !== null;
+                    hasB = this.times[b.id] !== undefined && this.times[b.id] !== null;
+                    valA = hasA ? this.times[a.id] : null;
+                    valB = hasB ? this.times[b.id] : null;
                     break;
                 case 'category':
                     valA = a.category || 'zzz';
                     valB = b.category || 'zzz';
+                    hasA = hasB = true;
                     break;
                 case 'size':
-                    valA = this.imageSizes[a.id] || 999;
-                    valB = this.imageSizes[b.id] || 999;
+                    hasA = this.imageSizes[a.id] !== undefined && this.imageSizes[a.id] !== null;
+                    hasB = this.imageSizes[b.id] !== undefined && this.imageSizes[b.id] !== null;
+                    valA = hasA ? this.imageSizes[a.id] : null;
+                    valB = hasB ? this.imageSizes[b.id] : null;
                     break;
                 case 'date':
-                    valA = this.datesAdded[a.id] ? new Date(this.datesAdded[a.id]).getTime() : 0;
-                    valB = this.datesAdded[b.id] ? new Date(this.datesAdded[b.id]).getTime() : 0;
+                    hasA = !!this.datesAdded[a.id];
+                    hasB = !!this.datesAdded[b.id];
+                    valA = hasA ? new Date(this.datesAdded[a.id]).getTime() : null;
+                    valB = hasB ? new Date(this.datesAdded[b.id]).getTime() : null;
                     break;
                 default:
                     valA = a.name.toLowerCase();
                     valB = b.name.toLowerCase();
+                    hasA = hasB = true;
             }
 
+            // Items without values always go to the end, regardless of sort order
+            if (!hasA && !hasB) {
+                // Both missing: sort by name for stability
+                return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+            }
+            if (!hasA) return 1;  // a goes to end
+            if (!hasB) return -1; // b goes to end
+
+            // Normal comparison for items with values
             if (valA < valB) return this.sortOrder === 'asc' ? -1 : 1;
             if (valA > valB) return this.sortOrder === 'asc' ? 1 : -1;
-            return 0;
+
+            // Equal values: sort by name for stability
+            return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
         });
 
         this.filteredGames = filtered;
