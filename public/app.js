@@ -714,10 +714,24 @@ class GameLibrary {
                     valB = hasB ? this.imageSizes[b.id] : null;
                     break;
                 case 'date':
-                    hasA = !!this.datesAdded[a.id];
-                    hasB = !!this.datesAdded[b.id];
-                    valA = hasA ? new Date(this.datesAdded[a.id]).getTime() : null;
-                    valB = hasB ? new Date(this.datesAdded[b.id]).getTime() : null;
+                    // Games with "new" category but no date should be treated as newest
+                    const nowTimestamp = Date.now();
+                    hasA = !!this.datesAdded[a.id] || a.category === 'new';
+                    hasB = !!this.datesAdded[b.id] || b.category === 'new';
+                    if (this.datesAdded[a.id]) {
+                        valA = new Date(this.datesAdded[a.id]).getTime();
+                    } else if (a.category === 'new') {
+                        valA = nowTimestamp; // Treat "new" category as newest
+                    } else {
+                        valA = null;
+                    }
+                    if (this.datesAdded[b.id]) {
+                        valB = new Date(this.datesAdded[b.id]).getTime();
+                    } else if (b.category === 'new') {
+                        valB = nowTimestamp; // Treat "new" category as newest
+                    } else {
+                        valB = null;
+                    }
                     break;
                 default:
                     valA = a.name.toLowerCase();
