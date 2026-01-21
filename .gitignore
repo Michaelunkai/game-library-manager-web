@@ -1,3 +1,8 @@
 claude.md
 tasks.md
 .sisyphus/
+node_modules/
+*.log
+.env
+data/admin-config.json
+package-lock.json
