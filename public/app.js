@@ -1110,118 +1110,113 @@ class GameLibrary {
         const gameCount = gameIds.length;
 
         if (this.os === 'windows') {
-            // Windows .bat file - double-click to run!
-            // Build list of images to pull
-            const imageList = gameIds.map(id => `${dockerUser}/${repoName}:${id}`).join(' ');
-
+            // Windows PowerShell script (.ps1) - runs natively in PowerShell
             // Build run commands for each game
             const commands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
+                const isLastGame = idx === gameCount - 1;
                 return `
-echo.
-echo [%date% %time%] Running game ${idx + 1}/${gameCount}: ${gameName}
-echo ============================================================
+Write-Host ""
+Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Running game ${idx + 1}/${gameCount}: ${gameName}" -ForegroundColor Cyan
+Write-Host "============================================================"
 docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${id}"
-if %ERRORLEVEL% EQU 0 (
-    echo [SUCCESS] ${gameName} completed successfully!
-) else (
-    echo [ERROR] ${gameName} failed with error code %ERRORLEVEL%
-)
-REM Small delay to let network settle before next game
-if ${idx + 1} LSS ${gameCount} (
-    echo.
-    echo Waiting 3 seconds before next game...
-    timeout /t 3 /nobreak >nul
-)`;
+if (\$LASTEXITCODE -eq 0) {
+    Write-Host "[SUCCESS] ${gameName} completed successfully!" -ForegroundColor Green
+} else {
+    Write-Host "[ERROR] ${gameName} failed with error code \$LASTEXITCODE" -ForegroundColor Red
+}${!isLastGame ? `
+# Small delay before next game
+Write-Host ""
+Write-Host "Waiting 3 seconds before next game..."
+Start-Sleep -Seconds 3` : ''}`;
             }).join('\n');
 
-            // Build pull commands with simple retry logic
+            // Build pull commands with simple retry
             const pullCommands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
                 return `
-echo.
-echo [%date% %time%] Pulling image ${idx + 1}/${gameCount}: ${gameName}
+Write-Host ""
+Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Pulling image ${idx + 1}/${gameCount}: ${gameName}" -ForegroundColor Cyan
 docker pull ${dockerUser}/${repoName}:${id}
-if %ERRORLEVEL% EQU 0 (
-    echo [OK] ${gameName} pulled successfully!
-) else (
-    echo [RETRY] First attempt failed, retrying in 5 seconds...
-    timeout /t 5 /nobreak >nul
+if (\$LASTEXITCODE -eq 0) {
+    Write-Host "[OK] ${gameName} pulled successfully!" -ForegroundColor Green
+} else {
+    Write-Host "[RETRY] First attempt failed, retrying in 5 seconds..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 5
     docker pull ${dockerUser}/${repoName}:${id}
-    if !ERRORLEVEL! EQU 0 (
-        echo [OK] ${gameName} pulled successfully on retry!
-    ) else (
-        echo [WARNING] Failed to pull ${gameName}, will try during run...
-    )
-)`;
+    if (\$LASTEXITCODE -eq 0) {
+        Write-Host "[OK] ${gameName} pulled successfully on retry!" -ForegroundColor Green
+    } else {
+        Write-Host "[WARNING] Failed to pull ${gameName}, will try during run..." -ForegroundColor Yellow
+    }
+}`;
             }).join('\n');
 
-            script = `@echo off
-setlocal EnableDelayedExpansion
-REM ============================================================
-REM Game Library Manager - Docker Runner
-REM Generated: ${new Date().toISOString()}
-REM Games: ${gameCount}
-REM ============================================================
-REM
-REM INSTRUCTIONS:
-REM 1. Make sure Docker Desktop is running
-REM 2. Double-click this .bat file to run
-REM 3. Games will be downloaded to ${mountPath}
-REM
-REM ============================================================
+            script = `# ============================================================
+# Game Library Manager - Docker Runner (PowerShell)
+# Generated: ${new Date().toISOString()}
+# Games: ${gameCount}
+# ============================================================
+#
+# INSTRUCTIONS:
+# 1. Make sure Docker Desktop is running
+# 2. Run: .\\${gameCount === 1 ? `run_${gameIds[0]}.ps1` : `run_${gameCount}_games.ps1`}
+# 3. Games will be downloaded to ${mountPath}
+#
+# If you get execution policy error, run:
+#   Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+#
+# ============================================================
 
-echo.
-echo  ====================================
-echo   Game Library Manager v3.7
-echo   Running ${gameCount} game(s)
-echo  ====================================
-echo.
+Write-Host ""
+Write-Host "  ====================================" -ForegroundColor Cyan
+Write-Host "   Game Library Manager v3.7"
+Write-Host "   Running ${gameCount} game(s)"
+Write-Host "  ====================================" -ForegroundColor Cyan
+Write-Host ""
 
-REM Check if Docker is running
-echo Checking Docker status...
-docker info >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Docker is not running! Please start Docker Desktop and try again.
-    pause
-    exit /b 1
-)
-echo [OK] Docker is running
-echo.
+# Check if Docker is running
+Write-Host "Checking Docker status..."
+docker info 2>\$null | Out-Null
+if (\$LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Docker is not running! Please start Docker Desktop and try again." -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+Write-Host "[OK] Docker is running" -ForegroundColor Green
+Write-Host ""
 
-REM ============================================================
-REM PHASE 1: Pre-pull images
-REM ============================================================
-echo ============================================================
-echo PHASE 1: Pre-pulling ${gameCount} Docker image(s)...
-echo ============================================================
+# ============================================================
+# PHASE 1: Pre-pull images
+# ============================================================
+Write-Host "============================================================"
+Write-Host "PHASE 1: Pre-pulling ${gameCount} Docker image(s)..."
+Write-Host "============================================================"
 
 ${pullCommands}
 
-echo.
-echo ============================================================
-echo PHASE 2: Running games and extracting files
-echo Downloading to: ${mountPath}
-echo ============================================================
+Write-Host ""
+Write-Host "============================================================"
+Write-Host "PHASE 2: Running games and extracting files"
+Write-Host "Downloading to: ${mountPath}"
+Write-Host "============================================================"
 
 ${commands}
 
-echo.
-echo ============================================================
-echo All ${gameCount} game(s) processed!
-echo Check ${mountPath} for your games.
-echo ============================================================
-echo.
+Write-Host ""
+Write-Host "============================================================" -ForegroundColor Green
+Write-Host "All ${gameCount} game(s) processed!"
+Write-Host "Check ${mountPath} for your games."
+Write-Host "============================================================" -ForegroundColor Green
+Write-Host ""
 
-endlocal
-pause
-exit /b 0
+Read-Host "Press Enter to exit"
 `;
             filename = gameCount === 1
-                ? `run_${gameIds[0]}.bat`
-                : `run_${gameCount}_games_${timestamp}.bat`;
+                ? `run_${gameIds[0]}.ps1`
+                : `run_${gameCount}_games_${timestamp}.ps1`;
 
         } else {
             // macOS / Linux .sh file
@@ -1446,12 +1441,7 @@ echo ""
         }
 
         // Download the file
-        // For Windows .bat files, convert LF to CRLF line endings
-        const finalScript = this.os === 'windows' 
-            ? script.replace(/\r?\n/g, '\r\n')  // Normalize to CRLF for Windows batch files
-            : script;
-        
-        const blob = new Blob([finalScript], { type: 'text/plain' });
+        const blob = new Blob([script], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1459,21 +1449,23 @@ echo ""
         a.click();
         URL.revokeObjectURL(url);
 
-        this.showToast(`Downloaded: ${filename} - Double-click to run!`, 'success');
+        const runHint = this.os === 'windows'
+            ? `Run with: .\\${filename}`
+            : `Run with: ./${filename}`;
+        this.showToast(`Downloaded: ${filename} - ${runHint}`, 'success');
     }
 
     downloadKillScript() {
         let script, filename;
 
         if (this.os === 'windows') {
-            script = `@echo off
-REM Kill all Docker containers
-echo Stopping and removing all Docker containers...
-docker rm -f $(docker ps -aq) 2>nul
-echo Done!
-pause
+            script = `# Kill all Docker containers (PowerShell)
+Write-Host "Stopping and removing all Docker containers..." -ForegroundColor Yellow
+docker rm -f $(docker ps -aq) 2>\$null
+Write-Host "Done!" -ForegroundColor Green
+Read-Host "Press Enter to exit"
 `;
-            filename = 'kill_all_containers.bat';
+            filename = 'kill_all_containers.ps1';
         } else {
             script = `#!/bin/bash
 # Kill all Docker containers
