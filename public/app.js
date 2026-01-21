@@ -57,18 +57,18 @@ class GameLibrary {
     }
 
     startAutoSync() {
-        // Poll every 30 seconds for new tags
+        // Poll every 10 seconds for new tags - fast updates!
         this.syncInterval = setInterval(() => {
             this.autoSyncDockerHub();
-        }, 30000);
+        }, 10000);
 
         // Also update sync button to show auto-sync is active
         const syncBtn = document.getElementById('syncDockerBtn');
         if (syncBtn) {
-            syncBtn.title = 'Auto-syncing every 30s (click to sync now)';
+            syncBtn.title = 'Auto-syncing every 10s (click to sync now)';
         }
 
-        console.log('🔄 Auto-sync started: checking Docker Hub every 30 seconds');
+        console.log('🔄 Auto-sync started: checking Docker Hub every 10 seconds');
     }
 
     async autoSyncDockerHub() {
@@ -231,18 +231,14 @@ class GameLibrary {
     }
 
     async fetchAllDockerTags(dockerUser, repoName) {
-        const allTags = [];
-        let page = 1;
         const pageSize = 100;
+        const cacheBuster = Date.now();
 
-        // Multiple CORS proxies for reliability - try them in order
+        // Use CORS proxies - race them for fastest response
         const corsProxies = [
             'https://corsproxy.io/?',
             'https://api.allorigins.win/raw?url=',
-            'https://api.codetabs.com/v1/proxy?quest=',
-            'https://cors-anywhere.herokuapp.com/',
-            'https://crossorigin.me/',
-            'https://thingproxy.freeboard.io/fetch/',
+            'https://api.codetabs.com/v1/proxy?quest='
         ];
 
         // Show sync status
@@ -252,58 +248,86 @@ class GameLibrary {
             syncBtn.textContent = '🔄 Syncing...';
         }
 
+        // Helper to fetch a single URL with timeout
+        const fetchWithTimeout = async (url, timeout = 8000) => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            try {
+                const response = await fetch(url, {
+                    headers: { 'Accept': 'application/json' },
+                    signal: controller.signal,
+                    cache: 'no-store'
+                });
+                clearTimeout(timeoutId);
+                if (response.ok) return await response.json();
+                throw new Error('Not OK');
+            } catch (e) {
+                clearTimeout(timeoutId);
+                throw e;
+            }
+        };
+
+        // Fetch a single page using racing proxies for speed
+        const fetchPage = async (page) => {
+            const dockerUrl = `https://hub.docker.com/v2/repositories/${dockerUser}/${repoName}/tags?page=${page}&page_size=${pageSize}&_=${cacheBuster}`;
+
+            // Race all proxies - fastest wins
+            const proxyPromises = corsProxies.map(proxy =>
+                fetchWithTimeout(proxy + encodeURIComponent(dockerUrl))
+            );
+
+            // Also try direct (may fail due to CORS but worth trying)
+            proxyPromises.push(fetchWithTimeout(dockerUrl).catch(() => null));
+
+            try {
+                // Promise.any returns first successful result
+                const data = await Promise.any(proxyPromises);
+                return data;
+            } catch (e) {
+                return null;
+            }
+        };
+
         try {
-            while (true) {
-                const dockerUrl = `https://hub.docker.com/v2/repositories/${dockerUser}/${repoName}/tags?page=${page}&page_size=${pageSize}`;
+            // Step 1: Fetch first page to get total count
+            const firstPage = await fetchPage(1);
+            if (!firstPage || !firstPage.results) {
+                console.log('Failed to fetch first page from Docker Hub');
+                return [];
+            }
 
-                let response = null;
-                let data = null;
+            const allTags = [...firstPage.results];
+            const totalCount = firstPage.count || 0;
+            const totalPages = Math.ceil(totalCount / pageSize);
 
-                // Build list of URLs to try - proxies first since direct likely blocked by CORS
-                const urlsToTry = corsProxies.map(p => p + encodeURIComponent(dockerUrl));
+            console.log(`Docker Hub: ${totalCount} total tags, ${totalPages} pages`);
 
-                for (const url of urlsToTry) {
-                    try {
-                        console.log(`Trying proxy: ${url.split('?')[0]}...`);
-                        response = await fetch(url, {
-                            headers: { 'Accept': 'application/json' },
-                            cache: 'no-store'  // Prevent caching to always get fresh data
-                        });
-                        if (response.ok) {
-                            const text = await response.text();
-                            try {
-                                data = JSON.parse(text);
-                                console.log(`Success with proxy, got ${data.results?.length || 0} tags`);
-                                break;
-                            } catch (parseErr) {
-                                console.log('Response was not valid JSON');
-                                continue;
-                            }
+            // Step 2: Fetch ALL remaining pages in PARALLEL (no limit!)
+            if (totalPages > 1) {
+                const pageNumbers = [];
+                for (let p = 2; p <= totalPages; p++) {
+                    pageNumbers.push(p);
+                }
+
+                // Fetch in batches of 5 to avoid overwhelming proxies
+                const batchSize = 5;
+                for (let i = 0; i < pageNumbers.length; i += batchSize) {
+                    const batch = pageNumbers.slice(i, i + batchSize);
+                    const batchResults = await Promise.all(batch.map(p => fetchPage(p)));
+
+                    for (const data of batchResults) {
+                        if (data && data.results) {
+                            allTags.push(...data.results);
                         }
-                    } catch (e) {
-                        console.log(`Proxy failed: ${e.message}`);
-                        continue;
                     }
                 }
-
-                if (!data || !data.results) {
-                    console.log('No valid data received from any proxy');
-                    break;
-                }
-
-                if (data.results.length > 0) {
-                    allTags.push(...data.results);
-                }
-
-                if (!data.next) {
-                    break;
-                }
-
-                page++;
-                if (page > 20) break;
             }
+
+            console.log(`✅ Fetched ${allTags.length} tags from Docker Hub`);
+            return allTags;
         } catch (error) {
             console.error('Error fetching Docker tags:', error);
+            return [];
         } finally {
             // Reset sync button
             if (syncBtn) {
@@ -311,9 +335,6 @@ class GameLibrary {
                 syncBtn.textContent = '🔄 Sync';
             }
         }
-
-        console.log(`Total tags fetched: ${allTags.length}`);
-        return allTags;
     }
 
     formatGameName(tagName) {
