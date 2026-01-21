@@ -36,6 +36,7 @@ class GameLibrary {
 
     async init() {
         this.showLoading(true);
+        this.ensureNonAdminState(); // IMPORTANT: Start as non-admin by default
         this.detectOS();
         this.bindEvents();
         this.applySettings();
@@ -1710,6 +1711,17 @@ echo "Done!"
         this.renderTabs();
         this.filterAndRender();
         this.showToast('Logged out', 'info');
+    }
+
+    // Explicitly set non-admin state on initialization
+    // This ensures users start without admin privileges regardless of cached state
+    ensureNonAdminState() {
+        this.isAdmin = false;
+        document.body.classList.remove('is-admin');
+        const loginBox = document.getElementById('adminLoginBox');
+        const loggedBox = document.getElementById('adminLoggedBox');
+        if (loginBox) loginBox.style.display = 'flex';
+        if (loggedBox) loggedBox.style.display = 'none';
     }
 
     loadHiddenTabs() {
