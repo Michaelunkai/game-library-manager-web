@@ -43,6 +43,7 @@ class GameLibrary {
 
         try {
             await this.loadData();
+            this.loadHiddenTabs(); // Load hidden tabs BEFORE rendering so non-admins don't see them
             this.renderTabs();
             this.filterAndRender();
             this.showLoading(false);
