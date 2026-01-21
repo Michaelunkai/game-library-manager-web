@@ -27,7 +27,8 @@ class GameLibrary {
         this.sortOrder = 'asc';
         this.showInstalledOnly = false;
         this.isAdmin = false;
-        this.adminHash = '8f14e45fceea167a5a36dedd4bea2543'; // MD5 of password
+        // SHA-256 hash of admin password - NEVER store plaintext passwords in source code
+        this.adminHash = 'fba92b2c989a5072544ca49d7f75db2005e6479bf286a38902de90e487230762';
         this.settings = this.loadSettings();
 
         this.init();
@@ -1606,10 +1607,13 @@ echo "Done!"
         localStorage.setItem('installedGames', JSON.stringify([...this.installedGames]));
     }
 
-    // Admin authentication
-    attemptAdminLogin(password) {
-        // Simple hash check (not for high security, just basic access control)
-        if (password === 'Blackablacka3!') {
+    // Admin authentication using SHA-256 hash comparison
+    async attemptAdminLogin(password) {
+        // Hash the input password and compare to stored hash
+        // This prevents plaintext password exposure in source code
+        const inputHash = await this.hashPassword(password);
+
+        if (inputHash === this.adminHash) {
             this.isAdmin = true;
             document.body.classList.add('is-admin');
             document.getElementById('adminLoginBox').style.display = 'none';
@@ -1620,6 +1624,15 @@ echo "Done!"
         } else {
             this.showToast('❌ Invalid password', 'error');
         }
+    }
+
+    // SHA-256 hash function using Web Crypto API
+    async hashPassword(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     adminLogout() {
