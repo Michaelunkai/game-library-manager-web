@@ -3,11 +3,14 @@
   "version": "3.5.0",
   "description": "Docker Game Library Manager - Web Version",
   "scripts": {
-    "dev": "npx serve public -l 3000",
-    "build": "echo 'Static site - no build needed'",
-    "start": "npx serve public -l 3000"
+    "dev": "node server.js",
+    "build": "echo 'No build needed'",
+    "start": "node server.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
   "devDependencies": {
     "serve": "^14.2.0"
   }
