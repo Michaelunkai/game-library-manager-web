@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: game-library-manager-web
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_TOKEN
+        value: glm-admin-2024
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /*

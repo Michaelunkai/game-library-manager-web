@@ -18,20 +18,37 @@ let adminConfig = {
   lastUpdated: new Date().toISOString()
 };
 
+// Ensure data directory exists
+async function ensureDataDirectory() {
+  try {
+    await fs.mkdir('./data', { recursive: true });
+  } catch (error) {
+    // Directory might already exist, that's ok
+  }
+}
+
 // Load config from file on startup
 async function loadConfig() {
   try {
+    await ensureDataDirectory();
     const data = await fs.readFile('./data/admin-config.json', 'utf8');
     adminConfig = JSON.parse(data);
     console.log('Loaded admin config from file');
   } catch (error) {
-    console.log('Using default admin config');
+    console.log('Using default admin config, will create file on first save');
+    // Initialize with default hidden tabs
+    adminConfig = {
+      hiddenTabs: [],
+      gameCategories: {},
+      lastUpdated: new Date().toISOString()
+    };
   }
 }
 
 // Save config to file
 async function saveConfig() {
   try {
+    await ensureDataDirectory();
     await fs.writeFile('./data/admin-config.json', JSON.stringify(adminConfig, null, 2));
     console.log('Saved admin config to file');
   } catch (error) {
