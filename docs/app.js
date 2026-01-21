@@ -57,18 +57,18 @@ class GameLibrary {
     }
 
     startAutoSync() {
-        // Poll every 10 seconds for new tags - fast updates!
+        // Poll every 5 seconds for new tags - INSTANT updates!
         this.syncInterval = setInterval(() => {
             this.autoSyncDockerHub();
-        }, 10000);
+        }, 5000);
 
         // Also update sync button to show auto-sync is active
         const syncBtn = document.getElementById('syncDockerBtn');
         if (syncBtn) {
-            syncBtn.title = 'Auto-syncing every 10s (click to sync now)';
+            syncBtn.title = 'Auto-syncing every 5s (click to sync now)';
         }
 
-        console.log('🔄 Auto-sync started: checking Docker Hub every 10 seconds');
+        console.log('🔄 Auto-sync started: checking Docker Hub every 5 seconds');
     }
 
     async autoSyncDockerHub() {
@@ -117,12 +117,15 @@ class GameLibrary {
     }
 
     async loadData() {
+        // Cache-bust to always get fresh data
+        const cacheBuster = `?_=${Date.now()}`;
+
         const [gamesData, tabsData, timesData, imageSizesData, datesAddedData] = await Promise.all([
-            fetch('data/games.json').then(r => r.json()),
-            fetch('data/tabs.json').then(r => r.json()),
-            fetch('data/times.json').then(r => r.json()),
-            fetch('data/image-sizes.json').then(r => r.json()),
-            fetch('data/dates-added.json').then(r => r.json())
+            fetch('data/games.json' + cacheBuster).then(r => r.json()),
+            fetch('data/tabs.json' + cacheBuster).then(r => r.json()),
+            fetch('data/times.json' + cacheBuster).then(r => r.json()),
+            fetch('data/image-sizes.json' + cacheBuster).then(r => r.json()),
+            fetch('data/dates-added.json' + cacheBuster).then(r => r.json())
         ]);
 
         this.games = gamesData;
@@ -131,19 +134,20 @@ class GameLibrary {
         this.imageSizes = imageSizesData;
         this.datesAdded = datesAddedData;
 
-        // Load any saved game category changes from localStorage
+        console.log(`📦 Loaded ${this.games.length} games from games.json`);
+
+        // Load any saved game category changes from localStorage (only categories, not game list)
         this.loadSavedGameChanges();
 
         // Load installed games from localStorage
         this.loadInstalledGames();
 
-        // Update counts immediately (don't wait for Docker sync)
+        // Update counts immediately
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
 
-        // Sync with Docker Hub IMMEDIATELY and in foreground for instant results
+        // Sync with Docker Hub IMMEDIATELY for any new tags not in games.json yet
         await this.syncDockerHubTags();
-        // Note: startAutoSync() handles the 30-second interval, no need for another here
     }
 
     async syncDockerHubTags() {
@@ -230,11 +234,13 @@ class GameLibrary {
         const pageSize = 100;
         const cacheBuster = Date.now();
 
-        // Use CORS proxies - race them for fastest response
+        // Use multiple CORS proxies - race them for fastest response
         const corsProxies = [
             'https://corsproxy.io/?',
             'https://api.allorigins.win/raw?url=',
-            'https://api.codetabs.com/v1/proxy?quest='
+            'https://api.codetabs.com/v1/proxy?quest=',
+            'https://cors-anywhere.herokuapp.com/',
+            'https://thingproxy.freeboard.io/fetch/'
         ];
 
         // Helper to fetch a single URL with timeout
