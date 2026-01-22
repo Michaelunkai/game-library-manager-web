@@ -51,3 +51,5 @@ Based on the PyQt desktop application [Game Library Manager v3.5](https://github
 ## License
 
 MIT
+
+<!-- gitit-sync: 2026-01-22 16:39:41.052835 -->
