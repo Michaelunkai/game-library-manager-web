@@ -18,6 +18,9 @@ let adminConfig = {
   lastUpdated: new Date().toISOString()
 };
 
+// Mutex for concurrent admin operations
+let configMutex = Promise.resolve();
+
 // Ensure data directory exists
 async function ensureDataDirectory() {
   try {
@@ -45,11 +48,15 @@ async function loadConfig() {
   }
 }
 
-// Save config to file
+// Save config to file with atomic write
 async function saveConfig() {
   try {
     await ensureDataDirectory();
-    await fs.writeFile('./data/admin-config.json', JSON.stringify(adminConfig, null, 2));
+    const tempFile = './data/admin-config.json.tmp';
+    // Write to temp file first
+    await fs.writeFile(tempFile, JSON.stringify(adminConfig, null, 2));
+    // Atomic rename
+    await fs.rename(tempFile, './data/admin-config.json');
     console.log('Saved admin config to file');
   } catch (error) {
     console.error('Failed to save config:', error);
@@ -71,7 +78,7 @@ app.get('/api/admin-config', (req, res) => {
 app.post('/api/admin-config', async (req, res) => {
   const adminToken = req.headers['x-admin-token'];
   const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'glm-admin-2024';
-  
+
   if (adminToken !== ADMIN_TOKEN) {
     return res.status(401).json({
       success: false,
@@ -79,27 +86,51 @@ app.post('/api/admin-config', async (req, res) => {
     });
   }
 
-  // Update configuration
-  const updates = req.body;
-  
-  if (updates.hiddenTabs !== undefined) {
-    adminConfig.hiddenTabs = updates.hiddenTabs;
-  }
-  
-  if (updates.gameCategories !== undefined) {
-    adminConfig.gameCategories = { ...adminConfig.gameCategories, ...updates.gameCategories };
-  }
+  // Use mutex to serialize concurrent admin operations
+  configMutex = configMutex.then(async () => {
+    // Reload config from file to get latest state
+    try {
+      const data = await fs.readFile('./data/admin-config.json', 'utf8');
+      adminConfig = JSON.parse(data);
+    } catch (error) {
+      // If file doesn't exist yet, use current in-memory config
+    }
 
-  adminConfig.lastUpdated = new Date().toISOString();
-  
-  // Save to file
-  await saveConfig();
+    // Update configuration with merge logic
+    const updates = req.body;
 
-  res.json({
-    success: true,
-    config: adminConfig,
-    message: 'Admin configuration updated successfully'
+    if (updates.hiddenTabs !== undefined) {
+      // Merge with existing hidden tabs instead of replacing
+      const existingTabs = new Set(adminConfig.hiddenTabs || []);
+      updates.hiddenTabs.forEach(tab => existingTabs.add(tab));
+      adminConfig.hiddenTabs = Array.from(existingTabs);
+    }
+
+    if (updates.gameCategories !== undefined) {
+      adminConfig.gameCategories = { ...adminConfig.gameCategories, ...updates.gameCategories };
+    }
+
+    adminConfig.lastUpdated = new Date().toISOString();
+
+    // Save to file atomically
+    await saveConfig();
+
+    return {
+      success: true,
+      config: adminConfig,
+      message: 'Admin configuration updated successfully'
+    };
+  }).catch(error => {
+    console.error('Config update error:', error);
+    return {
+      success: false,
+      message: 'Failed to update configuration',
+      error: error.message
+    };
   });
+
+  const result = await configMutex;
+  res.json(result);
 });
 
 // Serve static files from public/data
