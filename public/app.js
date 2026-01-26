@@ -30,6 +30,20 @@ class GameLibrary {
         // SHA-256 hash of admin password - NEVER store plaintext passwords in source code
         // Password: Blackablacka3!
         this.adminHash = 'fba92b2c989a5072544ca49d7f75db2005e6479bf286a38902de90e487230762';
+
+        // ADMIN-ONLY TABS: These tabs and ALL games within them are ONLY visible to admins
+        // Regular users will NEVER see these tabs or their contents under any circumstances
+        this.ADMIN_ONLY_TABS = new Set([
+            'not_for_me',      // meh
+            'finished',        // Finished
+            'mybackup',        // MyBackup
+            'oporationsystems', // OporationSystems
+            'music',           // music
+            'win11maintaince', // Win11Maintaince
+            '3th_party_tools', // 3th party tools
+            'gamedownloaders'  // GameDownloaders
+        ]);
+
         this.settings = this.loadSettings();
 
         this.init();
@@ -747,29 +761,64 @@ class GameLibrary {
         });
     }
 
+    // Check if a tab is admin-only (hardcoded, cannot be changed by toggling)
+    isTabAdminOnly(tabId) {
+        return this.ADMIN_ONLY_TABS.has(tabId);
+    }
+
+    // Check if a tab should be hidden from non-admin users
+    // This includes both admin-only tabs AND tabs marked as hidden by admin
+    isTabHiddenForUser(tabId) {
+        // Admin-only tabs are ALWAYS hidden for non-admins
+        if (this.isTabAdminOnly(tabId) && !this.isAdmin) {
+            return true;
+        }
+        // Regular hidden tabs (toggleable by admin)
+        if (this.hiddenTabs.has(tabId) && !this.isAdmin) {
+            return true;
+        }
+        return false;
+    }
+
     renderTabs() {
         const container = document.getElementById('tabsContainer');
         container.innerHTML = '';
 
         this.tabs.forEach(tab => {
+            const isAdminOnly = this.isTabAdminOnly(tab.id);
             const isHidden = this.hiddenTabs.has(tab.id);
 
-            // Skip hidden tabs for non-admins
+            // CRITICAL: Admin-only tabs are NEVER shown to non-admins
+            if (isAdminOnly && !this.isAdmin) {
+                return;
+            }
+
+            // Skip other hidden tabs for non-admins
             if (isHidden && !this.isAdmin) {
                 return;
             }
 
             const count = this.getTabCount(tab.id);
             const btn = document.createElement('button');
-            btn.className = `tab-btn ${tab.id === this.currentTab ? 'active' : ''} ${isHidden ? 'hidden-tab' : ''}`;
+            btn.className = `tab-btn ${tab.id === this.currentTab ? 'active' : ''} ${isHidden ? 'hidden-tab' : ''} ${isAdminOnly ? 'admin-only-tab' : ''}`;
 
-            // ONLY admins see visibility toggle - NEVER show to non-admins
+            // ONLY admins see visibility controls - NEVER show to non-admins
             if (this.isAdmin === true && tab.id !== 'all') {
-                btn.innerHTML = `
-                    <span>${tab.name}</span>
-                    <span class="count">${count}</span>
-                    <span class="tab-visibility-toggle" data-tab="${tab.id}" title="${isHidden ? 'Show to all' : 'Hide from non-admins'}">${isHidden ? '👁️‍🗨️' : '👁️'}</span>
-                `;
+                if (isAdminOnly) {
+                    // Admin-only tabs show lock icon (cannot be toggled, permanently admin-only)
+                    btn.innerHTML = `
+                        <span>${tab.name}</span>
+                        <span class="count">${count}</span>
+                        <span class="admin-only-indicator" title="Admin-only tab (cannot be made public)">🔒</span>
+                    `;
+                } else {
+                    // Regular tabs show visibility toggle
+                    btn.innerHTML = `
+                        <span>${tab.name}</span>
+                        <span class="count">${count}</span>
+                        <span class="tab-visibility-toggle" data-tab="${tab.id}" title="${isHidden ? 'Show to all' : 'Hide from non-admins'}">${isHidden ? '👁️‍🗨️' : '👁️'}</span>
+                    `;
+                }
             } else {
                 btn.innerHTML = `
                     <span>${tab.name}</span>
@@ -790,11 +839,22 @@ class GameLibrary {
     }
 
     getTabCount(tabId) {
-        if (tabId === 'all') return this.games.length;
+        if (tabId === 'all') {
+            // For non-admins, exclude games from admin-only tabs in the total count
+            if (!this.isAdmin) {
+                return this.games.filter(g => !this.ADMIN_ONLY_TABS.has(g.category)).length;
+            }
+            return this.games.length;
+        }
         return this.games.filter(g => g.category === tabId).length;
     }
 
     selectTab(tabId) {
+        // CRITICAL: Prevent non-admins from selecting admin-only tabs
+        if (!this.isAdmin && this.isTabAdminOnly(tabId)) {
+            this.showToast('Access denied: Admin-only tab', 'error');
+            return;
+        }
         this.currentTab = tabId;
         this.renderTabs();
         this.filterAndRender();
@@ -805,7 +865,12 @@ class GameLibrary {
             ? [...this.games]
             : this.games.filter(g => g.category === this.currentTab);
 
-        // Hide games from hidden tabs for non-admins
+        // CRITICAL: Hide games from admin-only tabs for non-admins - this is MANDATORY
+        if (!this.isAdmin) {
+            filtered = filtered.filter(g => !this.ADMIN_ONLY_TABS.has(g.category));
+        }
+
+        // Hide games from other hidden tabs for non-admins
         if (!this.isAdmin && this.hiddenTabs.size > 0) {
             filtered = filtered.filter(g => !this.hiddenTabs.has(g.category));
         }
