@@ -1,5 +1,14 @@
 {
-  "hiddenTabs": [],
+  "hiddenTabs": [
+    "not_for_me",
+    "finished",
+    "mybackup",
+    "oporationsystems",
+    "music",
+    "win11maintaince",
+    "3th_party_tools",
+    "gamedownloaders"
+  ],
   "gameCategories": {},
-  "lastUpdated": "2024-01-21T00:00:00.000Z"
+  "lastUpdated": "2026-01-26T00:00:00.000Z"
 }
