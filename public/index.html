@@ -68,7 +68,14 @@
                 <button id="showInstalledBtn" class="action-bar-btn">✅ Show Installed</button>
                 <button id="selectAllBtn" class="action-bar-btn">☑️ Select All</button>
                 <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>
-                <button id="runSelectedBtn" class="action-bar-btn primary" disabled>▶️ Run Selected (0)</button>
+                <div class="run-dropdown-container">
+                    <button id="runSelectedBtn" class="action-bar-btn primary" disabled>▶️ Run Selected (0)</button>
+                    <button id="runFormatBtn" class="action-bar-btn primary format-toggle" disabled title="Choose script format">▼</button>
+                    <div id="runFormatMenu" class="dropdown-menu format-menu" style="display: none;">
+                        <button class="format-option" data-format="ps1">📘 Download .PS1 (PowerShell)</button>
+                        <button class="format-option" data-format="bat">📗 Download .BAT (Batch)</button>
+                    </div>
+                </div>
                 <div class="move-to-container">
                     <button id="moveToBtn" class="action-bar-btn" disabled>📁 Move To</button>
                     <div id="moveToMenu" class="dropdown-menu move-to-menu" style="display: none;">
@@ -77,7 +84,14 @@
                 </div>
             </div>
             <div class="action-bar-right">
-                <button id="killContainersBtn" class="action-bar-btn danger" title="Kill all Docker containers">🛑 Kill All</button>
+                <div class="kill-dropdown-container">
+                    <button id="killContainersBtn" class="action-bar-btn danger" title="Kill all Docker containers">🛑 Kill All</button>
+                    <button id="killFormatBtn" class="action-bar-btn danger format-toggle" title="Choose script format">▼</button>
+                    <div id="killFormatMenu" class="dropdown-menu format-menu" style="display: none;">
+                        <button class="format-option" data-format="ps1">📘 Download .PS1 (PowerShell)</button>
+                        <button class="format-option" data-format="bat">📗 Download .BAT (Batch)</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -140,10 +154,16 @@
                                 <button id="copyCommand" class="copy-btn" title="Copy to clipboard">📋</button>
                             </div>
                             <div class="action-buttons">
-                                <button id="runDockerBtn" class="action-btn primary">
-                                    <span class="btn-icon">▶️</span>
-                                    <span>Download & Run</span>
-                                </button>
+                                <div class="modal-run-dropdown">
+                                    <button id="runDockerBtn" class="action-btn primary">
+                                        <span class="btn-icon">▶️</span>
+                                        <span>Download .PS1</span>
+                                    </button>
+                                    <button id="runDockerBatBtn" class="action-btn primary">
+                                        <span class="btn-icon">📦</span>
+                                        <span>Download .BAT</span>
+                                    </button>
+                                </div>
                                 <button id="copyScriptBtn" class="action-btn secondary">
                                     <span class="btn-icon">📄</span>
                                     <span>Copy Script</span>
@@ -151,7 +171,7 @@
                             </div>
                             <div class="terminal-info">
                                 <p id="osInfo">Detected OS: <span id="detectedOS">Windows</span></p>
-                                <p class="terminal-hint">Click "Download & Run" to download a .bat/.sh file. Double-click to run!</p>
+                                <p class="terminal-hint">Download .PS1 (PowerShell) or .BAT (Batch) script. Double-click to run!</p>
                             </div>
                         </div>
                     </div>
