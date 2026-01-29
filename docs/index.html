@@ -12,6 +12,12 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
+                <!-- Mobile Hamburger Menu Button -->
+                <button id="hamburgerBtn" class="hamburger-btn" aria-label="Toggle sidebar menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
                 <a href="https://github.com/Michaelunkai/game-library-manager-web" target="_blank" class="github-link" title="View on GitHub">
                     <svg height="24" width="24" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
@@ -24,6 +30,26 @@
                 <div class="search-container">
                     <input type="text" id="searchInput" placeholder="Search games... (Ctrl+K)" autocomplete="off">
                     <span class="search-icon">🔍</span>
+                    <!-- Search Suggestions Dropdown -->
+                    <div id="searchSuggestions" class="search-suggestions">
+                        <!-- Recent searches section -->
+                        <div id="recentSearchesSection" class="search-suggestions-section" style="display: none;">
+                            <span>🕐 Recent Searches</span>
+                            <button id="clearRecentSearches" class="clear-recent">Clear all</button>
+                        </div>
+                        <div id="recentSearchesList"></div>
+                        <!-- Game suggestions section -->
+                        <div id="suggestionsSection" class="search-suggestions-section" style="display: none;">
+                            <span>🎮 Games</span>
+                        </div>
+                        <div id="suggestionsList"></div>
+                        <!-- Keyboard hints -->
+                        <div class="search-suggestions-hint">
+                            <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+                            <span><kbd>Enter</kbd> Select</span>
+                            <span><kbd>Esc</kbd> Close</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="header-right">
@@ -78,8 +104,11 @@
 
         <!-- Main Content -->
         <div class="main-container">
+            <!-- Mobile Sidebar Overlay -->
+            <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
             <!-- Tabs Sidebar -->
-            <aside class="sidebar">
+            <aside class="sidebar" id="sidebar">
                 <div class="tabs-header">
                     <h3>Categories</h3>
                     <span id="tabCount" class="tab-count">29 tabs</span>
@@ -218,10 +247,49 @@
             <button data-sort="category" data-order="asc" class="sort-option">↓ Category</button>
         </div>
 
+        <!-- Docker Sync Progress Bar -->
+        <div id="syncProgressContainer" class="sync-progress-container">
+            <div class="sync-progress-header">
+                <div class="sync-progress-title">
+                    <span class="sync-icon">🔄</span>
+                    <span id="syncProgressTitle">Syncing with Docker Hub</span>
+                </div>
+                <span id="syncProgressPercentage" class="sync-progress-percentage">0%</span>
+            </div>
+            <div class="sync-progress-bar">
+                <div id="syncProgressFill" class="sync-progress-fill"></div>
+            </div>
+            <div class="sync-progress-status">
+                <div class="sync-progress-message">
+                    <span class="status-dot"></span>
+                    <span id="syncProgressMessage">Connecting to Docker Hub...</span>
+                </div>
+                <span id="syncProgressStats" class="sync-progress-stats">0/0 pages</span>
+            </div>
+        </div>
+
         <!-- Toast Notifications -->
         <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Keyboard Navigation Hints -->
+        <div id="keyboardHints" class="keyboard-hints">
+            <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+            <span><kbd>Enter</kbd> Open</span>
+            <span><kbd>Space</kbd> Select</span>
+            <span><kbd>Esc</kbd> Clear</span>
+        </div>
+
+        <!-- Scroll to Top Button -->
+        <button id="scrollToTopBtn" class="scroll-to-top-btn" title="Scroll to top">
+            <span>↑</span>
+        </button>
+
+        <!-- Pagination Info -->
+        <div id="paginationInfo" class="pagination-info">
+            Showing <span id="paginationShown">0</span> of <span id="paginationTotal">0</span> games
+        </div>
     </div>
 
-    <script src="app.js?v=4.1"></script>
+    <script src="app.js?v=4.3"></script>
 </body>
 </html>

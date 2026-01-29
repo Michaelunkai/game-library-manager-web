@@ -30,6 +30,20 @@ class GameLibrary {
         // SHA-256 hash of admin password - NEVER store plaintext passwords in source code
         this.adminHash = 'fba92b2c989a5072544ca49d7f75db2005e6479bf286a38902de90e487230762';
         this.settings = this.loadSettings();
+        this.focusedCardIndex = -1; // Track currently focused card for keyboard navigation
+
+        // Infinite scroll / pagination properties
+        this.visibleGamesCount = 0; // How many games currently rendered
+        this.gamesPerPage = 50; // Initial batch size
+        this.gamesLoadIncrement = 30; // How many to load on scroll
+        this.isLoadingMore = false; // Prevent multiple simultaneous loads
+        this.allGamesLoaded = false; // Track if all games are rendered
+
+        // Search suggestions properties
+        this.recentSearches = this.loadRecentSearches();
+        this.maxRecentSearches = 5;
+        this.suggestionsHighlightIndex = -1;
+        this.suggestionsVisible = false;
 
         this.init();
     }
@@ -245,6 +259,65 @@ class GameLibrary {
         }
     }
 
+    // Progress bar control methods
+    showSyncProgress(show = true) {
+        const container = document.getElementById('syncProgressContainer');
+        if (container) {
+            if (show) {
+                container.classList.remove('fade-out', 'success', 'error');
+                container.classList.add('active');
+            } else {
+                container.classList.add('fade-out');
+                setTimeout(() => {
+                    container.classList.remove('active', 'fade-out');
+                }, 400);
+            }
+        }
+    }
+
+    updateSyncProgress(percent, message, stats = '', state = 'progress') {
+        const fill = document.getElementById('syncProgressFill');
+        const percentEl = document.getElementById('syncProgressPercentage');
+        const messageEl = document.getElementById('syncProgressMessage');
+        const statsEl = document.getElementById('syncProgressStats');
+        const titleEl = document.getElementById('syncProgressTitle');
+        const container = document.getElementById('syncProgressContainer');
+
+        if (fill) {
+            fill.classList.remove('indeterminate');
+            fill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+        }
+        if (percentEl) percentEl.textContent = `${Math.round(percent)}%`;
+        if (messageEl) messageEl.textContent = message;
+        if (statsEl) statsEl.textContent = stats;
+
+        if (container) {
+            container.classList.remove('success', 'error');
+            if (state === 'success') {
+                container.classList.add('success');
+                if (titleEl) titleEl.textContent = 'Sync Complete';
+            } else if (state === 'error') {
+                container.classList.add('error');
+                if (titleEl) titleEl.textContent = 'Sync Failed';
+            } else {
+                if (titleEl) titleEl.textContent = 'Syncing with Docker Hub';
+            }
+        }
+    }
+
+    setSyncProgressIndeterminate(message) {
+        const fill = document.getElementById('syncProgressFill');
+        const messageEl = document.getElementById('syncProgressMessage');
+        const percentEl = document.getElementById('syncProgressPercentage');
+
+        if (fill) {
+            fill.classList.add('indeterminate');
+            fill.style.width = '100%';
+        }
+        if (messageEl) messageEl.textContent = message;
+        if (percentEl) percentEl.textContent = '...';
+    }
+
     async fetchAllDockerTags(dockerUser, repoName) {
         const pageSize = 100;
         const cacheBuster = Date.now();
@@ -264,7 +337,11 @@ class GameLibrary {
         // Track which proxy works best (persisted in memory for this session)
         if (!this._workingProxyIndex) this._workingProxyIndex = 0;
 
-        // Show sync status
+        // Show sync progress bar
+        this.showSyncProgress(true);
+        this.setSyncProgressIndeterminate('Connecting to Docker Hub...');
+
+        // Show sync status on button
         const syncBtn = document.getElementById('syncDockerBtn');
         const updateSyncStatus = (msg) => {
             if (syncBtn) {
@@ -350,8 +427,10 @@ class GameLibrary {
         try {
             // Step 1: Fetch first page to get total count (CRITICAL - retry more)
             updateSyncStatus('🔄 Connecting...');
+            this.updateSyncProgress(5, 'Establishing connection...', 'Initializing');
             let firstPage = null;
             for (let attempt = 0; attempt < 10; attempt++) {
+                this.updateSyncProgress(5 + attempt * 2, `Connection attempt ${attempt + 1}/10...`, 'Connecting');
                 firstPage = await fetchPageWithRetry(1, 3);
                 if (firstPage && firstPage.results) break;
                 console.log(`First page attempt ${attempt + 1} failed, retrying...`);
@@ -360,7 +439,9 @@ class GameLibrary {
 
             if (!firstPage || !firstPage.results) {
                 console.error('❌ Failed to fetch first page from Docker Hub after all retries');
+                this.updateSyncProgress(100, 'Failed to connect to Docker Hub', '', 'error');
                 this.showToast('Failed to connect to Docker Hub. Try again later.', 'error');
+                setTimeout(() => this.showSyncProgress(false), 3000);
                 return [];
             }
 
@@ -368,6 +449,7 @@ class GameLibrary {
             const totalPages = Math.ceil(totalCount / pageSize);
             console.log(`📦 Docker Hub: ${totalCount} total tags across ${totalPages} pages`);
             updateSyncStatus(`🔄 0/${totalPages}`);
+            this.updateSyncProgress(25, `Found ${totalCount} tags across ${totalPages} pages`, `0/${totalPages} pages`);
 
             // Step 2: Collect all tags, tracking which pages we got
             const tagsByPage = new Map();
@@ -385,7 +467,15 @@ class GameLibrary {
                 for (let i = 0; i < remainingPages.length; i += batchSize) {
                     const batch = remainingPages.slice(i, i + batchSize);
                     updateSyncStatus(`🔄 ${tagsByPage.size}/${totalPages}`);
-                    
+
+                    // Calculate progress (25% for connect, 60% for fetching pages, 15% for finalization)
+                    const fetchProgress = 25 + ((tagsByPage.size / totalPages) * 60);
+                    this.updateSyncProgress(
+                        fetchProgress,
+                        `Fetching page ${tagsByPage.size + 1} of ${totalPages}...`,
+                        `${tagsByPage.size}/${totalPages} pages`
+                    );
+
                     const batchResults = await Promise.all(
                         batch.map(p => fetchPageWithRetry(p, 5).then(data => ({ page: p, data })))
                     );
@@ -414,8 +504,16 @@ class GameLibrary {
             if (missingPages.length > 0) {
                 console.log(`⚠️ Missing ${missingPages.length} pages: ${missingPages.join(', ')}. Retrying...`);
                 updateSyncStatus(`🔄 Retrying ${missingPages.length} pages...`);
-                
-                for (const page of missingPages) {
+                this.updateSyncProgress(85, `Recovering ${missingPages.length} missing pages...`, `${missingPages.length} to retry`);
+
+                for (let idx = 0; idx < missingPages.length; idx++) {
+                    const page = missingPages[idx];
+                    this.updateSyncProgress(
+                        85 + ((idx / missingPages.length) * 10),
+                        `Retrying page ${page}...`,
+                        `${idx + 1}/${missingPages.length} retries`
+                    );
+
                     // Extra aggressive retry for missing pages
                     const data = await fetchPageWithRetry(page, 10);
                     if (data && data.results) {
@@ -429,6 +527,7 @@ class GameLibrary {
             }
 
             // Step 4: Combine all tags in page order
+            this.updateSyncProgress(95, 'Processing fetched data...', 'Finalizing');
             const allTags = [];
             for (let p = 1; p <= totalPages; p++) {
                 const pageTags = tagsByPage.get(p);
@@ -444,13 +543,20 @@ class GameLibrary {
 
             if (missingCount > 0) {
                 console.warn(`⚠️ Fetched ${actualCount}/${expectedCount} tags (${missingCount} missing)`);
+                this.updateSyncProgress(100, `Fetched ${actualCount}/${expectedCount} tags`, `${missingCount} missing`, 'success');
             } else {
                 console.log(`✅ Successfully fetched ALL ${actualCount} tags from Docker Hub!`);
+                this.updateSyncProgress(100, `Successfully fetched all ${actualCount} tags!`, 'Complete', 'success');
             }
+
+            // Auto-hide progress bar after 2 seconds
+            setTimeout(() => this.showSyncProgress(false), 2000);
 
             return allTags;
         } catch (error) {
             console.error('Error fetching Docker tags:', error);
+            this.updateSyncProgress(100, 'Error fetching tags', error.message, 'error');
+            setTimeout(() => this.showSyncProgress(false), 3000);
             return [];
         } finally {
             // Reset sync button
@@ -509,6 +615,10 @@ class GameLibrary {
         btn.textContent = '⏳ Syncing...';
         btn.disabled = true;
 
+        // Show progress indicator for manual sync
+        this.showSyncProgress(true);
+        this.setSyncProgressIndeterminate('Starting manual sync...');
+
         try {
             await this.syncDockerHubTags();
             document.getElementById('gameCount').textContent = this.games.length;
@@ -516,6 +626,8 @@ class GameLibrary {
             this.filterAndRender();
         } catch (error) {
             this.showToast('Sync failed: ' + error.message, 'error');
+            this.updateSyncProgress(100, 'Sync failed: ' + error.message, '', 'error');
+            setTimeout(() => this.showSyncProgress(false), 3000);
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;
@@ -553,11 +665,50 @@ class GameLibrary {
             this.adminLogout();
         });
 
-        // Search
+        // Search with suggestions
         const searchInput = document.getElementById('searchInput');
         searchInput.addEventListener('input', (e) => {
             this.searchQuery = e.target.value.toLowerCase();
+            this.updateSearchSuggestions(e.target.value);
             this.filterAndRender();
+        });
+
+        // Show suggestions on focus
+        searchInput.addEventListener('focus', () => {
+            this.updateSearchSuggestions(searchInput.value);
+        });
+
+        // Handle blur - delay to allow click on suggestions
+        searchInput.addEventListener('blur', () => {
+            setTimeout(() => this.hideSearchSuggestions(), 150);
+        });
+
+        // Search suggestions keyboard navigation
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' && this.suggestionsVisible) {
+                e.preventDefault();
+                this.navigateSuggestions(1);
+            } else if (e.key === 'ArrowUp' && this.suggestionsVisible) {
+                e.preventDefault();
+                this.navigateSuggestions(-1);
+            } else if (e.key === 'Enter') {
+                if (this.suggestionsVisible && this.suggestionsHighlightIndex >= 0) {
+                    e.preventDefault();
+                    this.selectHighlightedSuggestion();
+                } else if (searchInput.value.trim()) {
+                    // Save search to recent when pressing Enter without highlighted suggestion
+                    this.addRecentSearch(searchInput.value);
+                    this.hideSearchSuggestions();
+                }
+            } else if (e.key === 'Escape' && this.suggestionsVisible) {
+                this.hideSearchSuggestions();
+            }
+        });
+
+        // Clear recent searches button
+        document.getElementById('clearRecentSearches').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.clearRecentSearches();
         });
 
         // Keyboard shortcuts
@@ -568,7 +719,10 @@ class GameLibrary {
             }
             if (e.key === 'Escape') {
                 this.closeAllModals();
+                this.clearCardFocus();
             }
+            // Game card keyboard navigation
+            this.handleKeyboardNavigation(e);
         });
 
         // Theme toggle
@@ -721,6 +875,350 @@ class GameLibrary {
                 }
             });
         });
+
+        // Mobile hamburger menu toggle
+        this.initMobileMenu();
+
+        // Scroll-to-top button
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+        if (scrollToTopBtn) {
+            scrollToTopBtn.addEventListener('click', () => {
+                this.scrollToTop();
+            });
+        }
+
+        // Scroll event for scroll-to-top button and infinite scroll
+        let scrollTimeout;
+        window.addEventListener('scroll', () => {
+            // Scroll-to-top button visibility
+            if (scrollToTopBtn) {
+                if (window.scrollY > 400) {
+                    scrollToTopBtn.classList.add('visible');
+                } else {
+                    scrollToTopBtn.classList.remove('visible');
+                }
+            }
+
+            // Infinite scroll - load more games when near bottom
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                this.checkInfiniteScroll();
+            }, 100);
+
+            // Update pagination info visibility
+            this.updatePaginationInfo();
+        });
+    }
+
+    // Smooth scroll to top
+    scrollToTop() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+
+    // Initialize mobile hamburger menu and touch interactions
+    initMobileMenu() {
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        if (!hamburgerBtn || !sidebar || !overlay) return;
+
+        // Toggle sidebar on hamburger click
+        hamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleMobileSidebar();
+        });
+
+        // Close sidebar when clicking overlay
+        overlay.addEventListener('click', () => {
+            this.closeMobileSidebar();
+        });
+
+        // Close sidebar when selecting a tab on mobile
+        sidebar.addEventListener('click', (e) => {
+            if (e.target.closest('.tab-btn')) {
+                // Small delay to allow tab selection to process
+                setTimeout(() => {
+                    this.closeMobileSidebar();
+                }, 150);
+            }
+        });
+
+        // Swipe to close sidebar (touch gesture support)
+        this.initSwipeGestures(sidebar, overlay);
+
+        // Close sidebar on window resize to desktop
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                this.closeMobileSidebar();
+            }
+        });
+
+        // Close sidebar when pressing Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+                this.closeMobileSidebar();
+            }
+        });
+    }
+
+    // Toggle mobile sidebar open/closed
+    toggleMobileSidebar() {
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        const isOpen = sidebar.classList.contains('open');
+
+        if (isOpen) {
+            this.closeMobileSidebar();
+        } else {
+            sidebar.classList.add('open');
+            overlay.classList.add('visible');
+            hamburgerBtn.classList.add('active');
+            hamburgerBtn.setAttribute('aria-expanded', 'true');
+            document.body.style.overflow = 'hidden'; // Prevent background scroll
+        }
+    }
+
+    // Close mobile sidebar
+    closeMobileSidebar() {
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+        hamburgerBtn.classList.remove('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = ''; // Restore scroll
+    }
+
+    // Initialize swipe gestures for mobile sidebar
+    initSwipeGestures(sidebar, overlay) {
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let isSwiping = false;
+        const swipeThreshold = 80; // Minimum distance for swipe
+
+        // Track touch start on sidebar
+        sidebar.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+            isSwiping = true;
+        }, { passive: true });
+
+        // Track touch move
+        sidebar.addEventListener('touchmove', (e) => {
+            if (!isSwiping) return;
+            touchEndX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        // Detect swipe end
+        sidebar.addEventListener('touchend', (e) => {
+            if (!isSwiping) return;
+            isSwiping = false;
+
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = Math.abs(e.changedTouches[0].screenY - touchStartY);
+
+            // Only trigger swipe if horizontal movement is dominant
+            if (deltaX < -swipeThreshold && deltaY < 100) {
+                // Swipe left - close sidebar
+                this.closeMobileSidebar();
+            }
+
+            // Reset
+            touchStartX = 0;
+            touchEndX = 0;
+        }, { passive: true });
+
+        // Also allow swipe from left edge to open sidebar
+        let edgeSwipeStartX = 0;
+        let edgeSwipeActive = false;
+
+        document.addEventListener('touchstart', (e) => {
+            // Only detect swipe from left 30px edge
+            if (e.changedTouches[0].screenX < 30 && !sidebar.classList.contains('open')) {
+                edgeSwipeStartX = e.changedTouches[0].screenX;
+                edgeSwipeActive = true;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            if (!edgeSwipeActive) return;
+            edgeSwipeActive = false;
+
+            const deltaX = e.changedTouches[0].screenX - edgeSwipeStartX;
+
+            // Swipe right from edge - open sidebar
+            if (deltaX > swipeThreshold) {
+                this.toggleMobileSidebar();
+            }
+
+            edgeSwipeStartX = 0;
+        }, { passive: true });
+    }
+
+    // Check if we should load more games (infinite scroll)
+    checkInfiniteScroll() {
+        if (this.isLoadingMore || this.allGamesLoaded) return;
+
+        const scrollPosition = window.innerHeight + window.scrollY;
+        const documentHeight = document.documentElement.scrollHeight;
+        const threshold = 500; // Load more when 500px from bottom
+
+        if (scrollPosition >= documentHeight - threshold) {
+            this.loadMoreGames();
+        }
+    }
+
+    // Load more games for infinite scroll
+    loadMoreGames() {
+        if (this.isLoadingMore || this.allGamesLoaded) return;
+
+        const remainingGames = this.filteredGames.length - this.visibleGamesCount;
+        if (remainingGames <= 0) {
+            this.allGamesLoaded = true;
+            this.showEndOfList();
+            return;
+        }
+
+        this.isLoadingMore = true;
+        this.showInfiniteScrollLoader(true);
+
+        // Small delay for smooth UX
+        setTimeout(() => {
+            const gamesToLoad = Math.min(this.gamesLoadIncrement, remainingGames);
+            const startIndex = this.visibleGamesCount;
+            const endIndex = startIndex + gamesToLoad;
+
+            // Render the next batch of games
+            this.appendGames(this.filteredGames.slice(startIndex, endIndex));
+            this.visibleGamesCount = endIndex;
+
+            this.isLoadingMore = false;
+            this.showInfiniteScrollLoader(false);
+            this.updatePaginationInfo();
+
+            // Check if we've loaded all games
+            if (this.visibleGamesCount >= this.filteredGames.length) {
+                this.allGamesLoaded = true;
+                this.showEndOfList();
+            }
+        }, 150);
+    }
+
+    // Append games to the grid without re-rendering everything
+    appendGames(games) {
+        const grid = document.getElementById('gamesGrid');
+
+        games.forEach(game => {
+            const cardHtml = this.createGameCard(game);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = cardHtml;
+            const card = tempDiv.firstElementChild;
+
+            // Add event handlers
+            const infoBtn = card.querySelector('.info-btn');
+            const installBtn = card.querySelector('.install-btn');
+            const checkbox = card.querySelector('.select-checkbox');
+
+            infoBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openGameModal(game);
+            });
+
+            installBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleInstalled(game.id);
+            });
+
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                this.toggleGameSelection(game.id, e.target.checked);
+            });
+
+            card.addEventListener('click', (e) => {
+                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn')) {
+                    checkbox.checked = !checkbox.checked;
+                    this.toggleGameSelection(game.id, checkbox.checked);
+                }
+            });
+
+            grid.appendChild(card);
+        });
+
+        // Lazy load images for new cards
+        this.lazyLoadImages();
+    }
+
+    // Show/hide infinite scroll loader
+    showInfiniteScrollLoader(show) {
+        let loader = document.getElementById('infiniteScrollLoader');
+        if (!loader && show) {
+            loader = document.createElement('div');
+            loader.id = 'infiniteScrollLoader';
+            loader.className = 'infinite-scroll-loader';
+            loader.innerHTML = `
+                <div class="loader-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <span class="loader-text">Loading more games...</span>
+            `;
+            const content = document.querySelector('.content');
+            if (content) {
+                content.appendChild(loader);
+            }
+        }
+        if (loader) {
+            if (show) {
+                loader.classList.add('visible');
+            } else {
+                loader.classList.remove('visible');
+            }
+        }
+    }
+
+    // Show end of list indicator
+    showEndOfList() {
+        let endIndicator = document.getElementById('infiniteScrollEnd');
+        if (!endIndicator) {
+            endIndicator = document.createElement('div');
+            endIndicator.id = 'infiniteScrollEnd';
+            endIndicator.className = 'infinite-scroll-end';
+            endIndicator.textContent = 'All games loaded';
+            const content = document.querySelector('.content');
+            if (content) {
+                content.appendChild(endIndicator);
+            }
+        }
+        setTimeout(() => {
+            endIndicator.classList.add('visible');
+        }, 100);
+    }
+
+    // Update pagination info bar
+    updatePaginationInfo() {
+        const paginationInfo = document.getElementById('paginationInfo');
+        const paginationShown = document.getElementById('paginationShown');
+        const paginationTotal = document.getElementById('paginationTotal');
+
+        if (!paginationInfo || !paginationShown || !paginationTotal) return;
+
+        paginationShown.textContent = this.visibleGamesCount;
+        paginationTotal.textContent = this.filteredGames.length;
+
+        // Show pagination info when scrolling and not all games are loaded
+        if (window.scrollY > 200 && !this.allGamesLoaded && this.filteredGames.length > this.gamesPerPage) {
+            paginationInfo.classList.add('visible');
+        } else {
+            paginationInfo.classList.remove('visible');
+        }
     }
 
     renderTabs() {
@@ -870,6 +1368,17 @@ class GameLibrary {
         this.filteredGames = filtered;
         document.getElementById('filteredCount').textContent = filtered.length;
 
+        // Reset infinite scroll state on filter/search change
+        this.visibleGamesCount = 0;
+        this.allGamesLoaded = false;
+        this.isLoadingMore = false;
+
+        // Remove any existing end indicator
+        const endIndicator = document.getElementById('infiniteScrollEnd');
+        if (endIndicator) {
+            endIndicator.remove();
+        }
+
         this.renderGames();
     }
 
@@ -880,11 +1389,25 @@ class GameLibrary {
         if (this.filteredGames.length === 0) {
             grid.innerHTML = '';
             noResults.style.display = 'block';
+            this.visibleGamesCount = 0;
+            this.updatePaginationInfo();
             return;
         }
 
         noResults.style.display = 'none';
-        grid.innerHTML = this.filteredGames.map(game => this.createGameCard(game)).join('');
+
+        // Render initial batch for infinite scroll
+        const initialBatch = this.filteredGames.slice(0, this.gamesPerPage);
+        this.visibleGamesCount = initialBatch.length;
+        this.allGamesLoaded = this.visibleGamesCount >= this.filteredGames.length;
+
+        grid.innerHTML = initialBatch.map(game => this.createGameCard(game)).join('');
+        this.updatePaginationInfo();
+
+        // Show end of list if all games fit in initial batch
+        if (this.allGamesLoaded && this.filteredGames.length > 0) {
+            this.showEndOfList();
+        }
 
         // Add click handlers for info button
         grid.querySelectorAll('.game-card').forEach(card => {
@@ -936,6 +1459,8 @@ class GameLibrary {
         const isSelected = this.selectedGames.has(game.id);
         const isInstalled = this.installedGames.has(game.id);
         const isNew = game.category === 'new';
+        const dateAdded = this.datesAdded[game.id];
+        const dateStr = dateAdded ? new Date(dateAdded).toLocaleDateString() : 'N/A';
 
         return `
             <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}">
@@ -944,6 +1469,14 @@ class GameLibrary {
                 <button class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}">${isInstalled ? '✅' : '📥'}</button>
                 ${isNew ? '<div class="new-badge">🆕 NEW</div>' : ''}
                 ${isInstalled ? '<div class="installed-badge">✓ Installed</div>' : ''}
+                <div class="quick-tooltip">
+                    <div class="tooltip-header">${game.name}</div>
+                    <div class="tooltip-row"><span class="tooltip-icon">📁</span><span class="tooltip-label">Category:</span><span class="tooltip-value">${game.category || 'uncategorized'}</span></div>
+                    <div class="tooltip-row"><span class="tooltip-icon">⏱️</span><span class="tooltip-label">Playtime:</span><span class="tooltip-value">${timeStr}</span></div>
+                    <div class="tooltip-row"><span class="tooltip-icon">💾</span><span class="tooltip-label">Size:</span><span class="tooltip-value">${sizeStr}</span></div>
+                    <div class="tooltip-row"><span class="tooltip-icon">📅</span><span class="tooltip-label">Added:</span><span class="tooltip-value">${dateStr}</span></div>
+                    ${isInstalled ? '<div class="tooltip-row tooltip-installed"><span class="tooltip-icon">✅</span><span>Installed</span></div>' : ''}
+                </div>
                 <div class="image-container">
                     <img
                         data-src="images/${imageName}.png"
@@ -1022,6 +1555,184 @@ class GameLibrary {
         }, { rootMargin: '100px' });
 
         images.forEach(img => observer.observe(img));
+    }
+
+    // Keyboard navigation for game cards
+    handleKeyboardNavigation(e) {
+        // Skip if typing in input fields or if modals are open
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (document.querySelector('.modal.active')) return;
+
+        const grid = document.getElementById('gamesGrid');
+        const cards = grid.querySelectorAll('.game-card');
+        if (cards.length === 0) return;
+
+        // Calculate grid columns for proper navigation
+        const gridStyle = window.getComputedStyle(grid);
+        const gridTemplateColumns = gridStyle.getPropertyValue('grid-template-columns');
+        const columnsCount = gridTemplateColumns.split(' ').filter(col => col.trim()).length || 1;
+
+        switch (e.key) {
+            case 'ArrowRight':
+                e.preventDefault();
+                this.navigateCards(1, cards.length);
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                this.navigateCards(-1, cards.length);
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                this.navigateCards(columnsCount, cards.length);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                this.navigateCards(-columnsCount, cards.length);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                this.activateFocusedCard('open');
+                break;
+            case ' ': // Space
+                e.preventDefault();
+                this.activateFocusedCard('toggle');
+                break;
+            case 'Home':
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    this.focusCard(0);
+                }
+                break;
+            case 'End':
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    this.focusCard(cards.length - 1);
+                }
+                break;
+        }
+    }
+
+    navigateCards(delta, totalCards) {
+        if (totalCards === 0) return;
+
+        // Initialize focus if not set
+        if (this.focusedCardIndex === -1) {
+            this.focusCard(0);
+            return;
+        }
+
+        // Calculate new index with wrapping
+        let newIndex = this.focusedCardIndex + delta;
+
+        // Clamp to valid range (no wrapping for better UX)
+        if (newIndex < 0) newIndex = 0;
+        if (newIndex >= totalCards) newIndex = totalCards - 1;
+
+        this.focusCard(newIndex);
+    }
+
+    focusCard(index) {
+        const grid = document.getElementById('gamesGrid');
+        const cards = grid.querySelectorAll('.game-card');
+
+        if (index < 0 || index >= cards.length) return;
+
+        // Remove focus from previous card
+        cards.forEach(card => card.classList.remove('keyboard-focused'));
+
+        // Set new focused index
+        this.focusedCardIndex = index;
+        const targetCard = cards[index];
+
+        // Add focus class
+        targetCard.classList.add('keyboard-focused');
+
+        // Scroll into view smoothly
+        targetCard.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest'
+        });
+
+        // Show keyboard hints
+        this.showKeyboardHints();
+
+        // Announce for accessibility
+        const gameId = targetCard.dataset.id;
+        const game = this.games.find(g => g.id === gameId);
+        if (game) {
+            this.announceForScreenReader(`${game.name}, ${index + 1} of ${cards.length}`);
+        }
+    }
+
+    showKeyboardHints() {
+        const hints = document.getElementById('keyboardHints');
+        if (hints) {
+            hints.classList.add('visible');
+            // Auto-hide after 5 seconds of no navigation
+            clearTimeout(this._keyboardHintTimeout);
+            this._keyboardHintTimeout = setTimeout(() => {
+                hints.classList.remove('visible');
+            }, 5000);
+        }
+    }
+
+    hideKeyboardHints() {
+        const hints = document.getElementById('keyboardHints');
+        if (hints) {
+            hints.classList.remove('visible');
+            clearTimeout(this._keyboardHintTimeout);
+        }
+    }
+
+    clearCardFocus() {
+        this.focusedCardIndex = -1;
+        const cards = document.querySelectorAll('.game-card.keyboard-focused');
+        cards.forEach(card => card.classList.remove('keyboard-focused'));
+        this.hideKeyboardHints();
+    }
+
+    activateFocusedCard(action) {
+        if (this.focusedCardIndex === -1) return;
+
+        const grid = document.getElementById('gamesGrid');
+        const cards = grid.querySelectorAll('.game-card');
+        const card = cards[this.focusedCardIndex];
+
+        if (!card) return;
+
+        const gameId = card.dataset.id;
+        const game = this.games.find(g => g.id === gameId);
+
+        if (!game) return;
+
+        if (action === 'open') {
+            // Enter key - open game modal
+            this.openGameModal(game);
+        } else if (action === 'toggle') {
+            // Space key - toggle selection
+            const isSelected = this.selectedGames.has(gameId);
+            const checkbox = card.querySelector('.select-checkbox');
+            if (checkbox) {
+                checkbox.checked = !isSelected;
+            }
+            this.toggleGameSelection(gameId, !isSelected);
+        }
+    }
+
+    announceForScreenReader(message) {
+        // Create or reuse live region for screen reader announcements
+        let liveRegion = document.getElementById('sr-live-region');
+        if (!liveRegion) {
+            liveRegion = document.createElement('div');
+            liveRegion.id = 'sr-live-region';
+            liveRegion.setAttribute('role', 'status');
+            liveRegion.setAttribute('aria-live', 'polite');
+            liveRegion.setAttribute('aria-atomic', 'true');
+            liveRegion.className = 'sr-only';
+            document.body.appendChild(liveRegion);
+        }
+        liveRegion.textContent = message;
     }
 
     getDockerCommand(gameId) {
@@ -1805,6 +2516,336 @@ echo "Done!"
         localStorage.setItem('installedGames', JSON.stringify([...this.installedGames]));
     }
 
+    // ============================================================
+    // Search Suggestions with Fuzzy Matching
+    // ============================================================
+
+    loadRecentSearches() {
+        try {
+            const saved = localStorage.getItem('recentSearches');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    }
+
+    saveRecentSearches() {
+        localStorage.setItem('recentSearches', JSON.stringify(this.recentSearches));
+    }
+
+    addRecentSearch(query) {
+        if (!query || query.trim().length < 2) return;
+
+        const trimmed = query.trim();
+        // Remove if already exists
+        this.recentSearches = this.recentSearches.filter(s => s.toLowerCase() !== trimmed.toLowerCase());
+        // Add to beginning
+        this.recentSearches.unshift(trimmed);
+        // Keep only max recent searches
+        if (this.recentSearches.length > this.maxRecentSearches) {
+            this.recentSearches = this.recentSearches.slice(0, this.maxRecentSearches);
+        }
+        this.saveRecentSearches();
+    }
+
+    clearRecentSearches() {
+        this.recentSearches = [];
+        this.saveRecentSearches();
+        this.updateSearchSuggestions(document.getElementById('searchInput').value);
+        this.showToast('Recent searches cleared', 'info');
+    }
+
+    removeRecentSearch(index) {
+        this.recentSearches.splice(index, 1);
+        this.saveRecentSearches();
+        this.updateSearchSuggestions(document.getElementById('searchInput').value);
+    }
+
+    // Fuzzy matching algorithm - returns score (higher = better match)
+    fuzzyMatch(query, text) {
+        if (!query || !text) return 0;
+
+        query = query.toLowerCase();
+        text = text.toLowerCase();
+
+        // Exact match
+        if (text === query) return 100;
+
+        // Starts with query
+        if (text.startsWith(query)) return 90;
+
+        // Contains query
+        if (text.includes(query)) return 80;
+
+        // Fuzzy matching - check if all characters appear in order
+        let queryIndex = 0;
+        let matchScore = 0;
+        let lastMatchIndex = -1;
+        let consecutiveBonus = 0;
+
+        for (let i = 0; i < text.length && queryIndex < query.length; i++) {
+            if (text[i] === query[queryIndex]) {
+                matchScore += 10;
+                // Bonus for consecutive matches
+                if (lastMatchIndex === i - 1) {
+                    consecutiveBonus += 5;
+                }
+                // Bonus for matching at word boundaries
+                if (i === 0 || text[i - 1] === ' ' || text[i - 1] === '-' || text[i - 1] === '_') {
+                    matchScore += 15;
+                }
+                lastMatchIndex = i;
+                queryIndex++;
+            }
+        }
+
+        // If not all characters matched
+        if (queryIndex < query.length) return 0;
+
+        // Calculate final score
+        const completionRatio = query.length / text.length;
+        return Math.min(79, matchScore + consecutiveBonus + (completionRatio * 20));
+    }
+
+    // Highlight matching parts in text
+    highlightMatch(text, query) {
+        if (!query || !text) return text;
+
+        const lowerText = text.toLowerCase();
+        const lowerQuery = query.toLowerCase();
+
+        // Try to find exact substring first
+        const exactIndex = lowerText.indexOf(lowerQuery);
+        if (exactIndex !== -1) {
+            return text.substring(0, exactIndex) +
+                '<span class="match-highlight">' +
+                text.substring(exactIndex, exactIndex + query.length) +
+                '</span>' +
+                text.substring(exactIndex + query.length);
+        }
+
+        // Fuzzy highlight - highlight matching characters
+        let result = '';
+        let queryIndex = 0;
+
+        for (let i = 0; i < text.length; i++) {
+            if (queryIndex < lowerQuery.length && text[i].toLowerCase() === lowerQuery[queryIndex]) {
+                result += '<span class="match-highlight">' + text[i] + '</span>';
+                queryIndex++;
+            } else {
+                result += text[i];
+            }
+        }
+
+        return result;
+    }
+
+    updateSearchSuggestions(query) {
+        const suggestionsContainer = document.getElementById('searchSuggestions');
+        const recentSection = document.getElementById('recentSearchesSection');
+        const recentList = document.getElementById('recentSearchesList');
+        const suggestionsSection = document.getElementById('suggestionsSection');
+        const suggestionsList = document.getElementById('suggestionsList');
+
+        // Reset highlight index
+        this.suggestionsHighlightIndex = -1;
+
+        // Clear previous suggestions
+        recentList.innerHTML = '';
+        suggestionsList.innerHTML = '';
+
+        const trimmedQuery = query.trim();
+
+        // Show recent searches when query is empty
+        if (!trimmedQuery) {
+            if (this.recentSearches.length > 0) {
+                recentSection.style.display = 'flex';
+                this.recentSearches.forEach((search, index) => {
+                    const item = this.createRecentSearchItem(search, index);
+                    recentList.appendChild(item);
+                });
+            } else {
+                recentSection.style.display = 'none';
+            }
+            suggestionsSection.style.display = 'none';
+            this.showSearchSuggestions();
+            return;
+        }
+
+        // Get fuzzy-matched games
+        const matches = [];
+        for (const game of this.games) {
+            const nameScore = this.fuzzyMatch(trimmedQuery, game.name);
+            const idScore = this.fuzzyMatch(trimmedQuery, game.id);
+            const categoryScore = game.category ? this.fuzzyMatch(trimmedQuery, game.category) * 0.5 : 0;
+
+            const bestScore = Math.max(nameScore, idScore, categoryScore);
+            if (bestScore > 0) {
+                matches.push({ game, score: bestScore });
+            }
+        }
+
+        // Sort by score (descending)
+        matches.sort((a, b) => b.score - a.score);
+
+        // Take top 8 results
+        const topMatches = matches.slice(0, 8);
+
+        if (topMatches.length > 0) {
+            suggestionsSection.style.display = 'flex';
+            topMatches.forEach((match, index) => {
+                const item = this.createSuggestionItem(match.game, trimmedQuery, index);
+                suggestionsList.appendChild(item);
+            });
+        } else {
+            suggestionsSection.style.display = 'none';
+            // Show no results message
+            const noResults = document.createElement('div');
+            noResults.className = 'search-no-results';
+            noResults.innerHTML = '<div class="no-results-icon">🔍</div><div>No games found for "' + this.escapeHtml(trimmedQuery) + '"</div>';
+            suggestionsList.appendChild(noResults);
+        }
+
+        // Filter recent searches that match the query
+        const matchingRecent = this.recentSearches.filter(s =>
+            s.toLowerCase().includes(trimmedQuery.toLowerCase()) && s.toLowerCase() !== trimmedQuery.toLowerCase()
+        );
+
+        if (matchingRecent.length > 0) {
+            recentSection.style.display = 'flex';
+            matchingRecent.slice(0, 3).forEach((search, index) => {
+                const item = this.createRecentSearchItem(search, this.recentSearches.indexOf(search));
+                recentList.appendChild(item);
+            });
+        } else {
+            recentSection.style.display = 'none';
+        }
+
+        this.showSearchSuggestions();
+    }
+
+    createRecentSearchItem(search, index) {
+        const item = document.createElement('div');
+        item.className = 'search-suggestion-item recent';
+        item.dataset.type = 'recent';
+        item.dataset.index = index;
+        item.dataset.value = search;
+
+        item.innerHTML = `
+            <div class="search-suggestion-icon">🕐</div>
+            <div class="search-suggestion-content">
+                <div class="search-suggestion-name">${this.escapeHtml(search)}</div>
+            </div>
+            <button class="search-suggestion-remove" data-index="${index}" title="Remove">×</button>
+        `;
+
+        // Click to search
+        item.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('search-suggestion-remove')) {
+                document.getElementById('searchInput').value = search;
+                this.searchQuery = search.toLowerCase();
+                this.filterAndRender();
+                this.hideSearchSuggestions();
+            }
+        });
+
+        // Remove button click
+        const removeBtn = item.querySelector('.search-suggestion-remove');
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.removeRecentSearch(index);
+        });
+
+        return item;
+    }
+
+    createSuggestionItem(game, query, index) {
+        const item = document.createElement('div');
+        item.className = 'search-suggestion-item';
+        item.dataset.type = 'game';
+        item.dataset.gameId = game.id;
+        item.dataset.index = index;
+
+        const imageUrl = `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.id}.jpg`;
+        const time = this.times[game.id] ? `${this.times[game.id]}h` : '';
+        const size = this.imageSizes[game.id] ? `${this.imageSizes[game.id]} GB` : '';
+        const category = game.category || '';
+
+        item.innerHTML = `
+            <div class="search-suggestion-icon">
+                <img src="${imageUrl}" alt="" onerror="this.parentElement.innerHTML='🎮'">
+            </div>
+            <div class="search-suggestion-content">
+                <div class="search-suggestion-name">${this.highlightMatch(game.name, query)}</div>
+                <div class="search-suggestion-meta">
+                    ${category ? `<span>📁 ${category}</span>` : ''}
+                    ${time ? `<span>⏱️ ${time}</span>` : ''}
+                    ${size ? `<span>💾 ${size}</span>` : ''}
+                </div>
+            </div>
+        `;
+
+        // Click to open game modal and save search
+        item.addEventListener('click', () => {
+            this.addRecentSearch(query);
+            this.hideSearchSuggestions();
+            this.openGameModal(game);
+        });
+
+        return item;
+    }
+
+    showSearchSuggestions() {
+        const suggestionsContainer = document.getElementById('searchSuggestions');
+        suggestionsContainer.classList.add('visible');
+        this.suggestionsVisible = true;
+    }
+
+    hideSearchSuggestions() {
+        const suggestionsContainer = document.getElementById('searchSuggestions');
+        suggestionsContainer.classList.remove('visible');
+        this.suggestionsVisible = false;
+        this.suggestionsHighlightIndex = -1;
+    }
+
+    navigateSuggestions(direction) {
+        const items = document.querySelectorAll('#searchSuggestions .search-suggestion-item');
+        if (items.length === 0) return;
+
+        // Remove current highlight
+        items.forEach(item => item.classList.remove('highlighted'));
+
+        // Calculate new index
+        this.suggestionsHighlightIndex += direction;
+
+        if (this.suggestionsHighlightIndex < 0) {
+            this.suggestionsHighlightIndex = items.length - 1;
+        } else if (this.suggestionsHighlightIndex >= items.length) {
+            this.suggestionsHighlightIndex = 0;
+        }
+
+        // Apply highlight
+        const highlightedItem = items[this.suggestionsHighlightIndex];
+        if (highlightedItem) {
+            highlightedItem.classList.add('highlighted');
+            highlightedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }
+
+    selectHighlightedSuggestion() {
+        const items = document.querySelectorAll('#searchSuggestions .search-suggestion-item');
+        if (this.suggestionsHighlightIndex >= 0 && this.suggestionsHighlightIndex < items.length) {
+            const item = items[this.suggestionsHighlightIndex];
+            item.click();
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     // Admin authentication using SHA-256 hash comparison
     async attemptAdminLogin(password) {
         // Hash the input password and compare to stored hash
@@ -1964,8 +3005,39 @@ echo "Done!"
     }
 
     showLoading(show) {
-        document.getElementById('loadingIndicator').style.display = show ? 'flex' : 'none';
-        document.getElementById('gamesGrid').style.display = show ? 'none' : 'grid';
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const gamesGrid = document.getElementById('gamesGrid');
+
+        if (show) {
+            // Show skeleton loading cards instead of just a spinner
+            loadingIndicator.style.display = 'none';
+            gamesGrid.style.display = 'grid';
+            gamesGrid.innerHTML = this.generateSkeletonCards(12);
+            gamesGrid.classList.add('skeleton-grid');
+        } else {
+            gamesGrid.classList.remove('skeleton-grid');
+            // Games will be rendered by renderGames()
+        }
+    }
+
+    generateSkeletonCards(count = 12) {
+        let cards = '';
+        for (let i = 0; i < count; i++) {
+            cards += `
+                <div class="skeleton-card">
+                    <div class="skeleton-image"></div>
+                    <div class="skeleton-info">
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-meta">
+                            <div class="skeleton-badge category"></div>
+                            <div class="skeleton-badge time"></div>
+                            <div class="skeleton-badge size"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        return cards;
     }
 
     showToast(message, type = 'info') {
