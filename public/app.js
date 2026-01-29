@@ -1,13 +1,17 @@
 /**
- * Game Library Manager v3.7 - Web Application
- * A full-featured Docker game library manager
+ * Game Library Manager v4.0 - Enhanced UX Edition
+ * A full-featured Docker game library manager with premium UX
  *
  * Features:
  * - Bulk selection and run multiple games
  * - .bat file download for Windows (double-click to run)
  * - Full Docker paths for michadockermisha/backup repo
  * - Custom mount path selection
- * - GitHub repo link
+ * - Enhanced animations and micro-interactions
+ * - Improved mobile experience
+ * - Scroll-to-top functionality
+ * - Keyboard shortcuts
+ * - Smooth loading states
  */
 
 class GameLibrary {
@@ -54,10 +58,13 @@ class GameLibrary {
         this.detectOS();
         this.bindEvents();
         this.applySettings();
-        
+        this.setupScrollEffects();
+        this.setupMobileSidebar();
+        this.setupKeyboardHints();
+
         // CRITICAL: Ensure non-admin state on page load - users must login to get admin access
         this.ensureNonAdminState();
-        
+
         // Load admin configuration from SERVER (not localStorage) - this affects ALL users
         await this.loadAdminConfigFromServer();
 
@@ -1027,10 +1034,11 @@ class GameLibrary {
         const isNew = game.category === 'new';
 
         return `
-            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}">
-                <input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''}>
-                <button class="info-btn" title="View details">ℹ️</button>
-                <button class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}">${isInstalled ? '✅' : '📥'}</button>
+            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}" role="article" aria-label="${game.name}">
+                <input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''} aria-label="Select ${game.name}">
+                ${isSelected ? '<span class="checkmark-icon">✓</span>' : ''}
+                <button class="info-btn" title="View details" aria-label="View details for ${game.name}">ℹ️</button>
+                <button class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}" aria-label="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}">${isInstalled ? '✅' : '📥'}</button>
                 ${isNew ? '<div class="new-badge">🆕 NEW</div>' : ''}
                 ${isInstalled ? '<div class="installed-badge">✓ Installed</div>' : ''}
                 <div class="image-container">
@@ -1105,21 +1113,6 @@ class GameLibrary {
         this.filterAndRender();
         this.updateSelectedCount();
         this.showToast('All games deselected', 'info');
-    }
-
-    lazyLoadImages() {
-        const images = document.querySelectorAll('img[data-src]');
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    img.src = img.dataset.src;
-                    observer.unobserve(img);
-                }
-            });
-        }, { rootMargin: '100px' });
-
-        images.forEach(img => observer.observe(img));
     }
 
     getDockerCommand(gameId) {
@@ -2072,16 +2065,188 @@ echo "Done!"
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
+
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+
         toast.innerHTML = `
-            <span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+            <span>${icons[type] || icons.info}</span>
             <span>${message}</span>
         `;
         container.appendChild(toast);
 
+        // Auto-dismiss with smooth exit animation
         setTimeout(() => {
-            toast.style.animation = 'slideIn 0.3s ease reverse';
+            toast.style.animation = 'toastSlideIn 0.3s ease reverse forwards';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
+    }
+
+    // ============================================
+    // SCROLL EFFECTS
+    // ============================================
+    setupScrollEffects() {
+        const header = document.querySelector('.header');
+        const scrollTopBtn = document.getElementById('scrollTopBtn');
+        const content = document.querySelector('.content');
+
+        let ticking = false;
+
+        const handleScroll = () => {
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    const scrollY = window.scrollY;
+
+                    // Header shadow on scroll
+                    if (scrollY > 10) {
+                        header.classList.add('scrolled');
+                    } else {
+                        header.classList.remove('scrolled');
+                    }
+
+                    // Scroll to top button visibility
+                    if (scrollY > 300) {
+                        scrollTopBtn.classList.add('visible');
+                    } else {
+                        scrollTopBtn.classList.remove('visible');
+                    }
+
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        // Scroll to top click handler
+        scrollTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
+
+    // ============================================
+    // MOBILE SIDEBAR
+    // ============================================
+    setupMobileSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        const openSidebar = () => {
+            sidebar.classList.add('open');
+            sidebarOverlay.classList.add('active');
+            sidebarToggle.innerHTML = '✕';
+            document.body.style.overflow = 'hidden';
+        };
+
+        const closeSidebar = () => {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+            sidebarToggle.innerHTML = '☰';
+            document.body.style.overflow = '';
+        };
+
+        sidebarToggle.addEventListener('click', () => {
+            if (sidebar.classList.contains('open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+
+        sidebarOverlay.addEventListener('click', closeSidebar);
+
+        // Close sidebar when a tab is clicked (mobile)
+        document.getElementById('tabsContainer').addEventListener('click', (e) => {
+            if (e.target.closest('.tab-btn') && window.innerWidth <= 1024) {
+                closeSidebar();
+            }
+        });
+
+        // Close sidebar on window resize if becoming desktop
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1024 && sidebar.classList.contains('open')) {
+                closeSidebar();
+            }
+        });
+    }
+
+    // ============================================
+    // KEYBOARD HINTS
+    // ============================================
+    setupKeyboardHints() {
+        const keyboardHints = document.getElementById('keyboardHints');
+        let hideTimeout;
+
+        // Show hints briefly on page load
+        setTimeout(() => {
+            keyboardHints.classList.add('visible');
+            hideTimeout = setTimeout(() => {
+                keyboardHints.classList.remove('visible');
+            }, 5000);
+        }, 2000);
+
+        // Show hints when user starts typing
+        document.addEventListener('keydown', (e) => {
+            // Don't show if already in an input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            clearTimeout(hideTimeout);
+            keyboardHints.classList.add('visible');
+
+            hideTimeout = setTimeout(() => {
+                keyboardHints.classList.remove('visible');
+            }, 3000);
+        });
+    }
+
+    // ============================================
+    // ENHANCED IMAGE LOADING
+    // ============================================
+    lazyLoadImages() {
+        const images = document.querySelectorAll('img[data-src]');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+
+                    // Create a new image to preload
+                    const tempImg = new Image();
+                    tempImg.onload = () => {
+                        img.src = img.dataset.src;
+                        img.classList.add('loaded');
+
+                        // Remove shimmer effect from parent
+                        const container = img.closest('.image-container');
+                        if (container) {
+                            container.style.setProperty('--shimmer-display', 'none');
+                        }
+                    };
+                    tempImg.onerror = () => {
+                        // Keep placeholder on error
+                        img.classList.add('loaded');
+                    };
+                    tempImg.src = img.dataset.src;
+
+                    observer.unobserve(img);
+                }
+            });
+        }, {
+            rootMargin: '100px',
+            threshold: 0.1
+        });
+
+        images.forEach(img => observer.observe(img));
     }
 }
 
