@@ -687,6 +687,47 @@ class GameLibrary {
             this.downloadKillScript();
         });
 
+        // Format dropdown for Run Selected button
+        document.getElementById('runFormatBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleRunFormatMenu(e);
+        });
+
+        // Format dropdown for Kill All button
+        document.getElementById('killFormatBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleKillFormatMenu(e);
+        });
+
+        // Format options click handlers for Run menu
+        document.querySelectorAll('#runFormatMenu .format-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const format = e.target.dataset.format;
+                if (this.selectedGames.size > 0) {
+                    this.downloadRunScript([...this.selectedGames], format);
+                } else {
+                    this.showToast('No games selected', 'error');
+                }
+                document.getElementById('runFormatMenu').style.display = 'none';
+            });
+        });
+
+        // Format options click handlers for Kill menu
+        document.querySelectorAll('#killFormatMenu .format-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const format = e.target.dataset.format;
+                this.downloadKillScript(format);
+                document.getElementById('killFormatMenu').style.display = 'none';
+            });
+        });
+
+        // Modal .BAT download button
+        document.getElementById('runDockerBatBtn').addEventListener('click', () => {
+            this.runInTerminal('bat');
+        });
+
         // Move To button
         document.getElementById('moveToBtn').addEventListener('click', (e) => {
             this.toggleMoveToMenu(e);
@@ -755,6 +796,19 @@ class GameLibrary {
             const moveToBtn = document.getElementById('moveToBtn');
             if (!moveToMenu.contains(e.target) && !moveToBtn.contains(e.target)) {
                 moveToMenu.style.display = 'none';
+            }
+
+            // Close format menus
+            const runFormatMenu = document.getElementById('runFormatMenu');
+            const runFormatBtn = document.getElementById('runFormatBtn');
+            if (runFormatMenu && !runFormatMenu.contains(e.target) && !runFormatBtn.contains(e.target)) {
+                runFormatMenu.style.display = 'none';
+            }
+
+            const killFormatMenu = document.getElementById('killFormatMenu');
+            const killFormatBtn = document.getElementById('killFormatBtn');
+            if (killFormatMenu && !killFormatMenu.contains(e.target) && !killFormatBtn.contains(e.target)) {
+                killFormatMenu.style.display = 'none';
             }
         });
 
@@ -1086,14 +1140,20 @@ class GameLibrary {
         runBtn.textContent = `▶️ Run Selected (${count})`;
         runBtn.disabled = count === 0;
 
+        // Enable/disable the format dropdown button for Run Selected
+        const runFormatBtn = document.getElementById('runFormatBtn');
+        if (runFormatBtn) {
+            runFormatBtn.disabled = count === 0;
+        }
+
         const moveToBtn = document.getElementById('moveToBtn');
         const moveToContainer = document.querySelector('.move-to-container');
-        
+
         // Hide Move To button for non-admins
         if (moveToContainer) {
             moveToContainer.style.display = this.isAdmin ? 'block' : 'none';
         }
-        
+
         if (moveToBtn) {
             moveToBtn.disabled = count === 0 || !this.isAdmin;
         }
@@ -1171,9 +1231,9 @@ class GameLibrary {
         });
     }
 
-    runInTerminal() {
+    runInTerminal(format = 'ps1') {
         if (!this.currentGame) return;
-        this.downloadRunScript([this.currentGame.id]);
+        this.downloadRunScript([this.currentGame.id], format);
     }
 
     runSelectedGames() {
@@ -1184,7 +1244,7 @@ class GameLibrary {
         this.downloadRunScript([...this.selectedGames]);
     }
 
-    downloadRunScript(gameIds) {
+    downloadRunScript(gameIds, format = 'ps1') {
         const dockerUser = this.settings.dockerUsername || 'michadockermisha';
         const repoName = this.settings.repoName || 'backup';
         const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
@@ -1200,7 +1260,230 @@ class GameLibrary {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const gameCount = gameIds.length;
 
-        if (this.os === 'windows') {
+        if (this.os === 'windows' && format === 'bat') {
+            // Windows Batch script (.bat) - double-click to run!
+            // Build run commands for each game
+            const commands = gameIds.map((id, idx) => {
+                const game = this.games.find(g => g.id === id);
+                const gameName = game ? game.name : id;
+                return `
+echo.
+echo [%date% %time%] Running game ${idx + 1}/${gameCount}: ${gameName}
+echo ============================================================
+docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${id}"
+if %ERRORLEVEL% EQU 0 (
+    echo [SUCCESS] ${gameName} completed successfully!
+) else (
+    echo [ERROR] ${gameName} failed with error code %ERRORLEVEL%
+)
+REM Small delay to let network settle before next game
+if ${idx + 1} LSS ${gameCount} (
+    echo.
+    echo Waiting 3 seconds before next game...
+    timeout /t 3 /nobreak >nul
+)`;
+            }).join('\n');
+
+            // Build pull commands with robust retry logic
+            const pullCommands = gameIds.map((id, idx) => {
+                const game = this.games.find(g => g.id === id);
+                const gameName = game ? game.name : id;
+                return `
+echo.
+echo [%date% %time%] Pulling image ${idx + 1}/${gameCount}: ${gameName}
+set "PULL_SUCCESS=0"
+set "RETRY_DELAY=5"
+for /L %%i in (1,1,5) do (
+    if !PULL_SUCCESS! EQU 0 (
+        REM Check Docker health before attempting pull
+        docker info >nul 2>&1
+        if !ERRORLEVEL! NEQ 0 (
+            echo [WARNING] Docker not responding, attempting recovery...
+            call :recover_docker
+        )
+
+        REM Attempt the pull and capture output for error detection
+        docker pull ${dockerUser}/${repoName}:${id} 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            set "PULL_SUCCESS=1"
+            echo [OK] Image pulled successfully!
+        ) else (
+            echo [RETRY %%i/5] Pull failed, attempting recovery...
+
+            REM Flush DNS cache
+            ipconfig /flushdns >nul 2>&1
+
+            REM Reset Windows network stack
+            netsh winsock reset >nul 2>&1
+            netsh int ip reset >nul 2>&1
+
+            REM Try to restart Docker Desktop if it's having issues
+            call :recover_docker
+
+            REM Exponential backoff: 5, 10, 20, 40, 60 seconds
+            echo [INFO] Waiting !RETRY_DELAY! seconds before retry...
+            timeout /t !RETRY_DELAY! /nobreak >nul
+            set /a "RETRY_DELAY=RETRY_DELAY*2"
+            if !RETRY_DELAY! GTR 60 set "RETRY_DELAY=60"
+        )
+    )
+)
+if !PULL_SUCCESS! EQU 0 (
+    echo [WARNING] Failed to pull ${gameName} after 5 attempts, will try during run...
+)`;
+            }).join('\n');
+
+            script = `@echo off
+setlocal EnableDelayedExpansion
+REM ============================================================
+REM Game Library Manager - Docker Runner (Batch)
+REM Generated: ${new Date().toISOString()}
+REM Games: ${gameCount}
+REM ============================================================
+REM
+REM INSTRUCTIONS:
+REM 1. Make sure Docker Desktop is running
+REM 2. Double-click this .bat file to run
+REM 3. Games will be downloaded to ${mountPath}
+REM
+REM This script includes:
+REM - Pre-pulling all images with robust retry logic
+REM - Automatic Docker Desktop recovery on pipe/connection errors
+REM - Network stack reset on failures
+REM - Exponential backoff between retries
+REM
+REM ============================================================
+
+echo.
+echo  ====================================
+echo   Game Library Manager v4.0
+echo   Running ${gameCount} game(s)
+echo  ====================================
+echo.
+
+REM Initial Docker health check with recovery
+echo Checking Docker status...
+docker info >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [WARNING] Docker is not responding, attempting to start/restart...
+    call :recover_docker
+    docker info >nul 2>&1
+    if !ERRORLEVEL! NEQ 0 (
+        echo [ERROR] Docker is not running! Please start Docker Desktop manually.
+        pause
+        exit /b 1
+    )
+)
+
+echo [OK] Docker is running
+echo.
+
+REM Test network connectivity first
+echo Testing network connectivity...
+ping -n 1 registry-1.docker.io >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [WARNING] Cannot reach Docker Hub, resetting network...
+    ipconfig /flushdns >nul 2>&1
+    netsh winsock reset >nul 2>&1
+    timeout /t 5 /nobreak >nul
+
+    REM Test again
+    ping -n 1 registry-1.docker.io >nul 2>&1
+    if !ERRORLEVEL! NEQ 0 (
+        echo [WARNING] Still cannot reach Docker Hub, will retry during pulls...
+    )
+)
+
+REM ============================================================
+REM PHASE 1: Pre-pull all images with retry logic
+REM ============================================================
+echo.
+echo ============================================================
+echo PHASE 1: Pre-pulling ${gameCount} Docker image(s)...
+echo This helps prevent network issues during the run phase.
+echo ============================================================
+
+${pullCommands}
+
+echo.
+echo ============================================================
+echo PHASE 2: Running games and extracting files
+echo Starting downloads to: ${mountPath}
+echo ============================================================
+
+${commands}
+
+echo.
+echo ============================================================
+echo All ${gameCount} game(s) processed!
+echo Check ${mountPath} for your games.
+echo ============================================================
+echo.
+goto :end
+
+REM ============================================================
+REM Docker Recovery Function
+REM Handles Docker Desktop pipe errors and connection issues
+REM ============================================================
+:recover_docker
+echo [RECOVERY] Attempting Docker Desktop recovery...
+
+REM First, try to restart the Docker service
+echo [RECOVERY] Restarting Docker service...
+net stop com.docker.service >nul 2>&1
+timeout /t 3 /nobreak >nul
+net start com.docker.service >nul 2>&1
+timeout /t 5 /nobreak >nul
+
+REM Check if Docker is responding now
+docker info >nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    echo [RECOVERY] Docker service restart successful!
+    goto :eof
+)
+
+REM If service restart didn't work, try killing and restarting Docker Desktop
+echo [RECOVERY] Restarting Docker Desktop application...
+taskkill /f /im "Docker Desktop.exe" >nul 2>&1
+taskkill /f /im "com.docker.backend.exe" >nul 2>&1
+taskkill /f /im "com.docker.proxy.exe" >nul 2>&1
+timeout /t 5 /nobreak >nul
+
+REM Try to start Docker Desktop
+start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe" >nul 2>&1
+if !ERRORLEVEL! NEQ 0 (
+    start "" "%PROGRAMFILES%\\Docker\\Docker\\Docker Desktop.exe" >nul 2>&1
+)
+
+echo [RECOVERY] Waiting for Docker to initialize (up to 60 seconds)...
+set "DOCKER_READY=0"
+for /L %%w in (1,1,12) do (
+    if !DOCKER_READY! EQU 0 (
+        timeout /t 5 /nobreak >nul
+        docker info >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            set "DOCKER_READY=1"
+            echo [RECOVERY] Docker Desktop is ready!
+        ) else (
+            echo [RECOVERY] Waiting... %%w/12
+        )
+    )
+)
+
+if !DOCKER_READY! EQU 0 (
+    echo [RECOVERY] Docker Desktop recovery may have failed, will continue trying...
+)
+goto :eof
+
+:end
+endlocal
+pause
+`;
+            filename = gameCount === 1
+                ? `run_${gameIds[0]}.bat`
+                : `run_${gameCount}_games_${timestamp}.bat`;
+
+        } else if (this.os === 'windows') {
             // Windows PowerShell script (.ps1) - runs natively in PowerShell
             // Build run commands for each game
             const commands = gameIds.map((id, idx) => {
@@ -1263,7 +1546,7 @@ if (\$LASTEXITCODE -eq 0) {
 
 Write-Host ""
 Write-Host "  ====================================" -ForegroundColor Cyan
-Write-Host "   Game Library Manager v3.7"
+Write-Host "   Game Library Manager v4.0"
 Write-Host "   Running ${gameCount} game(s)"
 Write-Host "  ====================================" -ForegroundColor Cyan
 Write-Host ""
@@ -1546,10 +1829,19 @@ echo ""
         this.showToast(`Downloaded: ${filename} - ${runHint}`, 'success');
     }
 
-    downloadKillScript() {
+    downloadKillScript(format = 'ps1') {
         let script, filename;
 
-        if (this.os === 'windows') {
+        if (this.os === 'windows' && format === 'bat') {
+            script = `@echo off
+REM Kill all Docker containers (Batch)
+echo Stopping and removing all Docker containers...
+for /f "tokens=*" %%i in ('docker ps -aq') do docker rm -f %%i 2>nul
+echo Done!
+pause
+`;
+            filename = 'kill_all_containers.bat';
+        } else if (this.os === 'windows') {
             script = `# Kill all Docker containers (PowerShell)
 Write-Host "Stopping and removing all Docker containers..." -ForegroundColor Yellow
 docker rm -f $(docker ps -aq) 2>\$null
@@ -1576,6 +1868,34 @@ echo "Done!"
         URL.revokeObjectURL(url);
 
         this.showToast(`Downloaded: ${filename}`, 'success');
+    }
+
+    toggleRunFormatMenu(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('runFormatMenu');
+        const btn = document.getElementById('runFormatBtn');
+        const rect = btn.getBoundingClientRect();
+
+        // Close other menus
+        document.getElementById('killFormatMenu').style.display = 'none';
+
+        menu.style.top = `${rect.bottom + 5}px`;
+        menu.style.left = `${rect.left}px`;
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    toggleKillFormatMenu(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('killFormatMenu');
+        const btn = document.getElementById('killFormatBtn');
+        const rect = btn.getBoundingClientRect();
+
+        // Close other menus
+        document.getElementById('runFormatMenu').style.display = 'none';
+
+        menu.style.top = `${rect.bottom + 5}px`;
+        menu.style.left = `${rect.left}px`;
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
     }
 
     toggleMoveToMenu(e) {
