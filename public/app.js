@@ -1180,15 +1180,11 @@ class GameLibrary {
         const repoName = this.settings.repoName || 'backup';
         const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
 
-        // Parse mountPath to get Docker mount format for Windows
-        // e.g., "F:/Games" -> drive mount "F:/:/f/", internal path "/f/Games/"
-        const driveLetter = mountPath.match(/^([A-Za-z]):/)?.[1]?.toLowerCase() || 'f';
-        const pathAfterDrive = mountPath.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/') || '/Games';
-        const dockerMount = `${driveLetter.toUpperCase()}:/:/${driveLetter}/`;
-        const internalPath = `/${driveLetter}${pathAfterDrive}`;
+        // Normalize path for Docker
+        const normalizedPath = mountPath.replace(/\\/g, '/');
 
-        // Full docker command with volume mount
-        return `docker run -v "${dockerMount}" --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${gameId}"`;
+        // Simple docker command - mount user's folder to /output, copy game files there
+        return `docker run -v "${normalizedPath}:/output" --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "mkdir -p /output/${gameId} && cp -rv /home/* /output/${gameId}/"`;
     }
 
     openGameModal(game) {
@@ -1249,12 +1245,14 @@ class GameLibrary {
         const repoName = this.settings.repoName || 'backup';
         const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
 
-        // Parse mountPath to get Docker mount format for Windows
-        // e.g., "F:/Games" -> drive mount "F:/:/f/", internal path "/f/Games/"
-        const driveLetter = mountPath.match(/^([A-Za-z]):/)?.[1]?.toLowerCase() || 'f';
-        const pathAfterDrive = mountPath.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/') || '/Games';
-        const dockerMount = `${driveLetter.toUpperCase()}:/:/${driveLetter}/`;
-        const internalPath = `/${driveLetter}${pathAfterDrive}`;
+        // Normalize the mount path for Docker on Windows
+        // Docker Desktop accepts paths like "E:/Games" or "E:\Games"
+        // We normalize to forward slashes for consistency
+        const normalizedPath = mountPath.replace(/\\/g, '/');
+
+        // For Windows Docker, we mount the user's chosen folder directly to /output inside container
+        // This is simpler and more reliable than mounting the entire drive
+        const dockerVolume = `"${normalizedPath}:/output"`;
 
         let script, filename;
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -1310,29 +1308,36 @@ if !PULL_SUCCESS! EQU 0 (
 )
 
 REM ============================================================
-REM STEP 2: Extract game files via rsync
+REM STEP 2: Extract game files to destination
 REM ============================================================
 echo.
-echo [STEP 2/2] Extracting files to ${internalPath}\\${id}...
+echo [STEP 2/2] Extracting files to: ${normalizedPath}\\${id}
+echo.
 
-REM Clean up any existing container
+REM Clean up any existing container with same name
 docker stop ${id} >nul 2>&1
 docker rm -f ${id} >nul 2>&1
 
 set "RUN_SUCCESS=0"
 for /L %%a in (1,1,3) do (
     if !RUN_SUCCESS! EQU 0 (
-        echo [INFO] Extraction attempt %%a/3...
+        echo [ATTEMPT %%a/3] Running extraction container...
+        echo.
 
-        docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '[CONTAINER] Installing rsync...' && apk add rsync 2>/dev/null && echo '[CONTAINER] Starting file sync...' && rsync -av --progress --human-readable /home ${internalPath}/ && echo '[CONTAINER] Moving to final location...' && cd ${internalPath} && mv home ${id} && echo '[CONTAINER] Done!'"
+        REM Run container: mount user's folder to /output, copy game files there
+        REM Using cp instead of rsync for simplicity and reliability
+        docker run -v ${dockerVolume} --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '=== CONTAINER STARTED ===' && echo 'Copying game files to /output/${id}...' && mkdir -p /output/${id} && cp -rv /home/* /output/${id}/ 2>&1 && echo '' && echo '=== COPY COMPLETE ===' && ls -la /output/${id}/ && echo '' && echo 'Total size:' && du -sh /output/${id}/"
 
         if !ERRORLEVEL! EQU 0 (
             set "RUN_SUCCESS=1"
             echo.
-            echo [SUCCESS] ${gameName} completed!
-            echo [INFO] Files saved to: ${internalPath}\\${id}
+            echo ============================================================
+            echo [SUCCESS] ${gameName} extracted successfully!
+            echo [SAVED TO] ${normalizedPath}\\${id}
+            echo ============================================================
         ) else (
-            echo [WARNING] Attempt %%a/3 failed.
+            echo.
+            echo [WARNING] Attempt %%a/3 failed with error code !ERRORLEVEL!
             docker stop ${id} >nul 2>&1
             docker rm -f ${id} >nul 2>&1
             if %%a LSS 3 (
@@ -1345,14 +1350,15 @@ for /L %%a in (1,1,3) do (
 )
 
 if !RUN_SUCCESS! EQU 0 (
-    echo [ERROR] ${gameName} extraction failed after 3 attempts!
+    echo.
+    echo [ERROR] ${gameName} extraction FAILED after 3 attempts!
+    echo [ERROR] Check Docker status and try again.
 )
 
 :next_game_${idx}
-REM Small delay before next game
 if ${idx + 1} LSS ${gameCount} (
     echo.
-    echo [INFO] Moving to next game in 3 seconds...
+    echo [NEXT] Moving to next game in 3 seconds...
     timeout /t 3 /nobreak >nul
 )`;
             }).join('\n');
@@ -1539,10 +1545,11 @@ if (-not \$pullSuccess) {
 }
 
 # ============================================================
-# STEP 2: Extract game files via rsync
+# STEP 2: Extract game files to destination
 # ============================================================
 Write-Host ""
-Write-Host "[STEP 2/2] Extracting files to ${internalPath}\\${id}..." -ForegroundColor Yellow
+Write-Host "[STEP 2/2] Extracting files to: ${normalizedPath}\\${id}" -ForegroundColor Yellow
+Write-Host ""
 
 # Clean up any existing container
 docker stop ${id} 2>\$null | Out-Null
@@ -1550,17 +1557,22 @@ docker rm -f ${id} 2>\$null | Out-Null
 
 \$runSuccess = \$false
 for (\$attempt = 1; \$attempt -le 3 -and -not \$runSuccess; \$attempt++) {
-    Write-Host "[INFO] Extraction attempt \$attempt/3..." -ForegroundColor Gray
+    Write-Host "[ATTEMPT \$attempt/3] Running extraction container..." -ForegroundColor Gray
+    Write-Host ""
 
-    docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '[CONTAINER] Installing rsync...' && apk add rsync 2>/dev/null && echo '[CONTAINER] Starting file sync...' && rsync -av --progress --human-readable /home ${internalPath}/ && echo '[CONTAINER] Moving to final location...' && cd ${internalPath} && mv home ${id} && echo '[CONTAINER] Done!'"
+    # Run container: mount user's folder to /output, copy game files there
+    docker run -v ${dockerVolume} --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '=== CONTAINER STARTED ===' && echo 'Copying game files to /output/${id}...' && mkdir -p /output/${id} && cp -rv /home/* /output/${id}/ 2>&1 && echo '' && echo '=== COPY COMPLETE ===' && ls -la /output/${id}/ && echo '' && echo 'Total size:' && du -sh /output/${id}/"
 
     if (\$LASTEXITCODE -eq 0) {
         \$runSuccess = \$true
         Write-Host ""
-        Write-Host "[SUCCESS] ${gameName} completed!" -ForegroundColor Green
-        Write-Host "[INFO] Files saved to: ${internalPath}\\${id}" -ForegroundColor Gray
+        Write-Host "============================================================" -ForegroundColor Green
+        Write-Host "[SUCCESS] ${gameName} extracted successfully!" -ForegroundColor Green
+        Write-Host "[SAVED TO] ${normalizedPath}\\${id}" -ForegroundColor Green
+        Write-Host "============================================================" -ForegroundColor Green
     } else {
-        Write-Host "[WARNING] Attempt \$attempt/3 failed." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "[WARNING] Attempt \$attempt/3 failed with exit code \$LASTEXITCODE" -ForegroundColor Yellow
         docker stop ${id} 2>\$null | Out-Null
         docker rm -f ${id} 2>\$null | Out-Null
         if (\$attempt -lt 3) {
@@ -1571,11 +1583,13 @@ for (\$attempt = 1; \$attempt -le 3 -and -not \$runSuccess; \$attempt++) {
 }
 
 if (-not \$runSuccess) {
-    Write-Host "[ERROR] ${gameName} extraction failed after 3 attempts!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "[ERROR] ${gameName} extraction FAILED after 3 attempts!" -ForegroundColor Red
+    Write-Host "[ERROR] Check Docker status and try again." -ForegroundColor Red
 }${!isLastGame ? `
 
 Write-Host ""
-Write-Host "[INFO] Moving to next game in 3 seconds..." -ForegroundColor Gray
+Write-Host "[NEXT] Moving to next game in 3 seconds..." -ForegroundColor Gray
 Start-Sleep -Seconds 3` : ''}`;
             }).join('\n');
 
@@ -1682,16 +1696,17 @@ done
 
 if [ \$PULL_SUCCESS -eq 0 ]; then
     echo "[ERROR] Failed to pull ${gameName} after 5 attempts. Skipping..."
-    ${!isLastGame ? `echo "[INFO] Moving to next game in 3 seconds..."
+    ${!isLastGame ? `echo "[NEXT] Moving to next game in 3 seconds..."
     sleep 3` : ''}
     continue 2>/dev/null || true
 fi
 
 # ============================================================
-# STEP 2: Extract game files via rsync
+# STEP 2: Extract game files to destination
 # ============================================================
 echo ""
-echo "[STEP 2/2] Extracting files to ${mountPath}/${id}..."
+echo "[STEP 2/2] Extracting files to: ${mountPath}/${id}"
+echo ""
 
 # Clean up any existing container
 docker stop ${id} 2>/dev/null || true
@@ -1700,14 +1715,19 @@ docker rm -f ${id} 2>/dev/null || true
 RUN_SUCCESS=0
 for attempt in 1 2 3; do
     if [ \$RUN_SUCCESS -eq 0 ]; then
-        echo "[INFO] Extraction attempt \$attempt/3..."
+        echo "[ATTEMPT \$attempt/3] Running extraction container..."
+        echo ""
 
-        if docker run -v "${mountPath}:/games" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '[CONTAINER] Installing rsync...' && apk add rsync 2>/dev/null && echo '[CONTAINER] Starting file sync...' && rsync -av --progress --human-readable /home /games/ && echo '[CONTAINER] Moving to final location...' && cd /games && mv home ${id} && echo '[CONTAINER] Done!'"; then
+        # Run container: mount user's folder to /output, copy game files there
+        if docker run -v "${mountPath}:/output" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '=== CONTAINER STARTED ===' && echo 'Copying game files to /output/${id}...' && mkdir -p /output/${id} && cp -rv /home/* /output/${id}/ 2>&1 && echo '' && echo '=== COPY COMPLETE ===' && ls -la /output/${id}/ && echo '' && echo 'Total size:' && du -sh /output/${id}/"; then
             RUN_SUCCESS=1
             echo ""
-            echo "[SUCCESS] ${gameName} completed!"
-            echo "[INFO] Files saved to: ${mountPath}/${id}"
+            echo "============================================================"
+            echo "[SUCCESS] ${gameName} extracted successfully!"
+            echo "[SAVED TO] ${mountPath}/${id}"
+            echo "============================================================"
         else
+            echo ""
             echo "[WARNING] Attempt \$attempt/3 failed."
             docker stop ${id} 2>/dev/null || true
             docker rm -f ${id} 2>/dev/null || true
@@ -1721,11 +1741,13 @@ for attempt in 1 2 3; do
 done
 
 if [ \$RUN_SUCCESS -eq 0 ]; then
-    echo "[ERROR] ${gameName} extraction failed after 3 attempts!"
+    echo ""
+    echo "[ERROR] ${gameName} extraction FAILED after 3 attempts!"
+    echo "[ERROR] Check Docker status and try again."
 fi${!isLastGame ? `
 
 echo ""
-echo "[INFO] Moving to next game in 3 seconds..."
+echo "[NEXT] Moving to next game in 3 seconds..."
 sleep 3` : ''}`;
             }).join('\n');
 
