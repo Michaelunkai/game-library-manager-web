@@ -1262,74 +1262,98 @@ class GameLibrary {
 
         if (this.os === 'windows' && format === 'bat') {
             // Windows Batch script (.bat) - double-click to run!
-            // Build run commands for each game
-            const commands = gameIds.map((id, idx) => {
+            // Build combined pull+extract commands for each game (single-phase approach)
+            const gameCommands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
                 return `
 echo.
-echo [%date% %time%] Running game ${idx + 1}/${gameCount}: ${gameName}
-echo ============================================================
-docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${id}"
-if %ERRORLEVEL% EQU 0 (
-    echo [SUCCESS] ${gameName} completed successfully!
-) else (
-    echo [ERROR] ${gameName} failed with error code %ERRORLEVEL%
-)
-REM Small delay to let network settle before next game
-if ${idx + 1} LSS ${gameCount} (
-    echo.
-    echo Waiting 3 seconds before next game...
-    timeout /t 3 /nobreak >nul
-)`;
-            }).join('\n');
+echo ############################################################
+echo  GAME ${idx + 1}/${gameCount}: ${gameName}
+echo ############################################################
+echo [%date% %time%] Starting...
+echo.
 
-            // Build pull commands with robust retry logic
-            const pullCommands = gameIds.map((id, idx) => {
-                const game = this.games.find(g => g.id === id);
-                const gameName = game ? game.name : id;
-                return `
-echo.
-echo [%date% %time%] Pulling image ${idx + 1}/${gameCount}: ${gameName}
+REM ============================================================
+REM STEP 1: Pull the Docker image
+REM ============================================================
+echo [STEP 1/2] Pulling Docker image for ${gameName}...
 set "PULL_SUCCESS=0"
 set "RETRY_DELAY=5"
 for /L %%i in (1,1,5) do (
     if !PULL_SUCCESS! EQU 0 (
-        REM Check Docker health before attempting pull
         docker info >nul 2>&1
         if !ERRORLEVEL! NEQ 0 (
             echo [WARNING] Docker not responding, attempting recovery...
             call :recover_docker
         )
 
-        REM Attempt the pull and capture output for error detection
-        docker pull ${dockerUser}/${repoName}:${id} 2>&1
+        docker pull ${dockerUser}/${repoName}:${id}
         if !ERRORLEVEL! EQU 0 (
             set "PULL_SUCCESS=1"
             echo [OK] Image pulled successfully!
         ) else (
-            echo [RETRY %%i/5] Pull failed, attempting recovery...
-
-            REM Flush DNS cache
+            echo [RETRY %%i/5] Pull failed, retrying...
             ipconfig /flushdns >nul 2>&1
-
-            REM Reset Windows network stack
-            netsh winsock reset >nul 2>&1
-            netsh int ip reset >nul 2>&1
-
-            REM Try to restart Docker Desktop if it's having issues
             call :recover_docker
-
-            REM Exponential backoff: 5, 10, 20, 40, 60 seconds
-            echo [INFO] Waiting !RETRY_DELAY! seconds before retry...
+            echo [INFO] Waiting !RETRY_DELAY! seconds...
             timeout /t !RETRY_DELAY! /nobreak >nul
             set /a "RETRY_DELAY=RETRY_DELAY*2"
             if !RETRY_DELAY! GTR 60 set "RETRY_DELAY=60"
         )
     )
 )
+
 if !PULL_SUCCESS! EQU 0 (
-    echo [WARNING] Failed to pull ${gameName} after 5 attempts, will try during run...
+    echo [ERROR] Failed to pull ${gameName} after 5 attempts. Skipping...
+    goto :next_game_${idx}
+)
+
+REM ============================================================
+REM STEP 2: Extract game files via rsync
+REM ============================================================
+echo.
+echo [STEP 2/2] Extracting files to ${internalPath}\\${id}...
+
+REM Clean up any existing container
+docker stop ${id} >nul 2>&1
+docker rm -f ${id} >nul 2>&1
+
+set "RUN_SUCCESS=0"
+for /L %%a in (1,1,3) do (
+    if !RUN_SUCCESS! EQU 0 (
+        echo [INFO] Extraction attempt %%a/3...
+
+        docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '[CONTAINER] Installing rsync...' && apk add rsync 2>/dev/null && echo '[CONTAINER] Starting file sync...' && rsync -av --progress --human-readable /home ${internalPath}/ && echo '[CONTAINER] Moving to final location...' && cd ${internalPath} && mv home ${id} && echo '[CONTAINER] Done!'"
+
+        if !ERRORLEVEL! EQU 0 (
+            set "RUN_SUCCESS=1"
+            echo.
+            echo [SUCCESS] ${gameName} completed!
+            echo [INFO] Files saved to: ${internalPath}\\${id}
+        ) else (
+            echo [WARNING] Attempt %%a/3 failed.
+            docker stop ${id} >nul 2>&1
+            docker rm -f ${id} >nul 2>&1
+            if %%a LSS 3 (
+                echo [INFO] Waiting 10 seconds before retry...
+                timeout /t 10 /nobreak >nul
+                call :recover_docker
+            )
+        )
+    )
+)
+
+if !RUN_SUCCESS! EQU 0 (
+    echo [ERROR] ${gameName} extraction failed after 3 attempts!
+)
+
+:next_game_${idx}
+REM Small delay before next game
+if ${idx + 1} LSS ${gameCount} (
+    echo.
+    echo [INFO] Moving to next game in 3 seconds...
+    timeout /t 3 /nobreak >nul
 )`;
             }).join('\n');
 
@@ -1346,18 +1370,16 @@ REM 1. Make sure Docker Desktop is running
 REM 2. Double-click this .bat file to run
 REM 3. Games will be downloaded to ${mountPath}
 REM
-REM This script includes:
-REM - Pre-pulling all images with robust retry logic
-REM - Automatic Docker Desktop recovery on pipe/connection errors
-REM - Network stack reset on failures
-REM - Exponential backoff between retries
+REM Each game is fully processed (pull + extract) before moving
+REM to the next one, so you can see real-time progress.
 REM
 REM ============================================================
 
 echo.
 echo  ====================================
-echo   Game Library Manager v4.0
-echo   Running ${gameCount} game(s)
+echo   Game Library Manager v5.0
+echo   Processing ${gameCount} game(s)
+echo   Destination: ${mountPath}
 echo  ====================================
 echo.
 
@@ -1387,37 +1409,26 @@ if %ERRORLEVEL% NEQ 0 (
     netsh winsock reset >nul 2>&1
     timeout /t 5 /nobreak >nul
 
-    REM Test again
     ping -n 1 registry-1.docker.io >nul 2>&1
     if !ERRORLEVEL! NEQ 0 (
-        echo [WARNING] Still cannot reach Docker Hub, will retry during pulls...
+        echo [WARNING] Still cannot reach Docker Hub, will retry during processing...
     )
 )
 
-REM ============================================================
-REM PHASE 1: Pre-pull all images with retry logic
-REM ============================================================
 echo.
 echo ============================================================
-echo PHASE 1: Pre-pulling ${gameCount} Docker image(s)...
-echo This helps prevent network issues during the run phase.
+echo Starting game processing...
+echo Each game: Pull image -^> Extract files -^> Next game
 echo ============================================================
 
-${pullCommands}
-
-echo.
-echo ============================================================
-echo PHASE 2: Running games and extracting files
-echo Starting downloads to: ${mountPath}
-echo ============================================================
-
-${commands}
+${gameCommands}
 
 echo.
-echo ============================================================
-echo All ${gameCount} game(s) processed!
-echo Check ${mountPath} for your games.
-echo ============================================================
+echo ############################################################
+echo  ALL DONE!
+echo  ${gameCount} game(s) processed.
+echo  Check ${mountPath} for your games.
+echo ############################################################
 echo.
 goto :end
 
@@ -1485,47 +1496,87 @@ pause
 
         } else if (this.os === 'windows') {
             // Windows PowerShell script (.ps1) - runs natively in PowerShell
-            // Build run commands for each game
-            const commands = gameIds.map((id, idx) => {
+            // Build combined pull+extract commands for each game (single-phase approach)
+            const gameCommands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
                 const isLastGame = idx === gameCount - 1;
                 return `
 Write-Host ""
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Running game ${idx + 1}/${gameCount}: ${gameName}" -ForegroundColor Cyan
-Write-Host "============================================================"
-docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${id}"
-if (\$LASTEXITCODE -eq 0) {
-    Write-Host "[SUCCESS] ${gameName} completed successfully!" -ForegroundColor Green
-} else {
-    Write-Host "[ERROR] ${gameName} failed with error code \$LASTEXITCODE" -ForegroundColor Red
-}${!isLastGame ? `
-# Small delay before next game
+Write-Host "############################################################" -ForegroundColor Cyan
+Write-Host " GAME ${idx + 1}/${gameCount}: ${gameName}" -ForegroundColor Cyan
+Write-Host "############################################################" -ForegroundColor Cyan
+Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Starting..."
 Write-Host ""
-Write-Host "Waiting 3 seconds before next game..."
-Start-Sleep -Seconds 3` : ''}`;
-            }).join('\n');
 
-            // Build pull commands with simple retry
-            const pullCommands = gameIds.map((id, idx) => {
-                const game = this.games.find(g => g.id === id);
-                const gameName = game ? game.name : id;
-                return `
-Write-Host ""
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Pulling image ${idx + 1}/${gameCount}: ${gameName}" -ForegroundColor Cyan
-docker pull ${dockerUser}/${repoName}:${id}
-if (\$LASTEXITCODE -eq 0) {
-    Write-Host "[OK] ${gameName} pulled successfully!" -ForegroundColor Green
-} else {
-    Write-Host "[RETRY] First attempt failed, retrying in 5 seconds..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 5
+# ============================================================
+# STEP 1: Pull the Docker image
+# ============================================================
+Write-Host "[STEP 1/2] Pulling Docker image..." -ForegroundColor Yellow
+\$pullSuccess = \$false
+\$retryDelay = 5
+for (\$i = 1; \$i -le 5 -and -not \$pullSuccess; \$i++) {
+    docker info 2>\$null | Out-Null
+    if (\$LASTEXITCODE -ne 0) {
+        Write-Host "[WARNING] Docker not responding, waiting 10 seconds..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 10
+    }
+
     docker pull ${dockerUser}/${repoName}:${id}
     if (\$LASTEXITCODE -eq 0) {
-        Write-Host "[OK] ${gameName} pulled successfully on retry!" -ForegroundColor Green
+        \$pullSuccess = \$true
+        Write-Host "[OK] Image pulled successfully!" -ForegroundColor Green
     } else {
-        Write-Host "[WARNING] Failed to pull ${gameName}, will try during run..." -ForegroundColor Yellow
+        Write-Host "[RETRY \$i/5] Pull failed, retrying in \$retryDelay seconds..." -ForegroundColor Yellow
+        Start-Sleep -Seconds \$retryDelay
+        \$retryDelay = [Math]::Min(\$retryDelay * 2, 60)
     }
-}`;
+}
+
+if (-not \$pullSuccess) {
+    Write-Host "[ERROR] Failed to pull ${gameName} after 5 attempts. Skipping..." -ForegroundColor Red
+    continue
+}
+
+# ============================================================
+# STEP 2: Extract game files via rsync
+# ============================================================
+Write-Host ""
+Write-Host "[STEP 2/2] Extracting files to ${internalPath}\\${id}..." -ForegroundColor Yellow
+
+# Clean up any existing container
+docker stop ${id} 2>\$null | Out-Null
+docker rm -f ${id} 2>\$null | Out-Null
+
+\$runSuccess = \$false
+for (\$attempt = 1; \$attempt -le 3 -and -not \$runSuccess; \$attempt++) {
+    Write-Host "[INFO] Extraction attempt \$attempt/3..." -ForegroundColor Gray
+
+    docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '[CONTAINER] Installing rsync...' && apk add rsync 2>/dev/null && echo '[CONTAINER] Starting file sync...' && rsync -av --progress --human-readable /home ${internalPath}/ && echo '[CONTAINER] Moving to final location...' && cd ${internalPath} && mv home ${id} && echo '[CONTAINER] Done!'"
+
+    if (\$LASTEXITCODE -eq 0) {
+        \$runSuccess = \$true
+        Write-Host ""
+        Write-Host "[SUCCESS] ${gameName} completed!" -ForegroundColor Green
+        Write-Host "[INFO] Files saved to: ${internalPath}\\${id}" -ForegroundColor Gray
+    } else {
+        Write-Host "[WARNING] Attempt \$attempt/3 failed." -ForegroundColor Yellow
+        docker stop ${id} 2>\$null | Out-Null
+        docker rm -f ${id} 2>\$null | Out-Null
+        if (\$attempt -lt 3) {
+            Write-Host "[INFO] Waiting 10 seconds before retry..." -ForegroundColor Gray
+            Start-Sleep -Seconds 10
+        }
+    }
+}
+
+if (-not \$runSuccess) {
+    Write-Host "[ERROR] ${gameName} extraction failed after 3 attempts!" -ForegroundColor Red
+}${!isLastGame ? `
+
+Write-Host ""
+Write-Host "[INFO] Moving to next game in 3 seconds..." -ForegroundColor Gray
+Start-Sleep -Seconds 3` : ''}`;
             }).join('\n');
 
             script = `# ============================================================
@@ -1539,6 +1590,9 @@ if (\$LASTEXITCODE -eq 0) {
 # 2. Run: .\\${gameCount === 1 ? `run_${gameIds[0]}.ps1` : `run_${gameCount}_games.ps1`}
 # 3. Games will be downloaded to ${mountPath}
 #
+# Each game is fully processed (pull + extract) before moving
+# to the next one, so you can see real-time progress.
+#
 # If you get execution policy error, run:
 #   Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 #
@@ -1546,8 +1600,9 @@ if (\$LASTEXITCODE -eq 0) {
 
 Write-Host ""
 Write-Host "  ====================================" -ForegroundColor Cyan
-Write-Host "   Game Library Manager v4.0"
-Write-Host "   Running ${gameCount} game(s)"
+Write-Host "   Game Library Manager v5.0"
+Write-Host "   Processing ${gameCount} game(s)"
+Write-Host "   Destination: ${mountPath}"
 Write-Host "  ====================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -1562,28 +1617,19 @@ if (\$LASTEXITCODE -ne 0) {
 Write-Host "[OK] Docker is running" -ForegroundColor Green
 Write-Host ""
 
-# ============================================================
-# PHASE 1: Pre-pull images
-# ============================================================
 Write-Host "============================================================"
-Write-Host "PHASE 1: Pre-pulling ${gameCount} Docker image(s)..."
+Write-Host "Starting game processing..."
+Write-Host "Each game: Pull image -> Extract files -> Next game"
 Write-Host "============================================================"
 
-${pullCommands}
+${gameCommands}
 
 Write-Host ""
-Write-Host "============================================================"
-Write-Host "PHASE 2: Running games and extracting files"
-Write-Host "Downloading to: ${mountPath}"
-Write-Host "============================================================"
-
-${commands}
-
-Write-Host ""
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host "All ${gameCount} game(s) processed!"
-Write-Host "Check ${mountPath} for your games."
-Write-Host "============================================================" -ForegroundColor Green
+Write-Host "############################################################" -ForegroundColor Green
+Write-Host " ALL DONE!"
+Write-Host " ${gameCount} game(s) processed."
+Write-Host " Check ${mountPath} for your games."
+Write-Host "############################################################" -ForegroundColor Green
 Write-Host ""
 
 Read-Host "Press Enter to exit"
@@ -1594,77 +1640,93 @@ Read-Host "Press Enter to exit"
 
         } else {
             // macOS / Linux .sh file
-            // Build run commands with delays between games
-            const commands = gameIds.map((id, idx) => {
+            // Build combined pull+extract commands for each game (single-phase approach)
+            const gameCommands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
                 const isLastGame = idx === gameCount - 1;
                 return `
 echo ""
-echo "[$(date)] Running game $((${idx} + 1))/${gameCount}: ${gameName}"
-echo "============================================================"
-docker run -v "${mountPath}:/games" -it --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /games/ && cd /games && mv home ${id}"
-if [ $? -eq 0 ]; then
-    echo "[SUCCESS] ${gameName} completed successfully!"
-else
-    echo "[ERROR] ${gameName} failed!"
-fi${!isLastGame ? `
-# Small delay to let network settle before next game
+echo "############################################################"
+echo " GAME $((${idx} + 1))/${gameCount}: ${gameName}"
+echo "############################################################"
+echo "[$(date)] Starting..."
 echo ""
-echo "Waiting 3 seconds before next game..."
-sleep 3` : ''}`;
-            }).join('\n');
 
-            // Build pull commands with robust retry logic for Docker issues
-            const pullCommands = gameIds.map((id, idx) => {
-                const game = this.games.find(g => g.id === id);
-                const gameName = game ? game.name : id;
-                return `
-echo ""
-echo "[$(date)] Pulling image $((${idx} + 1))/${gameCount}: ${gameName}"
+# ============================================================
+# STEP 1: Pull the Docker image
+# ============================================================
+echo "[STEP 1/2] Pulling Docker image..."
 PULL_SUCCESS=0
 RETRY_DELAY=5
 for i in 1 2 3 4 5; do
-    if [ $PULL_SUCCESS -eq 0 ]; then
-        # Check Docker health before attempting pull
+    if [ \$PULL_SUCCESS -eq 0 ]; then
         if ! docker info > /dev/null 2>&1; then
             echo "[WARNING] Docker not responding, attempting recovery..."
             recover_docker
         fi
 
-        # Attempt the pull
-        if docker pull ${dockerUser}/${repoName}:${id} 2>&1; then
+        if docker pull ${dockerUser}/${repoName}:${id}; then
             PULL_SUCCESS=1
             echo "[OK] Image pulled successfully!"
         else
-            echo "[RETRY $i/5] Pull failed, attempting recovery..."
-
-            # Flush DNS cache (works on most systems)
-            if command -v systemd-resolve &> /dev/null; then
-                sudo systemd-resolve --flush-caches 2>/dev/null || true
-            elif command -v resolvectl &> /dev/null; then
-                sudo resolvectl flush-caches 2>/dev/null || true
-            elif command -v dscacheutil &> /dev/null; then
-                sudo dscacheutil -flushcache 2>/dev/null || true
-                sudo killall -HUP mDNSResponder 2>/dev/null || true
-            fi
-
-            # Attempt Docker recovery
-            recover_docker
-
-            # Exponential backoff
-            echo "[INFO] Waiting $RETRY_DELAY seconds before retry..."
-            sleep $RETRY_DELAY
-            RETRY_DELAY=$((RETRY_DELAY * 2))
-            if [ $RETRY_DELAY -gt 60 ]; then
+            echo "[RETRY \$i/5] Pull failed, retrying in \$RETRY_DELAY seconds..."
+            sleep \$RETRY_DELAY
+            RETRY_DELAY=\$((RETRY_DELAY * 2))
+            if [ \$RETRY_DELAY -gt 60 ]; then
                 RETRY_DELAY=60
             fi
         fi
     fi
 done
-if [ $PULL_SUCCESS -eq 0 ]; then
-    echo "[WARNING] Failed to pull ${gameName} after 5 attempts, will try during run..."
-fi`;
+
+if [ \$PULL_SUCCESS -eq 0 ]; then
+    echo "[ERROR] Failed to pull ${gameName} after 5 attempts. Skipping..."
+    ${!isLastGame ? `echo "[INFO] Moving to next game in 3 seconds..."
+    sleep 3` : ''}
+    continue 2>/dev/null || true
+fi
+
+# ============================================================
+# STEP 2: Extract game files via rsync
+# ============================================================
+echo ""
+echo "[STEP 2/2] Extracting files to ${mountPath}/${id}..."
+
+# Clean up any existing container
+docker stop ${id} 2>/dev/null || true
+docker rm -f ${id} 2>/dev/null || true
+
+RUN_SUCCESS=0
+for attempt in 1 2 3; do
+    if [ \$RUN_SUCCESS -eq 0 ]; then
+        echo "[INFO] Extraction attempt \$attempt/3..."
+
+        if docker run -v "${mountPath}:/games" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '[CONTAINER] Installing rsync...' && apk add rsync 2>/dev/null && echo '[CONTAINER] Starting file sync...' && rsync -av --progress --human-readable /home /games/ && echo '[CONTAINER] Moving to final location...' && cd /games && mv home ${id} && echo '[CONTAINER] Done!'"; then
+            RUN_SUCCESS=1
+            echo ""
+            echo "[SUCCESS] ${gameName} completed!"
+            echo "[INFO] Files saved to: ${mountPath}/${id}"
+        else
+            echo "[WARNING] Attempt \$attempt/3 failed."
+            docker stop ${id} 2>/dev/null || true
+            docker rm -f ${id} 2>/dev/null || true
+            if [ \$attempt -lt 3 ]; then
+                echo "[INFO] Waiting 10 seconds before retry..."
+                sleep 10
+                recover_docker
+            fi
+        fi
+    fi
+done
+
+if [ \$RUN_SUCCESS -eq 0 ]; then
+    echo "[ERROR] ${gameName} extraction failed after 3 attempts!"
+fi${!isLastGame ? `
+
+echo ""
+echo "[INFO] Moving to next game in 3 seconds..."
+sleep 3` : ''}`;
             }).join('\n');
 
             // Determine filename early for instructions
@@ -1684,11 +1746,8 @@ fi`;
 # 2. Make this script executable: chmod +x ${scriptFilename}
 # 3. Run: ./${scriptFilename}
 #
-# This script includes:
-# - Pre-pulling all images with robust retry logic
-# - Automatic Docker recovery on connection errors
-# - DNS cache flush on network failures
-# - Exponential backoff between retries
+# Each game is fully processed (pull + extract) before moving
+# to the next one, so you can see real-time progress.
 #
 # ============================================================
 
@@ -1713,7 +1772,7 @@ recover_docker() {
                 echo "[RECOVERY] Docker is ready!"
                 return 0
             fi
-            echo "[RECOVERY] Waiting... $w/12"
+            echo "[RECOVERY] Waiting... \$w/12"
         done
     elif command -v systemctl &> /dev/null && systemctl list-unit-files | grep -q docker; then
         # Linux with systemd
@@ -1741,8 +1800,9 @@ recover_docker() {
 
 echo ""
 echo " ===================================="
-echo "  Game Library Manager v3.7"
-echo "  Running ${gameCount} game(s)"
+echo "  Game Library Manager v5.0"
+echo "  Processing ${gameCount} game(s)"
+echo "  Destination: ${mountPath}"
 echo " ===================================="
 echo ""
 
@@ -1777,36 +1837,25 @@ if ! ping -c 1 registry-1.docker.io > /dev/null 2>&1; then
 
     sleep 5
 
-    # Test again
     if ! ping -c 1 registry-1.docker.io > /dev/null 2>&1; then
-        echo "[WARNING] Still cannot reach Docker Hub, will retry during pulls..."
+        echo "[WARNING] Still cannot reach Docker Hub, will retry during processing..."
     fi
 fi
 
-# ============================================================
-# PHASE 1: Pre-pull all images with retry logic
-# ============================================================
 echo ""
 echo "============================================================"
-echo "PHASE 1: Pre-pulling ${gameCount} Docker image(s)..."
-echo "This helps prevent network issues during the run phase."
+echo "Starting game processing..."
+echo "Each game: Pull image -> Extract files -> Next game"
 echo "============================================================"
 
-${pullCommands}
-
-echo ""
-echo "============================================================"
-echo "PHASE 2: Running games and extracting files"
-echo "Starting downloads to: ${mountPath}"
-echo "============================================================"
-
-${commands}
+${gameCommands}
 
 echo ""
-echo "============================================================"
-echo "All ${gameCount} game(s) processed!"
-echo "Check ${mountPath} for your games."
-echo "============================================================"
+echo "############################################################"
+echo " ALL DONE!"
+echo " ${gameCount} game(s) processed."
+echo " Check ${mountPath} for your games."
+echo "############################################################"
 echo ""
 `;
             filename = gameCount === 1
