@@ -1262,7 +1262,7 @@ class GameLibrary {
 
         if (this.os === 'windows' && format === 'bat') {
             // Windows Batch script (.bat) - double-click to run!
-            // Build run commands for each game
+            // Build run commands for each game with robust retry and progress
             const commands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
@@ -1270,15 +1270,61 @@ class GameLibrary {
 echo.
 echo [%date% %time%] Running game ${idx + 1}/${gameCount}: ${gameName}
 echo ============================================================
-docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${id}"
-if %ERRORLEVEL% EQU 0 (
-    echo [SUCCESS] ${gameName} completed successfully!
-) else (
-    echo [ERROR] ${gameName} failed with error code %ERRORLEVEL%
+
+REM Clean up any existing container with the same name (prevents "name already in use" errors)
+echo [INFO] Cleaning up any previous container...
+docker stop ${id} >nul 2>&1
+docker rm -f ${id} >nul 2>&1
+
+REM Run with retry logic (3 attempts)
+set "RUN_SUCCESS=0"
+for /L %%a in (1,1,3) do (
+    if !RUN_SUCCESS! EQU 0 (
+        echo [INFO] Attempt %%a/3 - Starting extraction for ${gameName}...
+        echo [INFO] Destination: ${internalPath}/${id}
+        echo.
+
+        REM Check Docker health before running
+        docker info >nul 2>&1
+        if !ERRORLEVEL! NEQ 0 (
+            echo [WARNING] Docker not responding, attempting recovery...
+            call :recover_docker
+        )
+
+        REM Run the container with live progress output
+        docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '[CONTAINER] Installing rsync...' && apk add rsync 2>/dev/null && echo '[CONTAINER] Starting file sync...' && rsync -av --progress --human-readable /home ${internalPath}/ && echo '[CONTAINER] Moving files to final location...' && cd ${internalPath} && mv home ${id} && echo '[CONTAINER] Extraction complete!'"
+
+        if !ERRORLEVEL! EQU 0 (
+            set "RUN_SUCCESS=1"
+            echo.
+            echo [SUCCESS] ${gameName} completed successfully!
+            echo [INFO] Files saved to: ${internalPath}\\${id}
+        ) else (
+            echo.
+            echo [WARNING] Attempt %%a/3 failed with error code !ERRORLEVEL!
+
+            REM Clean up failed container
+            docker stop ${id} >nul 2>&1
+            docker rm -f ${id} >nul 2>&1
+
+            if %%a LSS 3 (
+                echo [INFO] Waiting 10 seconds before retry...
+                timeout /t 10 /nobreak >nul
+                call :recover_docker
+            )
+        )
+    )
 )
+
+if !RUN_SUCCESS! EQU 0 (
+    echo [ERROR] ${gameName} failed after 3 attempts!
+    echo [ERROR] Please check Docker and network status, then try again.
+)
+
 REM Small delay to let network settle before next game
 if ${idx + 1} LSS ${gameCount} (
     echo.
+    echo ============================================================
     echo Waiting 3 seconds before next game...
     timeout /t 3 /nobreak >nul
 )`;
@@ -1485,7 +1531,7 @@ pause
 
         } else if (this.os === 'windows') {
             // Windows PowerShell script (.ps1) - runs natively in PowerShell
-            // Build run commands for each game
+            // Build run commands for each game with robust retry and progress
             const commands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
@@ -1494,14 +1540,57 @@ pause
 Write-Host ""
 Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Running game ${idx + 1}/${gameCount}: ${gameName}" -ForegroundColor Cyan
 Write-Host "============================================================"
-docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${id}"
-if (\$LASTEXITCODE -eq 0) {
-    Write-Host "[SUCCESS] ${gameName} completed successfully!" -ForegroundColor Green
-} else {
-    Write-Host "[ERROR] ${gameName} failed with error code \$LASTEXITCODE" -ForegroundColor Red
+
+# Clean up any existing container with the same name
+Write-Host "[INFO] Cleaning up any previous container..." -ForegroundColor Gray
+docker stop ${id} 2>\$null | Out-Null
+docker rm -f ${id} 2>\$null | Out-Null
+
+# Run with retry logic
+\$runSuccess = \$false
+for (\$attempt = 1; \$attempt -le 3 -and -not \$runSuccess; \$attempt++) {
+    Write-Host "[INFO] Attempt \$attempt/3 - Starting extraction for ${gameName}..." -ForegroundColor Yellow
+    Write-Host "[INFO] Destination: ${internalPath}/${id}" -ForegroundColor Gray
+    Write-Host ""
+
+    # Check Docker health
+    docker info 2>\$null | Out-Null
+    if (\$LASTEXITCODE -ne 0) {
+        Write-Host "[WARNING] Docker not responding, waiting 10 seconds..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 10
+    }
+
+    # Run the container with live progress output
+    docker run -v "${dockerMount}" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '[CONTAINER] Installing rsync...' && apk add rsync 2>/dev/null && echo '[CONTAINER] Starting file sync...' && rsync -av --progress --human-readable /home ${internalPath}/ && echo '[CONTAINER] Moving files to final location...' && cd ${internalPath} && mv home ${id} && echo '[CONTAINER] Extraction complete!'"
+
+    if (\$LASTEXITCODE -eq 0) {
+        \$runSuccess = \$true
+        Write-Host ""
+        Write-Host "[SUCCESS] ${gameName} completed successfully!" -ForegroundColor Green
+        Write-Host "[INFO] Files saved to: ${internalPath}\\${id}" -ForegroundColor Gray
+    } else {
+        Write-Host ""
+        Write-Host "[WARNING] Attempt \$attempt/3 failed with error code \$LASTEXITCODE" -ForegroundColor Yellow
+
+        # Clean up failed container
+        docker stop ${id} 2>\$null | Out-Null
+        docker rm -f ${id} 2>\$null | Out-Null
+
+        if (\$attempt -lt 3) {
+            Write-Host "[INFO] Waiting 10 seconds before retry..." -ForegroundColor Gray
+            Start-Sleep -Seconds 10
+        }
+    }
+}
+
+if (-not \$runSuccess) {
+    Write-Host "[ERROR] ${gameName} failed after 3 attempts!" -ForegroundColor Red
+    Write-Host "[ERROR] Please check Docker and network status, then try again." -ForegroundColor Red
 }${!isLastGame ? `
+
 # Small delay before next game
 Write-Host ""
+Write-Host "============================================================"
 Write-Host "Waiting 3 seconds before next game..."
 Start-Sleep -Seconds 3` : ''}`;
             }).join('\n');
@@ -1594,7 +1683,7 @@ Read-Host "Press Enter to exit"
 
         } else {
             // macOS / Linux .sh file
-            // Build run commands with delays between games
+            // Build run commands with robust retry and progress
             const commands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
@@ -1603,14 +1692,57 @@ Read-Host "Press Enter to exit"
 echo ""
 echo "[$(date)] Running game $((${idx} + 1))/${gameCount}: ${gameName}"
 echo "============================================================"
-docker run -v "${mountPath}:/games" -it --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home /games/ && cd /games && mv home ${id}"
-if [ $? -eq 0 ]; then
-    echo "[SUCCESS] ${gameName} completed successfully!"
-else
-    echo "[ERROR] ${gameName} failed!"
+
+# Clean up any existing container with the same name
+echo "[INFO] Cleaning up any previous container..."
+docker stop ${id} 2>/dev/null || true
+docker rm -f ${id} 2>/dev/null || true
+
+# Run with retry logic
+RUN_SUCCESS=0
+for attempt in 1 2 3; do
+    if [ $RUN_SUCCESS -eq 0 ]; then
+        echo "[INFO] Attempt $attempt/3 - Starting extraction for ${gameName}..."
+        echo "[INFO] Destination: ${mountPath}/${id}"
+        echo ""
+
+        # Check Docker health
+        if ! docker info > /dev/null 2>&1; then
+            echo "[WARNING] Docker not responding, attempting recovery..."
+            recover_docker
+        fi
+
+        # Run the container with live progress output (removed -it for non-interactive)
+        if docker run -v "${mountPath}:/games" --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '[CONTAINER] Installing rsync...' && apk add rsync 2>/dev/null && echo '[CONTAINER] Starting file sync...' && rsync -av --progress --human-readable /home /games/ && echo '[CONTAINER] Moving files to final location...' && cd /games && mv home ${id} && echo '[CONTAINER] Extraction complete!'"; then
+            RUN_SUCCESS=1
+            echo ""
+            echo "[SUCCESS] ${gameName} completed successfully!"
+            echo "[INFO] Files saved to: ${mountPath}/${id}"
+        else
+            echo ""
+            echo "[WARNING] Attempt $attempt/3 failed!"
+
+            # Clean up failed container
+            docker stop ${id} 2>/dev/null || true
+            docker rm -f ${id} 2>/dev/null || true
+
+            if [ $attempt -lt 3 ]; then
+                echo "[INFO] Waiting 10 seconds before retry..."
+                sleep 10
+                recover_docker
+            fi
+        fi
+    fi
+done
+
+if [ $RUN_SUCCESS -eq 0 ]; then
+    echo "[ERROR] ${gameName} failed after 3 attempts!"
+    echo "[ERROR] Please check Docker and network status, then try again."
 fi${!isLastGame ? `
+
 # Small delay to let network settle before next game
 echo ""
+echo "============================================================"
 echo "Waiting 3 seconds before next game..."
 sleep 3` : ''}`;
             }).join('\n');
