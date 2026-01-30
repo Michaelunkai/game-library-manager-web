@@ -1180,15 +1180,11 @@ class GameLibrary {
         const repoName = this.settings.repoName || 'backup';
         const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
 
-        // Parse mountPath to get Docker mount format for Windows
-        // e.g., "F:/Games" -> drive mount "F:/:/f/", internal path "/f/Games/"
-        const driveLetter = mountPath.match(/^([A-Za-z]):/)?.[1]?.toLowerCase() || 'f';
-        const pathAfterDrive = mountPath.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/') || '/Games';
-        const dockerMount = `${driveLetter.toUpperCase()}:/:/${driveLetter}/`;
-        const internalPath = `/${driveLetter}${pathAfterDrive}`;
+        // Normalize path for Docker
+        const normalizedPath = mountPath.replace(/\\/g, '/');
 
-        // Full docker command with volume mount
-        return `docker run -v "${dockerMount}" --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "apk add rsync 2>/dev/null; rsync -av --progress /home ${internalPath}/ && cd ${internalPath} && mv home ${gameId}"`;
+        // Simple docker command - mount user's folder to /output, copy game files there
+        return `docker run -v "${normalizedPath}:/output" --rm --name ${gameId} ${dockerUser}/${repoName}:${gameId} sh -c "mkdir -p /output/${gameId} && cp -rv /home/* /output/${gameId}/"`;
     }
 
     openGameModal(game) {
