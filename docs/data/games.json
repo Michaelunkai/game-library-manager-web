@@ -5,6 +5,16 @@
         "category": "action"
     },
     {
+        "id": "wsl",
+        "name": "Wsl",
+        "category": "mybackup"
+    },
+    {
+        "id": "windowsapps",
+        "name": "Windowsapps",
+        "category": "mybackup"
+    },
+    {
         "id": "unchartedlegacyofthievescollection",
         "name": "Unchartedlegacyofthievescollection",
         "category": "new"
@@ -100,18 +110,8 @@
         "category": "new"
     },
     {
-        "id": "wsl",
-        "name": "Wsl",
-        "category": "mybackup"
-    },
-    {
         "id": "study",
         "name": "Study",
-        "category": "mybackup"
-    },
-    {
-        "id": "windowsapps",
-        "name": "Windowsapps",
         "category": "mybackup"
     },
     {
