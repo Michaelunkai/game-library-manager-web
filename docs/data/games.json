@@ -5,6 +5,11 @@
         "category": "action"
     },
     {
+        "id": "talesoftheshire",
+        "name": "Talesoftheshire",
+        "category": "new"
+    },
+    {
         "id": "wsl",
         "name": "Wsl",
         "category": "mybackup"
