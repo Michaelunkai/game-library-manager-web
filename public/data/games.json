@@ -5,6 +5,11 @@
         "category": "action"
     },
     {
+        "id": "wsl",
+        "name": "Wsl",
+        "category": "mybackup"
+    },
+    {
         "id": "windowsapps",
         "name": "Windowsapps",
         "category": "mybackup"
@@ -13,11 +18,6 @@
         "id": "talesoftheshire",
         "name": "Talesoftheshire",
         "category": "new"
-    },
-    {
-        "id": "wsl",
-        "name": "Wsl",
-        "category": "mybackup"
     },
     {
         "id": "unchartedlegacyofthievescollection",
