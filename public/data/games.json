@@ -5,13 +5,13 @@
         "category": "action"
     },
     {
-        "id": "wsl",
-        "name": "Wsl",
+        "id": "windowsapps",
+        "name": "Windowsapps",
         "category": "mybackup"
     },
     {
-        "id": "windowsapps",
-        "name": "Windowsapps",
+        "id": "wsl",
+        "name": "Wsl",
         "category": "mybackup"
     },
     {
