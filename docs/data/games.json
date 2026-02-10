@@ -5,13 +5,18 @@
         "category": "action"
     },
     {
-        "id": "windowsapps",
-        "name": "Windowsapps",
+        "id": "wsl",
+        "name": "Wsl",
         "category": "mybackup"
     },
     {
-        "id": "wsl",
-        "name": "Wsl",
+        "id": "study",
+        "name": "Study",
+        "category": "mybackup"
+    },
+    {
+        "id": "windowsapps",
+        "name": "Windowsapps",
         "category": "mybackup"
     },
     {
@@ -113,11 +118,6 @@
         "id": "dispatch",
         "name": "Dispatch",
         "category": "new"
-    },
-    {
-        "id": "study",
-        "name": "Study",
-        "category": "mybackup"
     },
     {
         "id": "swordofthesea",
