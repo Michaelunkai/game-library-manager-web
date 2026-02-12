@@ -5,11 +5,6 @@
         "category": "action"
     },
     {
-        "id": "creds",
-        "name": "Creds",
-        "category": "mybackup"
-    },
-    {
         "id": "wsl",
         "name": "Wsl",
         "category": "mybackup"
@@ -22,6 +17,11 @@
     {
         "id": "windowsapps",
         "name": "Windowsapps",
+        "category": "mybackup"
+    },
+    {
+        "id": "creds",
+        "name": "Creds",
         "category": "mybackup"
     },
     {
