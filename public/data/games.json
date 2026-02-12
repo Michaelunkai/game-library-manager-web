@@ -5,6 +5,11 @@
         "category": "action"
     },
     {
+        "id": "creds",
+        "name": "Creds",
+        "category": "mybackup"
+    },
+    {
         "id": "wsl",
         "name": "Wsl",
         "category": "mybackup"
@@ -162,11 +167,6 @@
     {
         "id": "profile",
         "name": "Profile",
-        "category": "mybackup"
-    },
-    {
-        "id": "creds",
-        "name": "Creds",
         "category": "mybackup"
     },
     {

@@ -1,5 +1,6 @@
 {
     "latest": 0.99,
+    "creds": 0,
     "wsl": 1.75,
     "study": 2.03,
     "windowsapps": 4.85,
@@ -32,7 +33,6 @@
     "tovtech": 0.54,
     "tovplay": 0.08,
     "profile": 0,
-    "creds": 0.01,
     "theelderscrollsivoblivionremastered": 121.78,
     "cache": 0.31,
     "farcry3remastered": 7.86,
