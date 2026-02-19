@@ -5,6 +5,36 @@
         "category": "action"
     },
     {
+        "id": "wsl",
+        "name": "Wsl",
+        "category": "mybackup"
+    },
+    {
+        "id": "therogueprinceofpersia",
+        "name": "Therogueprinceofpersia",
+        "category": "new"
+    },
+    {
+        "id": "study",
+        "name": "Study",
+        "category": "mybackup"
+    },
+    {
+        "id": "windowsapps-cache",
+        "name": "Windowsapps-cache",
+        "category": "new"
+    },
+    {
+        "id": "windowsapps",
+        "name": "Windowsapps",
+        "category": "mybackup"
+    },
+    {
+        "id": "wsl-cache",
+        "name": "Wsl-cache",
+        "category": "new"
+    },
+    {
         "id": "gamesaves",
         "name": "Gamesaves",
         "category": "mybackup"
@@ -13,21 +43,6 @@
         "id": "claudecode",
         "name": "Claudecode",
         "category": "new"
-    },
-    {
-        "id": "wsl",
-        "name": "Wsl",
-        "category": "mybackup"
-    },
-    {
-        "id": "study",
-        "name": "Study",
-        "category": "mybackup"
-    },
-    {
-        "id": "windowsapps",
-        "name": "Windowsapps",
-        "category": "mybackup"
     },
     {
         "id": "creds",
