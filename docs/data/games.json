@@ -5,6 +5,11 @@
         "category": "action"
     },
     {
+        "id": "creds",
+        "name": "Creds",
+        "category": "mybackup"
+    },
+    {
         "id": "bloonstd6",
         "name": "Bloonstd 6",
         "category": "new"
@@ -73,11 +78,6 @@
         "id": "claudecode",
         "name": "Claudecode",
         "category": "new"
-    },
-    {
-        "id": "creds",
-        "name": "Creds",
-        "category": "mybackup"
     },
     {
         "id": "talesoftheshire",
