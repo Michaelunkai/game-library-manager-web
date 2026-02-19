@@ -5,6 +5,16 @@
         "category": "action"
     },
     {
+        "id": "gamesaves",
+        "name": "Gamesaves",
+        "category": "mybackup"
+    },
+    {
+        "id": "claudecode",
+        "name": "Claudecode",
+        "category": "new"
+    },
+    {
         "id": "wsl",
         "name": "Wsl",
         "category": "mybackup"
@@ -192,11 +202,6 @@
     {
         "id": "win11recovery",
         "name": "Win 11recovery",
-        "category": "mybackup"
-    },
-    {
-        "id": "gamesaves",
-        "name": "Gamesaves",
         "category": "mybackup"
     },
     {

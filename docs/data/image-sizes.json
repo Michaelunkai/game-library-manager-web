@@ -1,7 +1,9 @@
 {
     "latest": 0.99,
+    "gamesaves": 1.03,
+    "claudecode": 1.22,
     "wsl": 1.75,
-    "study": 2.69,
+    "study": 1.23,
     "windowsapps": 4.9,
     "creds": 0,
     "talesoftheshire": 2.39,
@@ -38,7 +40,6 @@
     "farcry3remastered": 7.86,
     "developerwincontainer": 3.93,
     "win11recovery": 28.11,
-    "gamesaves": 0.06,
     "godofwarragnarok": 112.82,
     "godofwarragnarokpart3": 11.69,
     "godofwarragnarokpart10": 11.7,
