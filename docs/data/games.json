@@ -5,14 +5,29 @@
         "category": "action"
     },
     {
-        "id": "wsl",
-        "name": "Wsl",
-        "category": "mybackup"
-    },
-    {
         "id": "therogueprinceofpersia",
         "name": "Therogueprinceofpersia",
         "category": "new"
+    },
+    {
+        "id": "inmot",
+        "name": "Inmot",
+        "category": "action"
+    },
+    {
+        "id": "crosscode",
+        "name": "Crosscode",
+        "category": "action"
+    },
+    {
+        "id": "spiritfall",
+        "name": "Spiritfall",
+        "category": "new"
+    },
+    {
+        "id": "wsl",
+        "name": "Wsl",
+        "category": "mybackup"
     },
     {
         "id": "study",
@@ -468,11 +483,6 @@
         "id": "sable",
         "name": "Sable",
         "category": "new"
-    },
-    {
-        "id": "inmot",
-        "name": "Inmot",
-        "category": "action"
     },
     {
         "id": "childrenofsilentown",
@@ -1933,11 +1943,6 @@
         "id": "apk",
         "name": "Apk",
         "category": "mybackup"
-    },
-    {
-        "id": "CrossCode",
-        "name": "Cross Code",
-        "category": "action"
     },
     {
         "id": "BayonettaOriginsCerezaandtheLostDemon",
