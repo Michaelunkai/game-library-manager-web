@@ -5,6 +5,16 @@
         "category": "action"
     },
     {
+        "id": "ultros",
+        "name": "Ultros",
+        "category": "new"
+    },
+    {
+        "id": "bayonettaoriginscerezaandthelostdemon",
+        "name": "Bayonettaoriginscerezaandthelostdemon",
+        "category": "nintendo/switch"
+    },
+    {
         "id": "princeofpersiatheforgottensands",
         "name": "Princeofpersiatheforgottensands",
         "category": "new"
@@ -23,11 +33,6 @@
         "id": "helldivers",
         "name": "Helldivers",
         "category": "action"
-    },
-    {
-        "id": "ultros",
-        "name": "Ultros",
-        "category": "new"
     },
     {
         "id": "dragonquestviireimagined",
@@ -2003,11 +2008,6 @@
         "id": "apk",
         "name": "Apk",
         "category": "mybackup"
-    },
-    {
-        "id": "BayonettaOriginsCerezaandtheLostDemon",
-        "name": "Bayonetta Origins Cerezaandthe Lost Demon",
-        "category": "nintendo/switch"
     },
     {
         "id": "CassetteBeasts",
