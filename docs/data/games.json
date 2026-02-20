@@ -5,6 +5,26 @@
         "category": "action"
     },
     {
+        "id": "princeofpersiatheforgottensands",
+        "name": "Princeofpersiatheforgottensands",
+        "category": "new"
+    },
+    {
+        "id": "cultofthelamb",
+        "name": "Cultofthelamb",
+        "category": "new"
+    },
+    {
+        "id": "helldivers",
+        "name": "Helldivers",
+        "category": "action"
+    },
+    {
+        "id": "ultros",
+        "name": "Ultros",
+        "category": "new"
+    },
+    {
         "id": "slavezerox",
         "name": "Slavezerox",
         "category": "new"
@@ -1855,11 +1875,6 @@
         "category": "localcoop"
     },
     {
-        "id": "HELLDIVERS",
-        "name": "HELLDIVERS",
-        "category": "action"
-    },
-    {
         "id": "FlatOut2",
         "name": "Flat Out 2",
         "category": "action"
@@ -2598,11 +2613,6 @@
         "id": "Akimbot",
         "name": "Akimbot",
         "category": "not_for_me"
-    },
-    {
-        "id": "CultoftheLamb",
-        "name": "Cultofthe Lamb",
-        "category": "new"
     },
     {
         "id": "AngerFoot",
