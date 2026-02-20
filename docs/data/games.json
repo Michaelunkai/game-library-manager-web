@@ -5,6 +5,66 @@
         "category": "action"
     },
     {
+        "id": "slavezerox",
+        "name": "Slavezerox",
+        "category": "new"
+    },
+    {
+        "id": "dragonquestviireimagined",
+        "name": "Dragonquestviireimagined",
+        "category": "new"
+    },
+    {
+        "id": "southparkthestickoftruth",
+        "name": "Southparkthestickoftruth",
+        "category": "new"
+    },
+    {
+        "id": "blazblueentropyeffect",
+        "name": "Blazblueentropyeffect",
+        "category": "new"
+    },
+    {
+        "id": "creaks",
+        "name": "Creaks",
+        "category": "new"
+    },
+    {
+        "id": "aspacefortheunbound",
+        "name": "Aspacefortheunbound",
+        "category": "action"
+    },
+    {
+        "id": "severedsteel",
+        "name": "Severedsteel",
+        "category": "new"
+    },
+    {
+        "id": "bopathoftheteallotus",
+        "name": "Bopathoftheteallotus",
+        "category": "new"
+    },
+    {
+        "id": "60secondsreatomized",
+        "name": "60secondsreatomized",
+        "category": "action"
+    },
+    {
+        "id": "highlandsong",
+        "name": "Highlandsong",
+        "category": "action"
+    },
+    {
+        "id": "inmot",
+        "name": "Inmot",
+        "category": "action"
+    },
+    {
+        "id": "crosscode",
+        "name": "Crosscode",
+        "category": "action"
+    },
+    {
         "id": "creds",
         "name": "Creds",
         "category": "mybackup"
@@ -33,16 +93,6 @@
         "id": "therogueprinceofpersia",
         "name": "Therogueprinceofpersia",
         "category": "new"
-    },
-    {
-        "id": "inmot",
-        "name": "Inmot",
-        "category": "action"
-    },
-    {
-        "id": "crosscode",
-        "name": "Crosscode",
-        "category": "action"
     },
     {
         "id": "wsl",
@@ -483,11 +533,6 @@
         "id": "ninesols",
         "name": "Ninesols",
         "category": "finished"
-    },
-    {
-        "id": "creaks",
-        "name": "Creaks",
-        "category": "new"
     },
     {
         "id": "valiantheartscominghome",
@@ -1087,11 +1132,6 @@
     {
         "id": "ELDENRINGNIGHTREIGN",
         "name": "ELDENRINGNIGHTREIGN",
-        "category": "action"
-    },
-    {
-        "id": "60SecondsReatomized",
-        "name": "60Seconds Reatomized",
         "category": "action"
     },
     {
@@ -2925,11 +2965,6 @@
         "category": "simulators"
     },
     {
-        "id": "aspacefortheunbound",
-        "name": "Aspacefortheunbound",
-        "category": "action"
-    },
-    {
         "id": "desperados3",
         "name": "Desperados 3",
         "category": "action"
@@ -3727,11 +3762,6 @@
     {
         "id": "spacefortheunbound",
         "name": "Spacefortheunbound",
-        "category": "action"
-    },
-    {
-        "id": "highlandsong",
-        "name": "Highlandsong",
         "category": "action"
     },
     {
