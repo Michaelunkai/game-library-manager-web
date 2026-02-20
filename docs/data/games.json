@@ -5,6 +5,46 @@
         "category": "action"
     },
     {
+        "id": "asterigos",
+        "name": "Asterigos",
+        "category": "soulslike"
+    },
+    {
+        "id": "sonicunleashed",
+        "name": "Sonicunleashed",
+        "category": "platformers"
+    },
+    {
+        "id": "dragonballxenoverse",
+        "name": "Dragonballxenoverse",
+        "category": "new"
+    },
+    {
+        "id": "aeternanoctis",
+        "name": "Aeternanoctis",
+        "category": "platformers"
+    },
+    {
+        "id": "ashen",
+        "name": "Ashen",
+        "category": "soulslike"
+    },
+    {
+        "id": "thelegendofzeldaechoesofwisdom",
+        "name": "Thelegendofzeldaechoesofwisdom",
+        "category": "new"
+    },
+    {
+        "id": "kenshi",
+        "name": "Kenshi",
+        "category": "action"
+    },
+    {
+        "id": "eternights",
+        "name": "Eternights",
+        "category": "new"
+    },
+    {
         "id": "ultros",
         "name": "Ultros",
         "category": "new"
@@ -1125,11 +1165,6 @@
         "category": "action"
     },
     {
-        "id": "Kenshi",
-        "name": "Kenshi",
-        "category": "action"
-    },
-    {
         "id": "SIFU",
         "name": "SIFU",
         "category": "action"
@@ -1200,11 +1235,6 @@
         "category": "new"
     },
     {
-        "id": "Asterigos",
-        "name": "Asterigos",
-        "category": "soulslike"
-    },
-    {
         "id": "MortalShell",
         "name": "Mortal Shell",
         "category": "soulslike"
@@ -1223,11 +1253,6 @@
         "id": "Deathbound",
         "name": "Deathbound",
         "category": "soulslike"
-    },
-    {
-        "id": "AeternaNoctis",
-        "name": "Aeterna Noctis",
-        "category": "platformers"
     },
     {
         "id": "HollowKnight",
@@ -1548,11 +1573,6 @@
         "id": "KingdomComeDeliverance",
         "name": "Kingdom Come Deliverance",
         "category": "not_for_me"
-    },
-    {
-        "id": "Ashen",
-        "name": "Ashen",
-        "category": "soulslike"
     },
     {
         "id": "SunlessSkies",
@@ -2168,11 +2188,6 @@
         "id": "TMNTSplinteredFate",
         "name": "TMNTSplintered Fate",
         "category": "hacknslash"
-    },
-    {
-        "id": "SonicUnleashed",
-        "name": "Sonic Unleashed",
-        "category": "platformers"
     },
     {
         "id": "TombRaiderIVVIRemastered",
