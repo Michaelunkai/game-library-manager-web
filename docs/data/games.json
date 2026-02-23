@@ -5,6 +5,11 @@
         "category": "action"
     },
     {
+        "id": "cairn",
+        "name": "Cairn",
+        "category": "new"
+    },
+    {
         "id": "metalgearrisingrevengeance",
         "name": "Metalgearrisingrevengeance",
         "category": "new"
