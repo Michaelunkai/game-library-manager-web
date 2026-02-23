@@ -5,6 +5,16 @@
         "category": "action"
     },
     {
+        "id": "bayonetta",
+        "name": "Bayonetta",
+        "category": "new"
+    },
+    {
+        "id": "mewgenics",
+        "name": "Mewgenics",
+        "category": "new"
+    },
+    {
         "id": "study",
         "name": "Study",
         "category": "mybackup"
