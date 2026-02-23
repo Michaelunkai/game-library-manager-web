@@ -5,6 +5,21 @@
         "category": "action"
     },
     {
+        "id": "wsl",
+        "name": "Wsl",
+        "category": "mybackup"
+    },
+    {
+        "id": "study",
+        "name": "Study",
+        "category": "mybackup"
+    },
+    {
+        "id": "windowsapps",
+        "name": "Windowsapps",
+        "category": "mybackup"
+    },
+    {
         "id": "asterigos",
         "name": "Asterigos",
         "category": "soulslike"
@@ -160,24 +175,9 @@
         "category": "new"
     },
     {
-        "id": "wsl",
-        "name": "Wsl",
-        "category": "mybackup"
-    },
-    {
-        "id": "study",
-        "name": "Study",
-        "category": "mybackup"
-    },
-    {
         "id": "windowsapps-cache",
         "name": "Windowsapps-cache",
         "category": "new"
-    },
-    {
-        "id": "windowsapps",
-        "name": "Windowsapps",
-        "category": "mybackup"
     },
     {
         "id": "wsl-cache",
