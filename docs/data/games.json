@@ -5,6 +5,11 @@
         "category": "action"
     },
     {
+        "id": "dustborn",
+        "name": "Dustborn",
+        "category": "new"
+    },
+    {
         "id": "wsl",
         "name": "Wsl",
         "category": "mybackup"
