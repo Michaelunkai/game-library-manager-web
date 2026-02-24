@@ -1,0 +1,58 @@
+{
+  "generated": "2026-02-24",
+  "note": "Image lookup: app uses game.id.toLowerCase() to find /public/images/{id}.png",
+
+  "list1_games_with_no_image": {
+    "description": "Games (Docker tags) that exist in games.json but have NO corresponding image file in /public/images/",
+    "count": 15,
+    "games": [
+      { "id": "mewgenics",                                    "name": "Mewgenics",                               "category": "new" },
+      { "id": "rayman30thanniversaryedition",                 "name": "Rayman 30th Anniversary Edition",         "category": "new" },
+      { "id": "911operator",                                  "name": "911 Operator",                            "category": "new" },
+      { "id": "peppergrinder",                                "name": "Pepper Grinder",                          "category": "new" },
+      { "id": "highonlife2",                                  "name": "High on Life 2",                          "category": "new" },
+      { "id": "ninjagaiden2black",                            "name": "Ninja Gaiden 2 Black",                    "category": "new" },
+      { "id": "thewitcher3wildhunt",                          "name": "The Witcher 3 Wild Hunt",                 "category": "new" },
+      { "id": "haroldhalibut",                                "name": "Harold Halibut",                          "category": "new" },
+      { "id": "sonicfrontiers",                               "name": "Sonic Frontiers",                         "category": "new" },
+      { "id": "metalgearsolid3snakeeatermastercollection",    "name": "Metal Gear Solid 3 Snake Eater Master Collection", "category": "new" },
+      { "id": "cairn",                                        "name": "Cairn",                                   "category": "new" },
+      { "id": "metalgearrisingrevengeance",                   "name": "Metal Gear Rising Revengeance",           "category": "new" },
+      { "id": "bayonetta",                                    "name": "Bayonetta",                               "category": "new" },
+      { "id": "windowsapps-cache",                            "name": "Windowsapps-cache",                       "category": "new" },
+      { "id": "wsl-cache",                                    "name": "Wsl-cache",                               "category": "new" }
+    ]
+  },
+
+  "list2_incorrect_or_mismatched_images": {
+    "description": "Image files that exist in /public/images/ but do NOT match any game id in games.json. These images have no correct game to display them for — they are orphaned (for removed/renamed games) or typos.",
+    "count": 14,
+    "images": [
+      { "file": "batmantheenemywithin.png",       "likely_was": "Batman The Enemy Within",          "status": "game removed from library" },
+      { "file": "batmanthetelltaleseries.png",     "likely_was": "Batman The Telltale Series",       "status": "game removed from library" },
+      { "file": "brotherstaleoftwosons.png",       "likely_was": "Brothers A Tale of Two Sons",      "status": "game removed from library" },
+      { "file": "callofdutymodernwarfare.png",     "likely_was": "Call of Duty Modern Warfare",      "status": "game removed from library" },
+      { "file": "callofdutymodernwarfare3.png",    "likely_was": "Call of Duty Modern Warfare 3",    "status": "game removed from library" },
+      { "file": "codinfininitewarfare.png",        "likely_was": "COD Infinite Warfare",             "status": "game removed from library" },
+      { "file": "fireemblemengage.png",            "likely_was": "Fire Emblem Engage",               "status": "game removed from library" },
+      { "file": "fireemblemwarriors3hopes.png",    "likely_was": "Fire Emblem Warriors 3 Hopes",     "status": "game removed from library" },
+      { "file": "ftlfasterthanlight.png",          "likely_was": "FTL Faster Than Light",            "status": "game removed from library" },
+      { "file": "grandtheftautoiv.png",            "likely_was": "Grand Theft Auto IV",              "status": "game removed from library" },
+      { "file": "llama31.png",                     "likely_was": "Llama 3.1 (AI model, not a game)", "status": "tool/non-game entry removed" },
+      { "file": "rimworld.png",                    "likely_was": "RimWorld",                         "status": "game removed from library" },
+      { "file": "thecastingoffrankston.png",       "likely_was": "The Casting of Frank Stone (typo: missing 'e' at end)", "status": "TYPO — correct file is thecastingoffrankstone.png (45KB); this file is 206KB and may be the actual proper cover art being ignored" },
+      { "file": "thesims4.png",                    "likely_was": "The Sims 4",                       "status": "game removed from library" }
+    ]
+  },
+
+  "special_note_typo_mismatch": {
+    "game": "TheCastingofFrankStone",
+    "game_name": "The Casting of Frank Stone",
+    "category": "action",
+    "image_used": "thecastingoffrankstone.png",
+    "image_used_size_bytes": 45456,
+    "orphan_image": "thecastingoffrankston.png",
+    "orphan_image_size_bytes": 206226,
+    "issue": "There are two very similar image files. The game loads thecastingoffrankstone.png (45KB, small). The larger thecastingoffrankston.png (206KB) is an orphan. The 206KB file is likely the real/correct cover art but is not being used due to the filename typo ('ston' vs 'stone')."
+  }
+}
