@@ -5,6 +5,16 @@
         "category": "action"
     },
     {
+        "id": "sonicfrontiers",
+        "name": "Sonicfrontiers",
+        "category": "new"
+    },
+    {
+        "id": "metalgearsolid3snakeeatermastercollection",
+        "name": "Metalgearsolid 3snakeeatermastercollection",
+        "category": "new"
+    },
+    {
         "id": "cairn",
         "name": "Cairn",
         "category": "new"
