@@ -5,6 +5,16 @@
         "category": "action"
     },
     {
+        "id": "creds",
+        "name": "Creds",
+        "category": "mybackup"
+    },
+    {
+        "id": "highonlife2",
+        "name": "Highonlife 2",
+        "category": "new"
+    },
+    {
         "id": "ninjagaiden2black",
         "name": "Ninjagaiden 2black",
         "category": "new"
@@ -198,11 +208,6 @@
         "id": "crosscode",
         "name": "Crosscode",
         "category": "action"
-    },
-    {
-        "id": "creds",
-        "name": "Creds",
-        "category": "mybackup"
     },
     {
         "id": "bloonstd6",
