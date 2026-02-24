@@ -5,6 +5,21 @@
         "category": "action"
     },
     {
+        "id": "ninjagaiden2black",
+        "name": "Ninjagaiden 2black",
+        "category": "new"
+    },
+    {
+        "id": "thewitcher3wildhunt",
+        "name": "Thewitcher 3wildhunt",
+        "category": "new"
+    },
+    {
+        "id": "haroldhalibut",
+        "name": "Haroldhalibut",
+        "category": "new"
+    },
+    {
         "id": "sonicfrontiers",
         "name": "Sonicfrontiers",
         "category": "new"
@@ -48,11 +63,6 @@
         "id": "windowsapps",
         "name": "Windowsapps",
         "category": "mybackup"
-    },
-    {
-        "id": "haroldhalibut",
-        "name": "Haroldhalibut",
-        "category": "new"
     },
     {
         "id": "dustborn",
