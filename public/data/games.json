@@ -5,6 +5,31 @@
         "category": "action"
     },
     {
+        "id": "mewgenics",
+        "name": "Mewgenics",
+        "category": "new"
+    },
+    {
+        "id": "rayman30thanniversaryedition",
+        "name": "Rayman 30thanniversaryedition",
+        "category": "new"
+    },
+    {
+        "id": "911operator",
+        "name": "911operator",
+        "category": "new"
+    },
+    {
+        "id": "megabonk",
+        "name": "Megabonk",
+        "category": "new"
+    },
+    {
+        "id": "peppergrinder",
+        "name": "Peppergrinder",
+        "category": "new"
+    },
+    {
         "id": "creds",
         "name": "Creds",
         "category": "mybackup"
@@ -55,19 +80,9 @@
         "category": "new"
     },
     {
-        "id": "mewgenics",
-        "name": "Mewgenics",
-        "category": "new"
-    },
-    {
         "id": "study",
         "name": "Study",
         "category": "mybackup"
-    },
-    {
-        "id": "rayman30thanniversaryedition",
-        "name": "Rayman 30thanniversaryedition",
-        "category": "new"
     },
     {
         "id": "windowsapps",
@@ -357,11 +372,6 @@
     {
         "id": "swordofthesea",
         "name": "Swordofthesea",
-        "category": "new"
-    },
-    {
-        "id": "megabonk",
-        "name": "Megabonk",
         "category": "new"
     },
     {
