@@ -5,6 +5,26 @@
         "category": "action"
     },
     {
+        "id": "miside",
+        "name": "Miside",
+        "category": "new"
+    },
+    {
+        "id": "pipistrelloandthecursedyoyo",
+        "name": "Pipistrelloandthecursedyoyo",
+        "category": "new"
+    },
+    {
+        "id": "ninjagaidenragebound",
+        "name": "Ninjagaidenragebound",
+        "category": "new"
+    },
+    {
+        "id": "peak",
+        "name": "Peak",
+        "category": "new"
+    },
+    {
         "id": "asus",
         "name": "Asus",
         "category": "mybackup"
@@ -13,11 +33,6 @@
         "id": "study",
         "name": "Study",
         "category": "mybackup"
-    },
-    {
-        "id": "ninjagaidenragebound",
-        "name": "Ninjagaidenragebound",
-        "category": "new"
     },
     {
         "id": "banishersghostsofneweden",
