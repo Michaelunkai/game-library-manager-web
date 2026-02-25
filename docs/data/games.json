@@ -5,6 +5,16 @@
         "category": "action"
     },
     {
+        "id": "asus",
+        "name": "Asus",
+        "category": "mybackup"
+    },
+    {
+        "id": "study",
+        "name": "Study",
+        "category": "mybackup"
+    },
+    {
         "id": "ninjagaidenragebound",
         "name": "Ninjagaidenragebound",
         "category": "new"
@@ -93,11 +103,6 @@
         "id": "bayonetta",
         "name": "Bayonetta",
         "category": "new"
-    },
-    {
-        "id": "study",
-        "name": "Study",
-        "category": "mybackup"
     },
     {
         "id": "windowsapps",
@@ -503,11 +508,6 @@
         "id": "godofwarragnarokpart1",
         "name": "Godofwarragnarokpart 1",
         "category": "action"
-    },
-    {
-        "id": "asus",
-        "name": "Asus",
-        "category": "mybackup"
     },
     {
         "id": "revouninstallerpro",
