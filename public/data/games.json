@@ -5,6 +5,31 @@
         "category": "action"
     },
     {
+        "id": "test-push",
+        "name": "Test-push",
+        "category": "new"
+    },
+    {
+        "id": "titanquestanniversaryedition",
+        "name": "Titanquestanniversaryedition",
+        "category": "new"
+    },
+    {
+        "id": "pipistrelloandthecursedyoyo",
+        "name": "Pipistrelloandthecursedyoyo",
+        "category": "new"
+    },
+    {
+        "id": "tunic",
+        "name": "Tunic",
+        "category": "new"
+    },
+    {
+        "id": "scottpilgrimvstheworldce",
+        "name": "Scottpilgrimvstheworldce",
+        "category": "new"
+    },
+    {
         "id": "norestforthewicked",
         "name": "Norestforthewicked",
         "category": "new"
@@ -17,11 +42,6 @@
     {
         "id": "miside",
         "name": "Miside",
-        "category": "new"
-    },
-    {
-        "id": "pipistrelloandthecursedyoyo",
-        "name": "Pipistrelloandthecursedyoyo",
         "category": "new"
     },
     {
