@@ -1,8 +1,33 @@
 [
     {
-        "id": "latest",
-        "name": "Latest",
-        "category": "action"
+        "id": "hadesii",
+        "name": "Hadesii",
+        "category": "new"
+    },
+    {
+        "id": "hollowknight",
+        "name": "Hollowknight",
+        "category": "not_for_me"
+    },
+    {
+        "id": "childrenofmorta",
+        "name": "Childrenofmorta",
+        "category": "new"
+    },
+    {
+        "id": "speedtest",
+        "name": "Speedtest",
+        "category": "new"
+    },
+    {
+        "id": "gothic3",
+        "name": "Gothic 3",
+        "category": "new"
+    },
+    {
+        "id": "octopathtraveler",
+        "name": "Octopathtraveler",
+        "category": "new"
     },
     {
         "id": "test-push",
@@ -473,6 +498,11 @@
         "id": "profile",
         "name": "Profile",
         "category": "mybackup"
+    },
+    {
+        "id": "latest",
+        "name": "Latest",
+        "category": "action"
     },
     {
         "id": "theelderscrollsivoblivionremastered",
@@ -1383,11 +1413,6 @@
         "id": "Deathbound",
         "name": "Deathbound",
         "category": "soulslike"
-    },
-    {
-        "id": "HollowKnight",
-        "name": "Hollow Knight",
-        "category": "not_for_me"
     },
     {
         "id": "ThePrecinct",
