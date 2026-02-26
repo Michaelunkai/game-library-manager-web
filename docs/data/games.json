@@ -1,5 +1,10 @@
 [
     {
+        "id": "dawnoftheashenqueen",
+        "name": "Dawnoftheashenqueen",
+        "category": "new"
+    },
+    {
         "id": "oriandthewillofthewisps",
         "name": "Oriandthewillofthewisps",
         "category": "new"
@@ -495,13 +500,13 @@
         "category": "platformers"
     },
     {
-        "id": "batmanarkhamknight",
-        "name": "Batmanarkhamknight",
+        "id": "latest",
+        "name": "Latest",
         "category": "action"
     },
     {
-        "id": "latest",
-        "name": "Latest",
+        "id": "batmanarkhamknight",
+        "name": "Batmanarkhamknight",
         "category": "action"
     },
     {
