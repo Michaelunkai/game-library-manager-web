@@ -112,7 +112,7 @@
     {
         "id": "banishersghostsofneweden",
         "name": "Banishersghostsofneweden",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "spongebobsquarepantstitansofthetide",
@@ -167,7 +167,7 @@
     {
         "id": "haroldhalibut",
         "name": "Haroldhalibut",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "sonicfrontiers",
@@ -202,7 +202,7 @@
     {
         "id": "dustborn",
         "name": "Dustborn",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "wsl",
@@ -247,7 +247,7 @@
     {
         "id": "eternights",
         "name": "Eternights",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "ultros",
@@ -302,7 +302,7 @@
     {
         "id": "aspacefortheunbound",
         "name": "Aspacefortheunbound",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "severedsteel",
@@ -342,7 +342,7 @@
     {
         "id": "untilthen",
         "name": "Untilthen",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "tailsofiron",
@@ -387,7 +387,7 @@
     {
         "id": "unchartedlegacyofthievescollection",
         "name": "Unchartedlegacyofthievescollection",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "halothemasterchiefcollection",
@@ -402,7 +402,7 @@
     {
         "id": "deliverusthemoon",
         "name": "Deliverusthemoon",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "wherewindmeet",
@@ -412,7 +412,7 @@
     {
         "id": "deliverusmars",
         "name": "Deliverusmars",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "bravelydefaultii",
@@ -472,7 +472,7 @@
     {
         "id": "lostrecordsbloomrage",
         "name": "Lostrecordsbloomrage",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "dispatch",
@@ -612,7 +612,7 @@
     {
         "id": "lacunaascifinoiradventure",
         "name": "Lacunaascifinoiradventure",
-        "category": "adventure"
+        "category": "storydriven"
     },
     {
         "id": "thelastcampfire",
@@ -1337,7 +1337,7 @@
     {
         "id": "MafiaDefinitiveEdition",
         "name": "Mafia Definitive Edition",
-        "category": "openworld"
+        "category": "storydriven"
     },
     {
         "id": "GoingUnder",
@@ -1467,7 +1467,7 @@
     {
         "id": "Road96",
         "name": "Road 96",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "TheCosmicWheelSisterhood",
@@ -1512,7 +1512,7 @@
     {
         "id": "Somerville",
         "name": "Somerville",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "Enotria",
@@ -1597,7 +1597,7 @@
     {
         "id": "TheCastingofFrankStone",
         "name": "The Castingof Frank Stone",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "DragonBallXenoverse2",
@@ -1732,12 +1732,12 @@
     {
         "id": "TheDarkPicturesAnthologyLittleHope",
         "name": "The Dark Pictures Anthology Little Hope",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "TheDarkPicturesAnthologyManofMedan",
         "name": "The Dark Pictures Anthology Manof Medan",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "ZooTycoon",
@@ -1792,12 +1792,12 @@
     {
         "id": "FahrenheitIndigoProphecyRemastered",
         "name": "Fahrenheit Indigo Prophecy Remastered",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "SyberiaTheWorldBefore",
         "name": "Syberia The World Before",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "Wanderstop",
@@ -1817,7 +1817,7 @@
     {
         "id": "Omensight",
         "name": "Omensight",
-        "category": "hacknslash"
+        "category": "storydriven"
     },
     {
         "id": "BurnoutParadiseRemastered",
@@ -1832,7 +1832,7 @@
     {
         "id": "ScarletHollow",
         "name": "Scarlet Hollow",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "JurassicWorldEvolution2",
@@ -1867,7 +1867,7 @@
     {
         "id": "TDPAHouseofAshes",
         "name": "TDPAHouseof Ashes",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "BrightMemoryInfinite",
@@ -2247,7 +2247,7 @@
     {
         "id": "SteinsGateElite",
         "name": "Steins Gate Elite",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "StickFightTheGame",
@@ -2292,7 +2292,7 @@
     {
         "id": "Observation",
         "name": "Observation",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "SONICXSHADOWGENERATIONS",
@@ -2302,7 +2302,7 @@
     {
         "id": "MetaphorReFantazio",
         "name": "Metaphor Re Fantazio",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "GenerationZero",
@@ -2372,7 +2372,7 @@
     {
         "id": "LifeisStrangeDoubleExposure",
         "name": "Lifeis Strange Double Exposure",
-        "category": "nintendo/switch"
+        "category": "storydriven"
     },
     {
         "id": "microsoftflightsimulator",
@@ -2637,17 +2637,17 @@
     {
         "id": "EndlingExtinctionisForever",
         "name": "Endling Extinctionis Forever",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "NightCall",
         "name": "Night Call",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "NeoCab",
         "name": "Neo Cab",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "CrisTales",
@@ -2667,12 +2667,12 @@
     {
         "id": "13SentinelsAegisRim",
         "name": "13Sentinels Aegis Rim",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "AITHESOMNIUMFILES",
         "name": "AITHESOMNIUMFILES",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "LethalLeagueBlaze",
@@ -2682,7 +2682,7 @@
     {
         "id": "NORCO",
         "name": "NORCO",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "GatoRoboto",
@@ -2712,27 +2712,27 @@
     {
         "id": "Yakuza6",
         "name": "Yakuza 6",
-        "category": "openworld"
+        "category": "storydriven"
     },
     {
         "id": "YakuzaKiwami2",
         "name": "Yakuza Kiwami 2",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "YakuzaKiwami",
         "name": "Yakuza Kiwami",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "Yakuza5",
         "name": "Yakuza 5",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "Yakuza0",
         "name": "Yakuza 0",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "NoStraightRoads",
@@ -2742,7 +2742,7 @@
     {
         "id": "YakuzaLikeaDragon",
         "name": "Yakuza Likea Dragon",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "MetalHellsinger",
@@ -2762,7 +2762,7 @@
     {
         "id": "NobodyWantstoDie",
         "name": "Nobody Wantsto Die",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "RESEARCHandDESTROY",
@@ -2907,7 +2907,7 @@
     {
         "id": "TalesofArise",
         "name": "Talesof Arise",
-        "category": "new"
+        "category": "storydriven"
     },
     {
         "id": "AmandatheAdventurer",
@@ -2947,7 +2947,7 @@
     {
         "id": "Danganronpa",
         "name": "Danganronpa",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "chantsofsennaar",
@@ -2962,7 +2962,7 @@
     {
         "id": "indika",
         "name": "Indika",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "rainbowsixsiege",
@@ -3042,17 +3042,17 @@
     {
         "id": "eiyudenchromicle",
         "name": "Eiyudenchromicle",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "crisiscorefinalfantasy7",
         "name": "Crisiscorefinalfantasy 7",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "talesofberseria",
         "name": "Talesofberseria",
-        "category": "hacknslash"
+        "category": "storydriven"
     },
     {
         "id": "ffx",
@@ -3062,7 +3062,7 @@
     {
         "id": "twinmirrors",
         "name": "Twinmirrors",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "binarydomain",
@@ -3077,7 +3077,7 @@
     {
         "id": "yakuza4",
         "name": "Yakuza 4",
-        "category": "openworld"
+        "category": "storydriven"
     },
     {
         "id": "wildlands",
@@ -3087,12 +3087,12 @@
     {
         "id": "yakuza3",
         "name": "Yakuza 3",
-        "category": "openworld"
+        "category": "storydriven"
     },
     {
         "id": "banishers",
         "name": "Banishers",
-        "category": "hacknslash"
+        "category": "storydriven"
     },
     {
         "id": "repellafella",
@@ -3117,7 +3117,7 @@
     {
         "id": "theinvincible",
         "name": "Theinvincible",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "lovetooeasily",
@@ -3197,7 +3197,7 @@
     {
         "id": "lateshift",
         "name": "Lateshift",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "miandthedragonprincess",
@@ -3207,22 +3207,22 @@
     {
         "id": "valkyriachronicles4",
         "name": "Valkyriachronicles 4",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "darkpicturesanthology",
         "name": "Darkpicturesanthology",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "asduskfalls",
         "name": "Asduskfalls",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "thebunker",
         "name": "Thebunker",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "atdeadofnight",
@@ -3237,12 +3237,12 @@
     {
         "id": "firstdatelatetodate",
         "name": "Firstdatelatetodate",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "thecomplex",
         "name": "Thecomplex",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "sonicolors",
@@ -3272,7 +3272,7 @@
     {
         "id": "fivedates",
         "name": "Fivedates",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "marvel",
@@ -3282,7 +3282,7 @@
     {
         "id": "sanabi",
         "name": "Sanabi",
-        "category": "platformers"
+        "category": "storydriven"
     },
     {
         "id": "observer",
@@ -3362,12 +3362,12 @@
     {
         "id": "chainedechoes",
         "name": "Chainedechoes",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "talesofvesperia",
         "name": "Talesofvesperia",
-        "category": "hacknslash"
+        "category": "storydriven"
     },
     {
         "id": "torchlight2",
@@ -3447,7 +3447,7 @@
     {
         "id": "signalis",
         "name": "Signalis",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "resistance2",
@@ -3477,7 +3477,7 @@
     {
         "id": "nier",
         "name": "Nier",
-        "category": "rpg"
+        "category": "storydriven"
     },
     {
         "id": "soulstice",
@@ -3542,7 +3542,7 @@
     {
         "id": "catherine",
         "name": "Catherine",
-        "category": "platformers"
+        "category": "storydriven"
     },
     {
         "id": "blur",
@@ -3592,7 +3592,7 @@
     {
         "id": "thexpanse",
         "name": "Thexpanse",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "ubuntuprox",
@@ -3642,7 +3642,7 @@
     {
         "id": "seasonalettertothefuture",
         "name": "Seasonalettertothefuture",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "sonicsuperstarts",
@@ -3707,7 +3707,7 @@
     {
         "id": "pentiment",
         "name": "Pentiment",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "trepang2",
@@ -3722,7 +3722,7 @@
     {
         "id": "marvelsguardiansofthegalaxy",
         "name": "Marvelsguardiansofthegalaxy",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "bioshock2",
@@ -3787,7 +3787,7 @@
     {
         "id": "theartfulescape",
         "name": "Theartfulescape",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "thelegendoftianding",
@@ -3807,12 +3807,12 @@
     {
         "id": "neotheworldendswithyou",
         "name": "Neotheworldendswithyou",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "bramble",
         "name": "Bramble",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "evilwest",
@@ -3852,17 +3852,17 @@
     {
         "id": "sherlockholmestheawakened",
         "name": "Sherlockholmestheawakened",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "sherlockholmescrimesandpunishments",
         "name": "Sherlockholmescrimesandpunishments",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "themedium",
         "name": "Themedium",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "battlefieldhardline",
@@ -3957,7 +3957,7 @@
     {
         "id": "spacefortheunbound",
         "name": "Spacefortheunbound",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "codinfinfinitewarfare",
@@ -4012,7 +4012,7 @@
     {
         "id": "notforbroadcast",
         "name": "Notforbroadcast",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "blackskylands",
@@ -4147,7 +4147,7 @@
     {
         "id": "yakuza6thesongodlife",
         "name": "Yakuza 6thesongodlife",
-        "category": "openworld"
+        "category": "storydriven"
     },
     {
         "id": "callofduty2",
@@ -4247,7 +4247,7 @@
     {
         "id": "detroitbecomehuman",
         "name": "Detroitbecomehuman",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "trine3",
@@ -4327,7 +4327,7 @@
     {
         "id": "lifeistrangeremasterd",
         "name": "Lifeistrangeremasterd",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "fistforgedinshadowtorch",
@@ -4377,7 +4377,7 @@
     {
         "id": "cloudpunk",
         "name": "Cloudpunk",
-        "category": "chill"
+        "category": "storydriven"
     },
     {
         "id": "redout2",
@@ -4387,7 +4387,7 @@
     {
         "id": "yakuza3remasterd",
         "name": "Yakuza 3remasterd",
-        "category": "openworld"
+        "category": "storydriven"
     },
     {
         "id": "megamanxdive",
@@ -4402,7 +4402,7 @@
     {
         "id": "gerda",
         "name": "Gerda",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "slaytheprincess",
@@ -4417,7 +4417,7 @@
     {
         "id": "videoverse",
         "name": "Videoverse",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "singularity",
@@ -4432,7 +4432,7 @@
     {
         "id": "sherlockholmeschapterone",
         "name": "Sherlockholmeschapterone",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "theascent",
@@ -4447,7 +4447,7 @@
     {
         "id": "erica",
         "name": "Erica",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "diablo2",
@@ -4502,7 +4502,7 @@
     {
         "id": "beyond2souls",
         "name": "Beyond 2souls",
-        "category": "soulslike"
+        "category": "storydriven"
     },
     {
         "id": "returntomonkeyisland",
@@ -4532,7 +4532,7 @@
     {
         "id": "alanwake",
         "name": "Alanwake",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "hotwheels",
@@ -4597,7 +4597,7 @@
     {
         "id": "scarletnexus",
         "name": "Scarletnexus",
-        "category": "hacknslash"
+        "category": "storydriven"
     },
     {
         "id": "haveanicedeath",
@@ -4642,7 +4642,7 @@
     {
         "id": "thesilentage",
         "name": "Thesilentage",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "divinityoriginalsin2",
@@ -4652,7 +4652,7 @@
     {
         "id": "dordogne",
         "name": "Dordogne",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "rage2",
@@ -4667,7 +4667,7 @@
     {
         "id": "tellmewhy",
         "name": "Tellmewhy",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "theradstringclub",
@@ -4687,7 +4687,7 @@
     {
         "id": "goodbyevolcanohigh",
         "name": "Goodbyevolcanohigh",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "thegreataceattorney",
@@ -4737,7 +4737,7 @@
     {
         "id": "tellinglies",
         "name": "Tellinglies",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "harvestmoon",
@@ -4767,7 +4767,7 @@
     {
         "id": "mafia",
         "name": "Mafia",
-        "category": "openworld"
+        "category": "storydriven"
     },
     {
         "id": "rimword",
@@ -4797,7 +4797,7 @@
     {
         "id": "judgment",
         "name": "Judgment",
-        "category": "action"
+        "category": "storydriven"
     },
     {
         "id": "brothers",
