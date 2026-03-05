@@ -1105,7 +1105,7 @@ class GameLibrary {
                     >
                 </div>
                 <div class="card-info">
-                    <div class="title" title="${game.name}">${game.name}</div>
+                    <p class="title" title="${game.name}"><img src="images/${imageName}.png" alt="${game.name}" class="title-img" onerror="this.style.display='none'">${game.name}</p>
                     <div class="meta">
                         ${this.settings.showCategories ? `<span class="category-badge">${game.category || 'uncategorized'}</span>` : ''}
                         ${this.settings.showTimes ? `<span class="time-badge">⏱️ ${timeStr}</span>` : ''}

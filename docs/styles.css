@@ -1332,6 +1332,20 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     transition: color 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 8px 0;
+    padding: 0;
+}
+
+.game-card .title .title-img {
+    width: 22px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+    display: inline-block;
 }
 
 .game-card:hover .title {
