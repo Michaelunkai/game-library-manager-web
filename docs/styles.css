@@ -1278,6 +1278,10 @@ body {
     padding-top: 133%; /* 3:4 aspect ratio */
     background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
     overflow: hidden;
+    margin: 0;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
 }
 
 .game-card .image-container::after {
