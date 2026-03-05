@@ -1477,7 +1477,7 @@ class GameLibrary {
                     <div class="tooltip-row"><span class="tooltip-icon">📅</span><span class="tooltip-label">Added:</span><span class="tooltip-value">${dateStr}</span></div>
                     ${isInstalled ? '<div class="tooltip-row tooltip-installed"><span class="tooltip-icon">✅</span><span>Installed</span></div>' : ''}
                 </div>
-                <div class="image-container">
+                <p class="image-container">
                     <img
                         data-src="images/${imageName}.png"
                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E"
@@ -1485,9 +1485,9 @@ class GameLibrary {
                         loading="lazy"
                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22%3E%3Crect fill=%22%231f2937%22 width=%22300%22 height=%22400%22/%3E%3Ctext x=%22150%22 y=%22200%22 text-anchor=%22middle%22 fill=%22%236366f1%22 font-size=%2240%22%3E🎮%3C/text%3E%3C/svg%3E'"
                     >
-                </div>
+                </p>
                 <div class="card-info">
-                    <p class="title" title="${game.name}"><img src="images/${imageName}.png" alt="${game.name}" class="title-img" onerror="this.style.display='none'">${game.name}</p>
+                    <div class="title" title="${game.name}">${game.name}</div>
                     <div class="meta">
                         ${this.settings.showCategories ? `<span class="category-badge">${game.category || 'uncategorized'}</span>` : ''}
                         ${this.settings.showTimes ? `<span class="time-badge">⏱️ ${timeStr}</span>` : ''}

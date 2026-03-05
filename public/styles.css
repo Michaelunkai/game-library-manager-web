@@ -1140,6 +1140,10 @@ body {
     padding-top: 133.33%; /* 3:4 aspect ratio */
     background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
     overflow: hidden;
+    margin: 0;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
 }
 
 /* Skeleton loading animation */
@@ -1205,20 +1209,6 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     transition: color var(--transition);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0 0 8px 0;
-    padding: 0;
-}
-
-.game-card .title .title-img {
-    width: 22px;
-    height: 28px;
-    object-fit: cover;
-    border-radius: 3px;
-    flex-shrink: 0;
-    display: inline-block;
 }
 
 .game-card:hover .title {
