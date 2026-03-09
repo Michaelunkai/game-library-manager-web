@@ -672,7 +672,7 @@
     "marvel": "action",
     "sanabi": "storydriven",
     "observer": "action",
-    "bayonetta2": "action",
+    "bayonetta2": "nintendo/switch",
     "tetriseffect": "puzzle",
     "sunhaven": "chill",
     "fuga": "action",
@@ -1047,5 +1047,5 @@
     "hifirush": "finished",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T14:58:47.467Z"
+  "lastUpdated": "2026-03-09T15:00:04.736Z"
 }
