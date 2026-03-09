@@ -204,8 +204,18 @@ async function saveConfig() {
     }
   }
 
-  // Save to GitHub for PERMANENT persistence
-  await saveConfigToGitHub();
+  // Save to GitHub for PERMANENT persistence (with retry)
+  let githubSaved = await saveConfigToGitHub();
+  if (!githubSaved) {
+    console.log('GitHub save failed, retrying in 2s...');
+    await new Promise(r => setTimeout(r, 2000));
+    githubSaved = await saveConfigToGitHub();
+    if (!githubSaved) {
+      console.log('GitHub save retry failed, will retry in 10s...');
+      await new Promise(r => setTimeout(r, 10000));
+      await saveConfigToGitHub();
+    }
+  }
 
   console.log(`Saved admin config (${Object.keys(adminConfig.gameCategories || {}).length} game categories)`);
 }
@@ -246,6 +256,7 @@ app.get('/api/admin-config', (req, res) => {
   res.json({
     success: true,
     config: adminConfig,
+    configVersion: adminConfig.lastUpdated,
     message: 'Admin configuration retrieved'
   });
 });

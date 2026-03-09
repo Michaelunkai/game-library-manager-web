@@ -91,22 +91,33 @@ class GameLibrary {
     
     // Poll server for admin configuration changes
     startAdminConfigPolling() {
+        this._lastConfigVersion = null;
         // Check for updates every 5 seconds
         this.configPollInterval = setInterval(async () => {
-            if (!this.isAdmin) { // Non-admins need to check for updates
-                const previousHiddenCount = this.hiddenTabs.size;
-                await this.loadAdminConfigFromServer();
-                
-                // If config changed, re-render
-                if (previousHiddenCount !== this.hiddenTabs.size) {
-                    this.renderTabs();
-                    this.filterAndRender();
-                    this.showToast('📡 Admin rules updated from server', 'info');
+            try {
+                const response = await fetch('/api/admin-config', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.configVersion && data.configVersion !== this._lastConfigVersion) {
+                        if (this._lastConfigVersion !== null) {
+                            // Config changed - reload everything from server
+                            await this.loadAdminConfigFromServer();
+                            this.renderTabs();
+                            this.filterAndRender();
+                            console.log('Config updated from server:', data.configVersion);
+                        }
+                        this._lastConfigVersion = data.configVersion;
+                    }
                 }
+            } catch (e) {
+                // silent
             }
         }, 5000);
-        
-        console.log('🔄 Admin config polling started: checking every 5 seconds');
+
+        console.log('Admin config polling started: checking every 5 seconds');
     }
 
     startAutoSync() {
@@ -2296,7 +2307,11 @@ echo "Done!"
                         localStorage.setItem('gameLibraryGames', JSON.stringify(this.games));
                     }
 
-                    console.log('📡 Loaded admin config from server:', data.config);
+                    // Track config version for polling
+                    if (data.configVersion) {
+                        this._lastConfigVersion = data.configVersion;
+                    }
+                    console.log('Loaded admin config from server:', data.config);
                 }
             }
         } catch (error) {
@@ -2307,14 +2322,14 @@ echo "Done!"
     }
 
     // Save admin configuration to server - immediately affects ALL users
-    async saveAdminConfigToServer() {
+    async saveAdminConfigToServer(retryCount = 0) {
         if (!this.isAdmin) {
             console.error('Only admins can save configuration');
             return;
         }
 
         try {
-            // Collect all game category changes
+            // Collect ALL game category changes (every single game)
             const gameCategories = {};
             this.games.forEach(game => {
                 if (game.category) {
@@ -2322,28 +2337,40 @@ echo "Done!"
                 }
             });
 
+            const payload = {
+                hiddenTabs: [...this.hiddenTabs],
+                gameCategories: gameCategories
+            };
+
             const response = await fetch('/api/admin-config', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Admin-Token': 'glm-admin-2024' // In production, use secure token from login
+                    'X-Admin-Token': 'glm-admin-2024'
                 },
-                body: JSON.stringify({
-                    hiddenTabs: [...this.hiddenTabs],
-                    gameCategories: gameCategories
-                })
+                body: JSON.stringify(payload)
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
-                console.log('✅ Admin config saved to server:', data);
-                this.showToast('🌐 Changes saved to server - affecting all users!', 'success');
+                if (data.configVersion) {
+                    this._lastConfigVersion = data.configVersion;
+                }
+                console.log('Admin config saved to server:', data);
+                this.showToast('Changes saved permanently to server!', 'success');
             } else {
-                throw new Error('Failed to save to server');
+                throw new Error('Server returned ' + response.status);
             }
         } catch (error) {
             console.error('Failed to save admin config to server:', error);
-            this.showToast('❌ Failed to save to server', 'error');
+            // Retry up to 3 times with increasing delay
+            if (retryCount < 3) {
+                const delay = (retryCount + 1) * 2000;
+                console.log(`Retrying save in ${delay}ms (attempt ${retryCount + 2}/4)...`);
+                setTimeout(() => this.saveAdminConfigToServer(retryCount + 1), delay);
+            } else {
+                this.showToast('Failed to save to server after 4 attempts', 'error');
+            }
         }
     }
 
