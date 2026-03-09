@@ -936,10 +936,10 @@ class GameLibrary {
 
     filterAndRender() {
         let filtered = this.currentTab === 'all'
-            ? [...this.games]
+            ? this.games.filter(g => !this.ADMIN_ONLY_TABS.has(g.category))  // Exclude admin-only tabs from "All" view for everyone
             : this.games.filter(g => g.category === this.currentTab);
 
-        // CRITICAL: Hide games from admin-only tabs for non-admins - this is MANDATORY
+        // CRITICAL: Hide games from admin-only tabs for non-admins when viewing specific tabs
         if (!this.isAdmin) {
             filtered = filtered.filter(g => !this.ADMIN_ONLY_TABS.has(g.category));
         }
