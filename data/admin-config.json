@@ -285,7 +285,7 @@
     "GoingUnder": "action",
     "SIFU": "action",
     "BendyandtheDarkRevival": "action",
-    "Cuphead": "new",
+    "Cuphead": "soulslike",
     "NINJAGAIDENMasterCollection": "action",
     "Cyberpunk2077": "finished",
     "ELDENRINGNIGHTREIGN": "action",
@@ -1044,7 +1044,8 @@
     "castlevanialordsofshadow2": "new",
     "princeofpersiathelostcrown": "new",
     "againstthestorm": "new",
-    "hifirush": "new"
+    "hifirush": "new",
+    "dishonored": "new"
   },
-  "lastUpdated": "2026-03-09T12:48:11.444Z"
+  "lastUpdated": "2026-03-09T12:53:13.069Z"
 }
