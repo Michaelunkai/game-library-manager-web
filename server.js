@@ -144,28 +144,32 @@ async function loadConfig() {
 
   // Try GitHub first (most authoritative, permanent source)
   const githubConfig = await loadConfigFromGitHub();
-  if (githubConfig && Object.keys(githubConfig.gameCategories || {}).length > 0) {
+  if (githubConfig) {
     adminConfig = githubConfig;
+    console.log('Using GitHub config as primary source');
   }
 
-  // Also check local files and use whichever has more data
+  // Also check local files - use if they have MORE data than current
   for (const configPath of CONFIG_PATHS) {
     try {
       const data = await fs.readFile(configPath, 'utf8');
       const parsed = JSON.parse(data);
-      const currentCount = Object.keys(adminConfig.gameCategories || {}).length;
-      const newCount = Object.keys(parsed.gameCategories || {}).length;
-      if (newCount > currentCount) {
+      const currentCats = Object.keys(adminConfig.gameCategories || {}).length;
+      const currentTabs = (adminConfig.hiddenTabs || []).length;
+      const newCats = Object.keys(parsed.gameCategories || {}).length;
+      const newTabs = (parsed.hiddenTabs || []).length;
+      // Use local if it has more total data
+      if ((newCats + newTabs) > (currentCats + currentTabs)) {
         adminConfig = parsed;
-        console.log(`Loaded admin config from ${configPath} (${newCount} game categories, more than GitHub)`);
+        console.log(`Loaded admin config from ${configPath} (${newCats} categories, ${newTabs} hidden tabs)`);
       }
     } catch (error) {
       // ignore
     }
   }
 
-  // Use hiddenTabs from GitHub even if gameCategories is empty
-  if (githubConfig && !adminConfig.hiddenTabs?.length && githubConfig.hiddenTabs?.length) {
+  // Merge: if GitHub had hiddenTabs that local didn't, keep them
+  if (githubConfig && (githubConfig.hiddenTabs || []).length > (adminConfig.hiddenTabs || []).length) {
     adminConfig.hiddenTabs = githubConfig.hiddenTabs;
   }
 
