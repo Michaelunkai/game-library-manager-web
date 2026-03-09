@@ -176,7 +176,7 @@
     "childrenofsilentown": "action",
     "railbound": "action",
     "hoa": "action",
-    "blueprince": "action",
+    "blueprince": "not_for_me",
     "teamworldheist2": "action",
     "thelastfaith": "hacknslash",
     "papetura": "action",
@@ -1048,5 +1048,5 @@
     "hifirush": "finished",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T15:38:09.928Z"
+  "lastUpdated": "2026-03-09T17:18:10.467Z"
 }
