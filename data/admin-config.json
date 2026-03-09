@@ -666,7 +666,7 @@
     "sonicolors": "nintendo/switch",
     "vanquish": "shooters",
     "enslaved": "not_for_me",
-    "superseducer2": "shooters",
+    "superseducer2": "storydriven",
     "islets": "platformers",
     "fivedates": "storydriven",
     "marvel": "action",
@@ -1047,5 +1047,5 @@
     "hifirush": "finished",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T15:00:04.736Z"
+  "lastUpdated": "2026-03-09T15:00:15.745Z"
 }
