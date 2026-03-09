@@ -65,11 +65,13 @@ class GameLibrary {
         // CRITICAL: Ensure non-admin state on page load - users must login to get admin access
         this.ensureNonAdminState();
 
-        // Load admin configuration from SERVER (not localStorage) - this affects ALL users
-        await this.loadAdminConfigFromServer();
-
         try {
             await this.loadData();
+
+            // CRITICAL: Load admin config from server AFTER games are loaded
+            // so game category overrides can be applied to actual game objects
+            await this.loadAdminConfigFromServer();
+
             this.renderTabs();
             this.filterAndRender();
             this.showLoading(false);
@@ -2196,14 +2198,15 @@ echo "Done!"
             document.body.classList.add('is-admin');
             document.getElementById('adminLoginBox').style.display = 'none';
             document.getElementById('adminLoggedBox').style.display = 'flex';
-            
+
             // Show admin-only features
             const moveToContainer = document.querySelector('.move-to-container');
             if (moveToContainer) {
                 moveToContainer.style.display = 'block';
             }
-            
-            this.loadHiddenTabs();
+
+            // Load latest config from server (not localStorage) to get all saved categories
+            await this.loadAdminConfigFromServer();
             this.renderTabs();
             this.filterAndRender(); // Re-render to show admin features
             this.updateSelectedCount(); // Update UI to show admin features
@@ -2265,23 +2268,34 @@ echo "Done!"
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 if (data.success && data.config) {
                     // Apply server admin rules to ALL users
                     this.hiddenTabs = new Set(data.config.hiddenTabs || []);
-                    
-                    // Apply game category overrides from admin
-                    if (data.config.gameCategories) {
-                        Object.entries(data.config.gameCategories).forEach(([gameId, category]) => {
+
+                    // Store server categories for reference
+                    this.serverGameCategories = data.config.gameCategories || {};
+
+                    // Apply game category overrides from server (highest priority - overrides localStorage)
+                    const serverCategories = data.config.gameCategories || {};
+                    const categoryCount = Object.keys(serverCategories).length;
+                    if (categoryCount > 0 && this.games.length > 0) {
+                        Object.entries(serverCategories).forEach(([gameId, category]) => {
                             const game = this.games.find(g => g.id === gameId);
                             if (game) {
                                 game.category = category;
                             }
                         });
+                        console.log(`📡 Applied ${categoryCount} game category overrides from server`);
                     }
-                    
+
+                    // Sync server state to localStorage as backup
+                    if (categoryCount > 0) {
+                        localStorage.setItem('gameLibraryGames', JSON.stringify(this.games));
+                    }
+
                     console.log('📡 Loaded admin config from server:', data.config);
                 }
             }
