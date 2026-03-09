@@ -28,7 +28,7 @@
     "test-push": "mybackup",
     "titanquestanniversaryedition": "action",
     "pipistrelloandthecursedyoyo": "platformers",
-    "tunic": "action",
+    "tunic": "not_for_me",
     "scottpilgrimvstheworldce": "localcoop",
     "norestforthewicked": "action",
     "suikodeniandiihdremaster": "rpg",
@@ -1048,5 +1048,5 @@
     "hifirush": "finished",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T15:00:35.507Z"
+  "lastUpdated": "2026-03-09T15:01:14.814Z"
 }
