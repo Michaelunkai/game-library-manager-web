@@ -9,6 +9,8 @@
     "3th_party_tools",
     "gamedownloaders"
   ],
-  "gameCategories": {},
-  "lastUpdated": "2026-03-09T10:03:26.313Z"
+  "gameCategories": {
+    "test-persist-check": "action"
+  },
+  "lastUpdated": "2026-03-09T10:33:00.583Z"
 }
