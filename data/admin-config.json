@@ -646,7 +646,7 @@
     "pcbuildingsimulator": "simulators",
     "circuselectrique": "platformers",
     "cookingsimulator": "simulators",
-    "desperados3": "action",
+    "desperados3": "not_for_me",
     "americanarcedia": "platformers",
     "risen2": "action",
     "sniperghostwarrior2": "shooters",
@@ -1047,5 +1047,5 @@
     "hifirush": "action",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T13:06:58.443Z"
+  "lastUpdated": "2026-03-09T13:09:53.034Z"
 }
