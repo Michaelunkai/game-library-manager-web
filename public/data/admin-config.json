@@ -7,7 +7,8 @@
     "music",
     "win11maintaince",
     "3th_party_tools",
-    "gamedownloaders"
+    "gamedownloaders",
+    "nintendo/switch"
   ],
   "gameCategories": {
     "test-persist-check": "action",
@@ -1047,5 +1048,5 @@
     "hifirush": "finished",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T15:00:15.745Z"
+  "lastUpdated": "2026-03-09T15:00:35.507Z"
 }
