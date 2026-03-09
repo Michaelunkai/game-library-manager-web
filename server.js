@@ -6,10 +6,9 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Increase JSON body size limit for large game category saves
 app.use(cors());
-app.use(express.json());
-app.use(express.static('public'));
+app.use(express.json({ limit: '10mb' }));
 
 // Admin configuration storage
 let adminConfig = {
@@ -21,45 +20,95 @@ let adminConfig = {
 // Mutex for concurrent admin operations
 let configMutex = Promise.resolve();
 
-// Ensure data directory exists
-async function ensureDataDirectory() {
-  try {
-    await fs.mkdir('./data', { recursive: true });
-  } catch (error) {
-    // Directory might already exist, that's ok
-  }
+// All config file paths (save to multiple locations for redundancy)
+const CONFIG_PATHS = [
+  './data/admin-config.json',
+  './public/data/admin-config.json'
+];
+
+// Ensure data directories exist
+async function ensureDataDirectories() {
+  await fs.mkdir('./data', { recursive: true }).catch(() => {});
+  await fs.mkdir('./public/data', { recursive: true }).catch(() => {});
 }
 
-// Load config from file on startup
+// Load config from file on startup - try multiple locations
 async function loadConfig() {
-  try {
-    await ensureDataDirectory();
-    const data = await fs.readFile('./data/admin-config.json', 'utf8');
-    adminConfig = JSON.parse(data);
-    console.log('Loaded admin config from file');
-  } catch (error) {
-    console.log('Using default admin config, will create file on first save');
-    // Initialize with default hidden tabs
+  await ensureDataDirectories();
+
+  for (const configPath of CONFIG_PATHS) {
+    try {
+      const data = await fs.readFile(configPath, 'utf8');
+      const parsed = JSON.parse(data);
+      // Use the config with the most game categories (most complete data)
+      const currentCount = Object.keys(adminConfig.gameCategories || {}).length;
+      const newCount = Object.keys(parsed.gameCategories || {}).length;
+      if (newCount >= currentCount) {
+        adminConfig = parsed;
+        console.log(`Loaded admin config from ${configPath} (${newCount} game categories)`);
+      }
+    } catch (error) {
+      console.log(`No config at ${configPath}, trying next...`);
+    }
+  }
+
+  const catCount = Object.keys(adminConfig.gameCategories || {}).length;
+  if (catCount === 0) {
+    console.log('No saved admin config found, using defaults');
     adminConfig = {
       hiddenTabs: [],
       gameCategories: {},
       lastUpdated: new Date().toISOString()
     };
+  } else {
+    console.log(`Admin config loaded with ${catCount} game categories`);
+    // Ensure all locations have the best config
+    await saveConfig();
   }
 }
 
-// Save config to file with atomic write
+// Save config to ALL file locations with atomic writes
 async function saveConfig() {
+  await ensureDataDirectories();
+
+  for (const configPath of CONFIG_PATHS) {
+    try {
+      const tempFile = configPath + '.tmp';
+      await fs.writeFile(tempFile, JSON.stringify(adminConfig, null, 2));
+      await fs.rename(tempFile, configPath);
+    } catch (error) {
+      console.error(`Failed to save config to ${configPath}:`, error);
+    }
+  }
+  console.log(`Saved admin config to ${CONFIG_PATHS.length} locations (${Object.keys(adminConfig.gameCategories || {}).length} game categories)`);
+}
+
+// Also update games.json directly with category changes so data survives full resets
+async function updateGamesJsonCategories() {
+  if (!adminConfig.gameCategories || Object.keys(adminConfig.gameCategories).length === 0) return;
+
   try {
-    await ensureDataDirectory();
-    const tempFile = './data/admin-config.json.tmp';
-    // Write to temp file first
-    await fs.writeFile(tempFile, JSON.stringify(adminConfig, null, 2));
-    // Atomic rename
-    await fs.rename(tempFile, './data/admin-config.json');
-    console.log('Saved admin config to file');
+    const gamesPath = './public/data/games.json';
+    const data = await fs.readFile(gamesPath, 'utf8');
+    const games = JSON.parse(data);
+
+    let changed = 0;
+    Object.entries(adminConfig.gameCategories).forEach(([gameId, category]) => {
+      const game = games.find(g => g.id === gameId);
+      if (game && game.category !== category) {
+        game.category = category;
+        changed++;
+      }
+    });
+
+    if (changed > 0) {
+      const tempFile = gamesPath + '.tmp';
+      await fs.writeFile(tempFile, JSON.stringify(games, null, 4));
+      await fs.rename(tempFile, gamesPath);
+      console.log(`Updated ${changed} game categories directly in games.json`);
+    }
   } catch (error) {
-    console.error('Failed to save config:', error);
+    console.error('Failed to update games.json:', error);
   }
 }
 
@@ -88,37 +137,30 @@ app.post('/api/admin-config', async (req, res) => {
 
   // Use mutex to serialize concurrent admin operations
   configMutex = configMutex.then(async () => {
-    // Reload config from file to get latest state
-    try {
-      const data = await fs.readFile('./data/admin-config.json', 'utf8');
-      adminConfig = JSON.parse(data);
-    } catch (error) {
-      // If file doesn't exist yet, use current in-memory config
-    }
-
-    // Update configuration with merge logic
     const updates = req.body;
 
     if (updates.hiddenTabs !== undefined) {
-      // Merge with existing hidden tabs instead of replacing
-      const existingTabs = new Set(adminConfig.hiddenTabs || []);
-      updates.hiddenTabs.forEach(tab => existingTabs.add(tab));
-      adminConfig.hiddenTabs = Array.from(existingTabs);
+      // Replace hidden tabs entirely (admin sends the full list)
+      adminConfig.hiddenTabs = updates.hiddenTabs;
     }
 
     if (updates.gameCategories !== undefined) {
+      // Merge new category changes into existing ones
       adminConfig.gameCategories = { ...adminConfig.gameCategories, ...updates.gameCategories };
     }
 
     adminConfig.lastUpdated = new Date().toISOString();
 
-    // Save to file atomically
+    // Save to ALL config file locations
     await saveConfig();
+
+    // Also bake category changes into games.json for maximum persistence
+    await updateGamesJsonCategories();
 
     return {
       success: true,
       config: adminConfig,
-      message: 'Admin configuration updated successfully'
+      message: 'Admin configuration saved permanently'
     };
   }).catch(error => {
     console.error('Config update error:', error);
@@ -133,8 +175,13 @@ app.post('/api/admin-config', async (req, res) => {
   res.json(result);
 });
 
-// Serve static files from public/data
-app.use('/data', express.static(path.join(__dirname, 'public', 'data')));
+// Serve static files from public (with no-cache for data files to always get fresh data)
+app.use('/data', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  next();
+}, express.static(path.join(__dirname, 'public', 'data')));
+
+app.use(express.static('public'));
 
 // Catch-all route to serve index.html
 app.get('*', (req, res) => {
@@ -146,5 +193,6 @@ loadConfig().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Admin config endpoint: http://localhost:${PORT}/api/admin-config`);
+    console.log(`Game categories tracked: ${Object.keys(adminConfig.gameCategories || {}).length}`);
   });
 });
