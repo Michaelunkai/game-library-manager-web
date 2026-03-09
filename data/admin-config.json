@@ -760,7 +760,7 @@
     "trepang2": "platformers",
     "nomoreheroes3": "action",
     "marvelsguardiansofthegalaxy": "storydriven",
-    "bioshock2": "shooters",
+    "bioshock2": "not_for_me",
     "thegunk": "action",
     "bioshock": "not_for_me",
     "jusant": "action",
@@ -1048,5 +1048,5 @@
     "hifirush": "finished",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T15:01:14.814Z"
+  "lastUpdated": "2026-03-09T15:36:13.374Z"
 }
