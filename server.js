@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
+const https = require('https');
 const cors = require('cors');
 
 const app = express();
@@ -20,11 +21,116 @@ let adminConfig = {
 // Mutex for concurrent admin operations
 let configMutex = Promise.resolve();
 
-// All config file paths (save to multiple locations for redundancy)
+// GitHub API settings for permanent storage
+const GITHUB_REPO = 'Michaelunkai/game-library-manager-web';
+const GITHUB_CONFIG_PATHS = [
+  'data/admin-config.json',
+  'public/data/admin-config.json'
+];
+let githubShas = {};
+
+// All local config file paths (save to multiple locations for redundancy)
 const CONFIG_PATHS = [
   './data/admin-config.json',
   './public/data/admin-config.json'
 ];
+
+function githubRequest(method, filePath, body) {
+  return new Promise((resolve, reject) => {
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) {
+      return reject(new Error('GITHUB_TOKEN not set'));
+    }
+
+    const options = {
+      hostname: 'api.github.com',
+      path: `/repos/${GITHUB_REPO}/contents/${filePath}`,
+      method: method,
+      headers: {
+        'Authorization': `token ${token}`,
+        'User-Agent': 'game-library-manager',
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode, data: JSON.parse(data) });
+        } catch (e) {
+          resolve({ status: res.statusCode, data: data });
+        }
+      });
+    });
+
+    req.on('error', reject);
+    if (body) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+// Load config from GitHub first, then fall back to local files
+async function loadConfigFromGitHub() {
+  try {
+    const primaryPath = GITHUB_CONFIG_PATHS[0];
+    const result = await githubRequest('GET', primaryPath);
+    if (result.status === 200 && result.data.content) {
+      const content = Buffer.from(result.data.content, 'base64').toString('utf8');
+      const parsed = JSON.parse(content);
+      githubShas[primaryPath] = result.data.sha;
+      console.log(`Loaded admin config from GitHub (${Object.keys(parsed.gameCategories || {}).length} game categories)`);
+      return parsed;
+    }
+  } catch (error) {
+    console.log('GitHub load failed:', error.message);
+  }
+  return null;
+}
+
+// Save config to GitHub permanently (both paths)
+async function saveConfigToGitHub() {
+  const content = Buffer.from(JSON.stringify(adminConfig, null, 2)).toString('base64');
+  let success = false;
+
+  for (const filePath of GITHUB_CONFIG_PATHS) {
+    try {
+      if (!githubShas[filePath]) {
+        const current = await githubRequest('GET', filePath);
+        if (current.status === 200) {
+          githubShas[filePath] = current.data.sha;
+        }
+      }
+
+      const body = {
+        message: `Update admin config - ${new Date().toISOString()}`,
+        content: content,
+        branch: 'main'
+      };
+      if (githubShas[filePath]) {
+        body.sha = githubShas[filePath];
+      }
+
+      const result = await githubRequest('PUT', filePath, body);
+      if (result.status === 200 || result.status === 201) {
+        githubShas[filePath] = result.data.content.sha;
+        console.log(`Admin config saved to GitHub: ${filePath}`);
+        success = true;
+      } else {
+        console.error(`GitHub save error for ${filePath}:`, result.status);
+        githubShas[filePath] = null;
+      }
+    } catch (error) {
+      console.error(`GitHub save failed for ${filePath}:`, error.message);
+      githubShas[filePath] = null;
+    }
+  }
+
+  if (success) console.log('Admin config saved to GitHub PERMANENTLY');
+  return success;
+}
 
 // Ensure data directories exist
 async function ensureDataDirectories() {
@@ -32,45 +138,52 @@ async function ensureDataDirectories() {
   await fs.mkdir('./public/data', { recursive: true }).catch(() => {});
 }
 
-// Load config from file on startup - try multiple locations
+// Load config on startup - GitHub first, then local files
 async function loadConfig() {
   await ensureDataDirectories();
 
+  // Try GitHub first (most authoritative, permanent source)
+  const githubConfig = await loadConfigFromGitHub();
+  if (githubConfig && Object.keys(githubConfig.gameCategories || {}).length > 0) {
+    adminConfig = githubConfig;
+  }
+
+  // Also check local files and use whichever has more data
   for (const configPath of CONFIG_PATHS) {
     try {
       const data = await fs.readFile(configPath, 'utf8');
       const parsed = JSON.parse(data);
-      // Use the config with the most game categories (most complete data)
       const currentCount = Object.keys(adminConfig.gameCategories || {}).length;
       const newCount = Object.keys(parsed.gameCategories || {}).length;
-      if (newCount >= currentCount) {
+      if (newCount > currentCount) {
         adminConfig = parsed;
-        console.log(`Loaded admin config from ${configPath} (${newCount} game categories)`);
+        console.log(`Loaded admin config from ${configPath} (${newCount} game categories, more than GitHub)`);
       }
     } catch (error) {
-      console.log(`No config at ${configPath}, trying next...`);
+      // ignore
     }
   }
 
+  // Use hiddenTabs from GitHub even if gameCategories is empty
+  if (githubConfig && !adminConfig.hiddenTabs?.length && githubConfig.hiddenTabs?.length) {
+    adminConfig.hiddenTabs = githubConfig.hiddenTabs;
+  }
+
   const catCount = Object.keys(adminConfig.gameCategories || {}).length;
-  if (catCount === 0) {
+  if (catCount === 0 && (!adminConfig.hiddenTabs || adminConfig.hiddenTabs.length === 0)) {
     console.log('No saved admin config found, using defaults');
-    adminConfig = {
-      hiddenTabs: [],
-      gameCategories: {},
-      lastUpdated: new Date().toISOString()
-    };
   } else {
-    console.log(`Admin config loaded with ${catCount} game categories`);
-    // Ensure all locations have the best config
+    console.log(`Admin config loaded: ${catCount} game categories, ${(adminConfig.hiddenTabs || []).length} hidden tabs`);
+    // Sync to all locations
     await saveConfig();
   }
 }
 
-// Save config to ALL file locations with atomic writes
+// Save config to ALL locations: local files AND GitHub
 async function saveConfig() {
   await ensureDataDirectories();
 
+  // Save locally for fast reads
   for (const configPath of CONFIG_PATHS) {
     try {
       const tempFile = configPath + '.tmp';
@@ -80,7 +193,11 @@ async function saveConfig() {
       console.error(`Failed to save config to ${configPath}:`, error);
     }
   }
-  console.log(`Saved admin config to ${CONFIG_PATHS.length} locations (${Object.keys(adminConfig.gameCategories || {}).length} game categories)`);
+
+  // Save to GitHub for PERMANENT persistence
+  await saveConfigToGitHub();
+
+  console.log(`Saved admin config (${Object.keys(adminConfig.gameCategories || {}).length} game categories)`);
 }
 
 // Also update games.json directly with category changes so data survives full resets
@@ -140,27 +257,25 @@ app.post('/api/admin-config', async (req, res) => {
     const updates = req.body;
 
     if (updates.hiddenTabs !== undefined) {
-      // Replace hidden tabs entirely (admin sends the full list)
       adminConfig.hiddenTabs = updates.hiddenTabs;
     }
 
     if (updates.gameCategories !== undefined) {
-      // Merge new category changes into existing ones
       adminConfig.gameCategories = { ...adminConfig.gameCategories, ...updates.gameCategories };
     }
 
     adminConfig.lastUpdated = new Date().toISOString();
 
-    // Save to ALL config file locations
+    // Save to ALL locations (local + GitHub)
     await saveConfig();
 
-    // Also bake category changes into games.json for maximum persistence
+    // Also bake category changes into games.json
     await updateGamesJsonCategories();
 
     return {
       success: true,
       config: adminConfig,
-      message: 'Admin configuration saved permanently'
+      message: 'Admin configuration saved permanently to GitHub'
     };
   }).catch(error => {
     console.error('Config update error:', error);
@@ -194,5 +309,6 @@ loadConfig().then(() => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Admin config endpoint: http://localhost:${PORT}/api/admin-config`);
     console.log(`Game categories tracked: ${Object.keys(adminConfig.gameCategories || {}).length}`);
+    console.log(`GitHub persistence: ${process.env.GITHUB_TOKEN ? 'ENABLED' : 'DISABLED (set GITHUB_TOKEN)'}`);
   });
 });
