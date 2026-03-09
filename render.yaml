@@ -12,3 +12,5 @@ services:
         value: glm-admin-2024
       - key: PORT
         value: 10000
+      - key: GITHUB_TOKEN
+        sync: false
