@@ -492,7 +492,7 @@
     "microsoftflightsimulator": "simulators",
     "music1": "music",
     "sekiroshadowsdietwice": "soulslike",
-    "awayout": "action",
+    "awayout": "localcoop",
     "loversinadangerouspacetime": "localcoop",
     "eldenring": "finished",
     "liesofp": "soulslike",
@@ -1046,5 +1046,5 @@
     "againstthestorm": "new",
     "hifirush": "new"
   },
-  "lastUpdated": "2026-03-09T12:44:20.759Z"
+  "lastUpdated": "2026-03-09T12:44:32.572Z"
 }
