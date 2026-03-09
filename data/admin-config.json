@@ -341,7 +341,7 @@
     "DungeonsofHinterberg": "hacknslash",
     "DegreesofSeparation": "action",
     "Selfloss": "action",
-    "AILIMIT": "soulslike",
+    "AILIMIT": "not_for_me",
     "EnGarde": "not_for_me",
     "WizardwithaGun": "shooters",
     "OpenRoads": "action",
@@ -548,7 +548,7 @@
     "Eastshade": "action",
     "Loopmancer": "not_for_me",
     "13SentinelsAegisRim": "storydriven",
-    "AITHESOMNIUMFILES": "storydriven",
+    "AITHESOMNIUMFILES": "not_for_me",
     "LethalLeagueBlaze": "localcoop",
     "NORCO": "storydriven",
     "GatoRoboto": "platformers",
@@ -1047,5 +1047,5 @@
     "hifirush": "action",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T13:11:45.931Z"
+  "lastUpdated": "2026-03-09T13:20:15.567Z"
 }
