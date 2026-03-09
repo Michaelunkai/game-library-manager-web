@@ -292,7 +292,7 @@
     "MindsEye": "action",
     "DuneImperium": "action",
     "Darksouls3": "finished",
-    "DarkSouls2": "soulslike",
+    "DarkSouls2": "finished",
     "Resistance3": "shooters",
     "StrayBlade": "soulslike",
     "DarkDevotion": "soulslike",
@@ -329,7 +329,7 @@
     "Chernobylite": "shooters",
     "MonsterHunterRise": "action",
     "ShadowOfTheColossus": "action",
-    "Expedition33": "action",
+    "Expedition33": "finished",
     "Blanc": "action",
     "webinars2": "mybackup",
     "DragonBallFighterZ": "sports",
@@ -1047,5 +1047,5 @@
     "hifirush": "finished",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T13:49:56.305Z"
+  "lastUpdated": "2026-03-09T14:56:50.518Z"
 }
