@@ -92,12 +92,18 @@ class GameLibrary {
     // Poll server for admin configuration changes
     startAdminConfigPolling() {
         this._lastConfigVersion = null;
-        // Check for updates every 5 seconds
+        // Check for updates every 2 seconds for instant change detection
         this.configPollInterval = setInterval(async () => {
             try {
-                const response = await fetch('/api/admin-config', {
+                // CRITICAL: Cache-busting to ALWAYS get latest changes
+                const cacheBuster = `?t=${Date.now()}&v=${Math.random()}`;
+                const response = await fetch(`/api/admin-config${cacheBuster}`, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    }
                 });
                 if (response.ok) {
                     const data = await response.json();
@@ -115,9 +121,9 @@ class GameLibrary {
             } catch (e) {
                 // silent
             }
-        }, 5000);
+        }, 2000); // Every 2 seconds for instant updates
 
-        console.log('Admin config polling started: checking every 5 seconds');
+        console.log('⚡ Admin config polling started: checking every 2 seconds for instant updates');
     }
 
     startAutoSync() {
@@ -2273,10 +2279,15 @@ echo "Done!"
     // Load admin configuration from server - affects ALL users immediately
     async loadAdminConfigFromServer() {
         try {
-            const response = await fetch('/api/admin-config', {
+            // CRITICAL: Cache-busting to ALWAYS get latest changes
+            const cacheBuster = `?t=${Date.now()}&v=${Math.random()}&nocache=1`;
+            const response = await fetch(`/api/admin-config${cacheBuster}`, {
                 method: 'GET',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
                 }
             });
 
@@ -2358,6 +2369,15 @@ echo "Done!"
                 }
                 console.log('Admin config saved to server:', data);
                 this.showToast('Changes saved permanently to server!', 'success');
+                
+                // CRITICAL: Force immediate reload to show latest changes
+                // Wait 500ms for GitHub to propagate, then reload
+                setTimeout(async () => {
+                    await this.loadAdminConfigFromServer();
+                    this.renderTabs();
+                    this.filterAndRender();
+                    console.log('✅ Changes verified and displayed');
+                }, 500);
             } else {
                 throw new Error('Server returned ' + response.status);
             }

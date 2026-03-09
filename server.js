@@ -252,11 +252,23 @@ async function updateGamesJsonCategories() {
 // API Routes
 
 // GET admin configuration (public - all users get admin rules)
+// CRITICAL: Aggressive cache-busting to ensure LATEST changes ALWAYS show
 app.get('/api/admin-config', (req, res) => {
+  // ZERO caching - always fetch fresh from server
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Surrogate-Control': 'no-store',
+    'ETag': `"${Date.now()}-${adminConfig.lastUpdated}"`, // Force unique ETag every request
+    'Last-Modified': new Date(adminConfig.lastUpdated).toUTCString()
+  });
+  
   res.json({
     success: true,
     config: adminConfig,
     configVersion: adminConfig.lastUpdated,
+    timestamp: Date.now(), // Client-side cache buster
     message: 'Admin configuration retrieved'
   });
 });
