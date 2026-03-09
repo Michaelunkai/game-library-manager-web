@@ -10,7 +10,10 @@
     "gamedownloaders"
   ],
   "gameCategories": {
-    "test-persist-check": "action"
+    "test-persist-check": "action",
+    "game-move-test-1": "fps",
+    "game-move-test-2": "rpg",
+    "game-move-test-3": "strategy"
   },
-  "lastUpdated": "2026-03-09T10:33:26.163Z"
+  "lastUpdated": "2026-03-09T10:42:41.104Z"
 }
