@@ -8,7 +8,8 @@
     "win11maintaince",
     "3th_party_tools",
     "gamedownloaders",
-    "localcoop"
+    "localcoop",
+    "nintendo/switch"
   ],
   "gameCategories": {
     "test-persist-check": "action",
@@ -1048,5 +1049,5 @@
     "hifirush": "finished",
     "dishonored": "action"
   },
-  "lastUpdated": "2026-03-09T21:00:09.350Z"
+  "lastUpdated": "2026-03-09T21:00:10.450Z"
 }
