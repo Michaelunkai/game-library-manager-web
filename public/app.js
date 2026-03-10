@@ -2366,9 +2366,9 @@ echo "Done!"
                 }
                 
                 // Apply game category overrides
-                if (staticConfig.gameCategories && this.allGames.length > 0) {
+                if (staticConfig.gameCategories && this.games && this.games.length > 0) {
                     for (const [gameId, category] of Object.entries(staticConfig.gameCategories)) {
-                        const game = this.allGames.find(g => g.id === gameId);
+                        const game = this.games.find(g => g.id === gameId);
                         if (game) {
                             game.originalCategory = game.originalCategory || game.category;
                             game.category = category;
