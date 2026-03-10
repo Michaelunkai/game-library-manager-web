@@ -2337,45 +2337,55 @@ echo "Done!"
                     }
                     console.log('Loaded admin config from server:', data.config);
                 }
+            } else {
+                // API not available (Vercel), load from static file
+                console.log('API not available, loading from static file (Vercel mode)');
+                await this.loadStaticAdminConfig();
             }
         } catch (error) {
             console.error('Failed to load admin config from server:', error);
-            // Fallback to static JSON file (for Vercel)
-            try {
-                const staticResponse = await fetch('/data/admin-config.json?t=' + Date.now());
-                if (staticResponse.ok) {
-                    const staticConfig = await staticResponse.json();
-                    console.log('Loaded admin config from static file (Vercel fallback)');
-                    
-                    // Apply the static config
-                    this.adminConfig = staticConfig;
-                    
-                    // Set hidden tabs
-                    if (staticConfig.hiddenTabs && Array.isArray(staticConfig.hiddenTabs)) {
-                        this.hiddenTabs = new Set(staticConfig.hiddenTabs);
-                    }
-                    
-                    // Apply game category overrides
-                    if (staticConfig.gameCategories && this.allGames.length > 0) {
-                        for (const [gameId, category] of Object.entries(staticConfig.gameCategories)) {
-                            const game = this.allGames.find(g => g.id === gameId);
-                            if (game) {
-                                game.originalCategory = game.originalCategory || game.category;
-                                game.category = category;
-                            }
+            // Network error, try static file
+            await this.loadStaticAdminConfig();
+        }
+    }
+
+    // Load admin config from static JSON file (for Vercel deployment)
+    async loadStaticAdminConfig() {
+        try {
+            const staticResponse = await fetch('/data/admin-config.json?t=' + Date.now());
+            if (staticResponse.ok) {
+                const staticConfig = await staticResponse.json();
+                console.log('Loaded admin config from static file (Vercel fallback)');
+                
+                // Apply the static config
+                this.adminConfig = staticConfig;
+                
+                // Set hidden tabs
+                if (staticConfig.hiddenTabs && Array.isArray(staticConfig.hiddenTabs)) {
+                    this.hiddenTabs = new Set(staticConfig.hiddenTabs);
+                }
+                
+                // Apply game category overrides
+                if (staticConfig.gameCategories && this.allGames.length > 0) {
+                    for (const [gameId, category] of Object.entries(staticConfig.gameCategories)) {
+                        const game = this.allGames.find(g => g.id === gameId);
+                        if (game) {
+                            game.originalCategory = game.originalCategory || game.category;
+                            game.category = category;
                         }
                     }
-                    
-                    console.log('Applied static config - hidden tabs:', Array.from(this.hiddenTabs));
-                } else {
-                    // Final fallback to localStorage
-                    this.loadHiddenTabs();
+                    console.log(`📡 Applied ${Object.keys(staticConfig.gameCategories).length} game category overrides from static file`);
                 }
-            } catch (staticError) {
-                console.error('Failed to load static admin config:', staticError);
+                
+                console.log('Applied static config - hidden tabs:', Array.from(this.hiddenTabs));
+            } else {
                 // Final fallback to localStorage
                 this.loadHiddenTabs();
             }
+        } catch (staticError) {
+            console.error('Failed to load static admin config:', staticError);
+            // Final fallback to localStorage
+            this.loadHiddenTabs();
         }
     }
 
