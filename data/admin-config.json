@@ -12,7 +12,8 @@
     "nintendo/switch",
     "tvshows",
     "simulators",
-    "bulkgames"
+    "bulkgames",
+    "fighting"
   ],
   "gameCategories": {
     "test-persist-check": "action",
@@ -1053,5 +1054,5 @@
     "dishonored": "not_for_me",
     "mirrorsedgecatalyst": "action"
   },
-  "lastUpdated": "2026-03-11T22:47:59.064Z"
+  "lastUpdated": "2026-03-11T22:48:08.115Z"
 }
