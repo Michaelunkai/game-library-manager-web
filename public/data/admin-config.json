@@ -11,7 +11,8 @@
     "localcoop",
     "nintendo/switch",
     "tvshows",
-    "simulators"
+    "simulators",
+    "bulkgames"
   ],
   "gameCategories": {
     "test-persist-check": "action",
@@ -1052,5 +1053,5 @@
     "dishonored": "not_for_me",
     "mirrorsedgecatalyst": "new"
   },
-  "lastUpdated": "2026-03-11T22:46:17.333Z"
+  "lastUpdated": "2026-03-11T22:46:24.148Z"
 }
