@@ -1791,9 +1791,9 @@ class GameLibrary {
         });
     }
 
-    runInTerminal() {
+    runInTerminal(format = 'bat') {
         if (!this.currentGame) return;
-        this.downloadRunScript([this.currentGame.id]);
+        this.downloadRunScript([this.currentGame.id], format);
     }
 
     runSelectedGames() {
@@ -1804,7 +1804,7 @@ class GameLibrary {
         this.downloadRunScript([...this.selectedGames]);
     }
 
-    downloadRunScript(gameIds) {
+    downloadRunScript(gameIds, format = 'bat') {
         const dockerUser = this.settings.dockerUsername || 'michadockermisha';
         const repoName = this.settings.repoName || 'backup';
         const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
@@ -2285,18 +2285,26 @@ echo ""
         this.showToast(`Downloaded: ${filename} - Double-click to run!`, 'success');
     }
 
-    downloadKillScript() {
+    downloadKillScript(format = 'bat') {
         let script, filename;
 
-        if (this.os === 'windows') {
+        if (this.os === 'windows' && format === 'bat') {
             script = `@echo off
-REM Kill all Docker containers
+REM Kill all Docker containers (Batch)
 echo Stopping and removing all Docker containers...
-docker rm -f $(docker ps -aq) 2>nul
+for /f "tokens=*" %%i in ('docker ps -aq') do docker rm -f %%i 2>nul
 echo Done!
 pause
 `;
             filename = 'kill_all_containers.bat';
+        } else if (this.os === 'windows') {
+            script = `# Kill all Docker containers (PowerShell)
+Write-Host "Stopping and removing all Docker containers..." -ForegroundColor Yellow
+docker rm -f $(docker ps -aq) 2>$null
+Write-Host "Done!" -ForegroundColor Green
+Read-Host "Press Enter to exit"
+`;
+            filename = 'kill_all_containers.ps1';
         } else {
             script = `#!/bin/bash
 # Kill all Docker containers
