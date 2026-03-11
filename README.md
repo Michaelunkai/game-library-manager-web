@@ -4,6 +4,8 @@ A full-featured web application for managing and running Docker-based games from
 
 ## Live Demo
 
+**[https://game-library-manager-web.vercel.app/](https://game-library-manager-web.vercel.app/)**
+
 **[https://game-library-manager-web.onrender.com/](https://game-library-manager-web.onrender.com/)**
 
 ## Features
@@ -14,7 +16,7 @@ A full-featured web application for managing and running Docker-based games from
 - **Custom Mount Path** - Set your game download directory (any path works!)
 - **Multi-format Scripts** - Download .BAT (Windows), .PS1 (PowerShell), or .SH (Linux/Mac)
 - **Real-time Progress** - See every file being copied during extraction
-- **Single-phase Processing** - Each game: Pull → Extract → Next (no waiting for all pulls)
+- **Single-phase Processing** - Each game: Pull â Extract â Next (no waiting for all pulls)
 - **Auto-retry & Recovery** - Automatic Docker recovery and retry on failures
 - **HLTB Times** - HowLongToBeat completion time estimates
 - **Dark/Light Theme** - Toggle between themes
