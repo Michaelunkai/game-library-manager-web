@@ -412,7 +412,7 @@
     "SpellForce3Reforced": "action",
     "Obduction": "action",
     "SunlessSea": "action",
-    "Wreckfest": "racing",
+    "Wreckfest": "action",
     "SpintiresMudRunner": "simulators",
     "TransportFever2": "simulators",
     "GardenPaws": "action",
@@ -1059,5 +1059,5 @@
     "dishonored": "not_for_me",
     "mirrorsedgecatalyst": "action"
   },
-  "lastUpdated": "2026-03-11T22:48:51.899Z"
+  "lastUpdated": "2026-03-11T22:53:59.208Z"
 }
