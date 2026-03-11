@@ -15,7 +15,8 @@
     "bulkgames",
     "fighting",
     "soulslike",
-    "storydriven"
+    "storydriven",
+    "puzzle"
   ],
   "gameCategories": {
     "test-persist-check": "action",
@@ -1056,5 +1057,5 @@
     "dishonored": "not_for_me",
     "mirrorsedgecatalyst": "action"
   },
-  "lastUpdated": "2026-03-11T22:48:44.781Z"
+  "lastUpdated": "2026-03-11T22:48:48.369Z"
 }
