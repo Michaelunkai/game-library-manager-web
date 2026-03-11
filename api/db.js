@@ -27,7 +27,7 @@ const DEFAULT_CONFIG = {
 let cachedConfig = null;
 let cachedShas = {}; // SHA per file path
 let lastFetchTime = 0;
-const CACHE_TTL = 30000; // 30 seconds cache
+const CACHE_TTL = 0; // NO CACHE - always fetch fresh data for instant admin changes
 
 function githubRequest(method, filePath, body) {
   return new Promise((resolve, reject) => {
