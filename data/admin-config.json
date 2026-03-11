@@ -9,8 +9,7 @@
     "3th_party_tools",
     "gamedownloaders",
     "localcoop",
-    "nintendo/switch",
-    "racing"
+    "nintendo/switch"
   ],
   "gameCategories": {
     "test-persist-check": "action",
@@ -1051,5 +1050,5 @@
     "dishonored": "not_for_me",
     "mirrorsedgecatalyst": "new"
   },
-  "lastUpdated": "2026-03-11T22:43:07.972Z"
+  "lastUpdated": "2026-03-11T22:45:39.336Z"
 }
