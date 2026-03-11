@@ -920,11 +920,11 @@ class GameLibrary {
 
     getTabCount(tabId) {
         if (tabId === 'all') {
-            // For non-admins, exclude games from admin-only tabs in the total count
-            if (!this.isAdmin) {
-                return this.games.filter(g => !this.ADMIN_ONLY_TABS.has(g.category)).length;
-            }
-            return this.games.length;
+            // CRITICAL: "all" tab count excludes admin-only tabs AND hidden tabs for EVERYONE
+            return this.games.filter(g => 
+                !this.ADMIN_ONLY_TABS.has(g.category) &&
+                !this.hiddenTabs.has(g.category)
+            ).length;
         }
         return this.games.filter(g => g.category === tabId).length;
     }
@@ -942,7 +942,10 @@ class GameLibrary {
 
     filterAndRender() {
         let filtered = this.currentTab === 'all'
-            ? this.games.filter(g => !this.ADMIN_ONLY_TABS.has(g.category))  // Exclude admin-only tabs from "All" view for everyone
+            ? this.games.filter(g => 
+                !this.ADMIN_ONLY_TABS.has(g.category) &&  // Exclude admin-only tabs from "All" view for everyone
+                !this.hiddenTabs.has(g.category)           // CRITICAL: Exclude hidden tabs from "All" view for EVERYONE (including admin)
+              )
             : this.games.filter(g => g.category === this.currentTab);
 
         // CRITICAL: Hide games from admin-only tabs for non-admins when viewing specific tabs
@@ -2416,15 +2419,22 @@ echo "Done!"
     toggleTabVisibility(tabId) {
         if (!this.isAdmin) return;
 
-        if (this.hiddenTabs.has(tabId)) {
+        const wasHidden = this.hiddenTabs.has(tabId);
+        
+        if (wasHidden) {
             this.hiddenTabs.delete(tabId);
-            this.showToast(`Tab "${tabId}" is now visible to all`, 'info');
+            this.showToast(`✅ Tab "${tabId}" unlocked - games now visible in "all" tab`, 'success');
         } else {
             this.hiddenTabs.add(tabId);
-            this.showToast(`Tab "${tabId}" is now hidden from non-admins`, 'warning');
+            this.showToast(`🔒 Tab "${tabId}" hidden - games removed from "all" tab`, 'warning');
         }
-        this.saveHiddenTabs(); // This now saves to server and affects ALL users
-        this.renderTabs();
+        
+        // CRITICAL: Save to server AND immediately update UI
+        this.saveHiddenTabs(); // Saves to server, affects ALL users
+        this.renderTabs();     // Re-render tabs with updated visibility icons
+        this.filterAndRender(); // CRITICAL: Re-render games to immediately hide/show in "all" tab
+        
+        console.log(`Tab "${tabId}" ${wasHidden ? 'unlocked' : 'hidden'} - changes applied instantly`);
     }
 
     toggleInstalled(gameId) {
