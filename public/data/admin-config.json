@@ -9,7 +9,8 @@
     "3th_party_tools",
     "gamedownloaders",
     "localcoop",
-    "nintendo/switch"
+    "nintendo/switch",
+    "racing"
   ],
   "gameCategories": {
     "test-persist-check": "action",
@@ -1047,7 +1048,8 @@
     "princeofpersiathelostcrown": "platformers",
     "againstthestorm": "strategy",
     "hifirush": "finished",
-    "dishonored": "not_for_me"
+    "dishonored": "not_for_me",
+    "mirrorsedgecatalyst": "new"
   },
-  "lastUpdated": "2026-03-09T23:00:01.541Z"
+  "lastUpdated": "2026-03-11T22:43:07.972Z"
 }
