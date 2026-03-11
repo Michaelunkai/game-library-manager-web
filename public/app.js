@@ -1262,7 +1262,7 @@ class GameLibrary {
         });
     }
 
-    runInTerminal(format = 'ps1') {
+    runInTerminal(format = 'bat') {
         if (!this.currentGame) return;
         this.downloadRunScript([this.currentGame.id], format);
     }
@@ -1275,7 +1275,7 @@ class GameLibrary {
         this.downloadRunScript([...this.selectedGames]);
     }
 
-    downloadRunScript(gameIds, format = 'ps1') {
+    downloadRunScript(gameIds, format = 'bat') {
         const dockerUser = this.settings.dockerUsername || 'michadockermisha';
         const repoName = this.settings.repoName || 'backup';
         const mountPath = document.getElementById('globalMountPath').value || this.settings.mountPath || 'F:/Games';
@@ -1935,7 +1935,7 @@ echo ""
         this.showToast(`Downloaded: ${filename} - ${runHint}`, 'success');
     }
 
-    downloadKillScript(format = 'ps1') {
+    downloadKillScript(format = 'bat') {
         let script, filename;
 
         if (this.os === 'windows' && format === 'bat') {
