@@ -856,7 +856,7 @@
     "sunsetoverdive": "action",
     "yakuza6thesongodlife": "storydriven",
     "callofduty2": "action",
-    "godofwar": "action",
+    "godofwar": "finished",
     "skulheroslayer": "hacknslash",
     "code": "mybackup",
     "blacktail": "platformers",
@@ -1059,5 +1059,5 @@
     "dishonored": "not_for_me",
     "mirrorsedgecatalyst": "action"
   },
-  "lastUpdated": "2026-03-11T22:53:59.208Z"
+  "lastUpdated": "2026-03-14T15:32:08.809Z"
 }
