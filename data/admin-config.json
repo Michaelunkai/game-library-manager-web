@@ -736,7 +736,7 @@
     "catherine": "storydriven",
     "blur": "action",
     "codinfinitewarfare": "shooters",
-    "codww2": "shooters",
+    "codww2": "not_for_me",
     "prox5": "oporationsystems",
     "prox4": "oporationsystems",
     "prox3": "oporationsystems",
@@ -1084,5 +1084,5 @@
     "magicraft": "new",
     "kaijucrackingcorporation": "new"
   },
-  "lastUpdated": "2026-03-21T17:48:45.614Z"
+  "lastUpdated": "2026-03-21T17:49:21.744Z"
 }
