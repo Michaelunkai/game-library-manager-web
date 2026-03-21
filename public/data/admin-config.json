@@ -824,16 +824,16 @@
     "oxenfree2": "storydriven",
     "torchlight3": "hacknslash",
     "nobodysavedtheworld": "action",
-    "codvanguard": "shooters",
+    "codvanguard": "not_for_me",
     "frostpunk": "strategy",
     "deeprockgalactic": "action",
     "notforbroadcast": "storydriven",
     "blackskylands": "platformers",
     "sludgelife2": "action",
-    "codmw": "shooters",
-    "codmw3": "shooters",
+    "codmw": "not_for_me",
+    "codmw3": "not_for_me",
     "dishonored2": "action",
-    "deusexhuman": "action",
+    "deusexhuman": "not_for_me",
     "systembackup": "mybackup",
     "python": "mybackup",
     "proxmoxvmware": "oporationsystems",
@@ -1084,5 +1084,5 @@
     "magicraft": "new",
     "kaijucrackingcorporation": "new"
   },
-  "lastUpdated": "2026-03-21T17:49:21.744Z"
+  "lastUpdated": "2026-03-21T17:52:05.934Z"
 }
