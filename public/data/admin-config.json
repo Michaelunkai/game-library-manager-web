@@ -1052,7 +1052,7 @@
     "foregone": "action",
     "youstay": "storydriven",
     "grimdawn": "action",
-    "castlevanialordsofshadow2": "action",
+    "castlevanialordsofshadow2": "not_for_me",
     "princeofpersiathelostcrown": "platformers",
     "againstthestorm": "strategy",
     "hifirush": "finished",
@@ -1084,5 +1084,5 @@
     "magicraft": "new",
     "kaijucrackingcorporation": "new"
   },
-  "lastUpdated": "2026-03-27T23:47:33.301Z"
+  "lastUpdated": "2026-03-27T23:48:26.963Z"
 }
