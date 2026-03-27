@@ -61,7 +61,7 @@
     "haroldhalibut": "storydriven",
     "sonicfrontiers": "platformers",
     "metalgearsolid3snakeeatermastercollection": "action",
-    "cairn": "action",
+    "cairn": "not_for_me",
     "metalgearrisingrevengeance": "hacknslash",
     "bayonetta": "hacknslash",
     "windowsapps": "mybackup",
@@ -1084,5 +1084,5 @@
     "magicraft": "new",
     "kaijucrackingcorporation": "new"
   },
-  "lastUpdated": "2026-03-27T23:46:50.002Z"
+  "lastUpdated": "2026-03-27T23:47:33.301Z"
 }
