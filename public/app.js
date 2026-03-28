@@ -2749,39 +2749,53 @@ echo "Done!"
     // Known Steam App ID mappings for reliable cover fetching
     getKnownSteamAppIds() {
         return {
-            'doomthedarkages': '2399830',
-            'silenceofthesiren': '2115010',
-            'stillwakesthedeep': '1621530',
+            'doomthedarkages': '3017860',
+            'silenceofthesiren': '2147380',
+            'stillwakesthedeep': '1622910',
             'scorn': '698670',
-            'hereticsfork': '1142780',
-            'fortsolis': '1654530',
-            'thekingiswatching': '2231450',
-            'deadlinedelivery': '2595480',
+            'hereticsfork': '2181610',
+            'hereticsforkthegame': '2181610',
+            'fortsolis': '1931730',
+            'thekingiswatching': '2753900',
+            'deadlinedelivery': '3745310',
             'enshrouded': '1203620',
             'sengokudynasty': '1702010',
             'flintlocksiegedownleft': '1832040',
             'starshiptroopers': '1202130',
             'starshiptroopersultimate': '1202130',
-            'grindsurvivors': '2721250',
-            'formulalegends': '2660140',
-            'kunitsugami': '1956710',
-            'ashrust': '2750610',
-            'cornershopnightshift': '2785010',
-            'caribbeanlegendageofpirates': '3004950',
-            'caribbeanlegendagendag': '3004950',
-            'dicewithdeath': '2440410',
-            'sculptings': '2600610',
-            'dragonkinthebanished': '2637170',
-            'dragonkinthebanish': '2637170',
-            'theartisanofgilmith': '2400690',
-            'theratline': '1798820',
-            'royalrevoltsurvivors': '2829610',
-            'tombbraiderililiremastered': '2920850',
-            'tombraiderililiremastered': '2920850',
-            'kaijucrackingcorporation': '2886750',
-            'kaijucrackingcorpo': '2886750',
-            'magicraft': '2199220',
+            'starshiptroopersextermination': '1268750',
+            'starshiptroopers extermination': '1268750',
+            'starshiptroopersterrancommand': '1202130',
+            'grindsurvivors': '3816930',
+            'formulalegends': '3194360',
+            'kunitsugami': '2510710',
+            'kunitsugamipathofthegoddess': '2510710',
+            'ashrust': '1358490',
+            'ashandrust': '1358490',
+            'cornershopnightshift': '3306990',
+            'cornershop': '3306990',
+            'caribbeanlegendageofpirates': '3549020',
+            'caribbeanlegendagendag': '3549020',
+            'caribbeanlegenddaggersoffate': '3549020',
+            'caribbeanlegend': '2230980',
+            'dicewithdeath': '3435260',
+            'sculplings': '3062680',
+            'sculptings': '3062680',
+            'dragonkinthebanished': '1863430',
+            'dragonkinthebanish': '1863430',
+            'theartisanofgilmith': '4160210',
+            'theartisanofglimmith': '4160210',
+            'theratline': '3756940',
+            'royalrevoltsurvivors': '2960490',
+            'tombbraiderililiremastered': '2478970',
+            'tombraiderililiremastered': '2478970',
+            'tombraider13remastered': '2478970',
+            'tombraiderremastered': '2478970',
+            'kaijucrackingcorporation': '3586410',
+            'kaijucrackingcorpo': '3586410',
+            'magicraft': '2103140',
             'mirrorsedgecatalyst': '1233570',
+            'mirrorsedge': '1233570',
             'ultratron': '219190',
             'jackal': '1259580',
             'myheroaccademia': '2753010',
@@ -3085,8 +3099,315 @@ echo "Done!"
             'pokemonscarletviolet': '2710140',
             'pokemonswordshield': '2710130',
             'pokemonbrilliantdiamondandshiningpearl': '2710120',
-            'researchanddestroy': '1538tried',
+            'researchanddestroy': '1538880',
             'spintiresmudrunner': '675010',
+            // Additional games - comprehensive mapping
+            'alanwake2': '2972660',
+            'alanwakeremastered': '108710',
+            'alienisolation': '214490',
+            'amnesia': '57300',
+            'amnesiathedarkedescent': '57300',
+            'amnesiarebirth': '999220',
+            'amnesiathedungeon': '1944430',
+            'arcanumofsteamworks': '500810',
+            'ariseofthegoldenidol': '2877760',
+            'arkkingdomascended': '2399830',
+            'arksurvivalascended': '2399830',
+            'armoredsoul': '2530500',
+            'ashenonefall': '1945800',
+            'ateliersophie': '527270',
+            'backpackhero': '1970580',
+            'baldursgate3': '1086940',
+            'banishers': '1338840',
+            'banishersghostsofneweden': '1338840',
+            'batmankarkhamknight': '208650',
+            'batmanarkhamcity': '200260',
+            'batmanarkhamasylum': '35140',
+            'bioshock': '7670',
+            'bioshockinfinite': '8870',
+            'bioshockremastered': '409710',
+            'blackmyth': '2358720',
+            'blackmythwukong': '2358720',
+            'blasphemous': '774361',
+            'blasphemous2': '2114740',
+            'bloodstained': '692850',
+            'bloodstainedritualofthenight': '692850',
+            'bodyofdoubt': '2899160',
+            'borderlands3': '397540',
+            'brotato': '1942280',
+            'callofcthulhu': '399810',
+            'carrion': '953490',
+            'castlevania': '2720030',
+            'celeste': '504230',
+            'childrenofthesun': '1865940',
+            'chronoark': '1440530',
+            'civilizationvii': '1295660',
+            'codevein': '678960',
+            'controlultimatedition': '870780',
+            'coralisland': '1158160',
+            'cosmicshake': '1766230',
+            'crisiscore': '1608080',
+            'crosscode': '368340',
+            'cuffbust': '2950320',
+            'cultofthelamb': '1313140',
+            'curseofthedead': '1766740',
+            'curseofthedeadgods': '1766740',
+            'darkanddarker': '2016590',
+            'darkestdungeon': '262060',
+            'darkestdungeon2': '1940340',
+            'darksiders': '50620',
+            'darksidersgenesis': '710920',
+            'darksiders3': '606280',
+            'deadcells': '588650',
+            'deadisland2': '934700',
+            'deadspace': '1693980',
+            'deadspaceremake': '1693980',
+            'deathmustdie': '2334730',
+            'deathloop': '1252330',
+            'deathsdoor': '894020',
+            'deliver us the moon': '428660',
+            'deltarune': '1671210',
+            'desperados3': '610370',
+            'devilmaycry5': '601150',
+            'diabloiv': '2344520',
+            'disco elysium': '632470',
+            'discoelysium': '632470',
+            'dishonored': '205100',
+            'dishonored2': '403640',
+            'divinity': '435150',
+            'divinityoriginalsin2': '435150',
+            'dragonage': '1845910',
+            'dragonagetheveilguard': '1845910',
+            'dragonsdogma2': '2054970',
+            'dredge': '1562430',
+            'dungeonmunchies': '799640',
+            'dustborn': '721180',
+            'dyinglight': '239140',
+            'dyinglight2': '534380',
+            'earthfall': '1903340',
+            'elderscrolls': '22330',
+            'elex': '411300',
+            'elex2': '900040',
+            'endzone': '933820',
+            'escapefromtarkov': '2625280',
+            'evilwest': '1065310',
+            'exoprimal': '1286220',
+            'expeditions': '2193470',
+            'fableanniversary': '288470',
+            'fallguys': '1097150',
+            'fallout4': '377160',
+            'farcry5': '552520',
+            'farcry6': '2369390',
+            'fatesamurairemnant': '1814070',
+            'finalfantasy7remake': '2909400',
+            'finalfantasy7rebirth': '2909400',
+            'finalfantasyvirebirth': '2909400',
+            'finalfantasy16': '2515020',
+            'finalfantasyxvi': '2515020',
+            'firewatch': '383870',
+            'flushfire': '2826440',
+            'frostpunk': '323190',
+            'frostpunk2': '2098160',
+            'ghostoftsushima': '2215430',
+            'ghostrunner': '1139900',
+            'ghostrunner2': '2144740',
+            'godsunchained': '2082350',
+            'godofwar': '1593500',
+            'godofwarragnarok': '2322010',
+            'gollum': '1265780',
+            'gothamknights': '1496790',
+            'grandtheftauto5': '271590',
+            'gta5': '271590',
+            'graveyardkeeper': '599140',
+            'greedfallgoldedition': '606880',
+            'greedfall': '606880',
+            'grisfinale': '1209990',
+            'guiltygear': '1384160',
+            'guiltygearstrive': '1384160',
+            'hades': '1145360',
+            'hades2': '1145350',
+            'haiku': '1331510',
+            'haloinfinite': '1240440',
+            'handofmerlin': '1338440',
+            'hardwest2': '1282730',
+            'harvestmoon': '1061060',
+            'haveanicedeath': '1740720',
+            'helldivers2': '553850',
+            'hellblade': '414340',
+            'hellbladesenuassacrifice': '414340',
+            'highonlife': '1583230',
+            'hitman': '1659040',
+            'hitman3': '1659040',
+            'hogwartslegacy': '990080',
+            'hollowknight': '367520',
+            'hollowknightsilksong': '1030300',
+            'horizonforbiddenwest': '2420110',
+            'horizonzerodawn': '1151640',
+            'hotlinemiami': '219150',
+            'houseofashes': '1281590',
+            'huntshowdown': '770720',
+            'hyenas': '2127570',
+            'hyperbolica': '1256230',
+            'immortalityoftheexile': '2694490',
+            'inscryption': '1092790',
+            'ittkr': '2604220',
+            'ittakestworesurrected': '2604220',
+            'ittakestwo': '1426210',
+            'jedi': '1774580',
+            'jedisurvivor': '1774580',
+            'jurassicworldevolution': '648350',
+            'justcause3': '225540',
+            'justcause4': '517630',
+            'katanakami': '1092790',
+            'kenshi': '233860',
+            'kingdomhearts': '2552430',
+            'lastepoch': '899770',
+            'lastofus': '1888930',
+            'lastofuspart1': '1888930',
+            'legendofzeldabreathofthewild': '2710100',
+            'legendofzeldatearsofthekingdom': '2710110',
+            'liesofp': '1627720',
+            'limbo': '48000',
+            'littlenightmares': '424840',
+            'littlenightmares2': '860510',
+            'lordoftherings': '2933620',
+            'maneater': '629820',
+            'marioplusrabbids': '2710200',
+            'masseffect': '1328670',
+            'masseffectlegendaryedition': '1328670',
+            'medievaldynasty': '1129580',
+            'metroidprimeremasters': '2710070',
+            'microsoftflightsimulator': '1250410',
+            'monsterhunterworld': '582010',
+            'monsterhunterwilds': '2685950',
+            'moonlighter': '606150',
+            'muonraysinterstellar': '2455170',
+            'musedash': '774171',
+            'necrobarista': '725270',
+            'needforspeed': '1846380',
+            'needforspeedunbound': '1846380',
+            'nierautomata': '524220',
+            'nierreplicant': '1113560',
+            'nightinthewoods': '481510',
+            'noita': '881100',
+            'octopathtraveler': '921570',
+            'octopathtraveler2': '1971680',
+            'oddworld': '945950',
+            'okami': '587620',
+            'onepiece': '1301530',
+            'onepieceodyssey': '1301530',
+            'ori': '387290',
+            'oriandtheblindforest': '387290',
+            'oriandthewillofthewisps': '1057090',
+            'outerwilds': '753640',
+            'outerworlds': '578650',
+            'overwatch2': '2357570',
+            'pacificdrive': '1458140',
+            'palworld': '1623730',
+            'payday3': '1272080',
+            'pentiment': '1205520',
+            'persona3reload': '2161700',
+            'persona4golden': '1113000',
+            'persona5royal': '1687950',
+            'pillarsofeternity2': '560130',
+            'plaguetale': '752590',
+            'plaguetaleinnoncence': '752590',
+            'plaguetalerequiem': '1182900',
+            'prey': '480490',
+            'primordia': '227000',
+            'psychonauts2': '607080',
+            'ratchetandclank': '1895880',
+            'ravenbound': '1381550',
+            'readyornot': '1144200',
+            'reddeadredemption': '1174180',
+            'reddeadredemption2': '1174180',
+            'remnant': '617290',
+            'remnant2': '1282100',
+            'residentevil4': '2050650',
+            'residentevil4remake': '2050650',
+            'residentevilvillage': '1196590',
+            'returnal': '1649240',
+            'riddickbrightfalls': '2860290',
+            'rimworld': '294100',
+            'riskofrain2': '632360',
+            'robocop': '1681430',
+            'roguelegacy2': '1253060',
+            'rysesonofrome': '302510',
+            'satisfactory': '526870',
+            'scarlethollow': '1419560',
+            'sekiro': '814380',
+            'shadowgambit': '1545560',
+            'shadowofthetombraider': '750920',
+            'sherlock': '2369680',
+            'sherlockholmes': '2369680',
+            'skyrim': '489830',
+            'slaytheprincesses': '1989830',
+            'slaytheprince': '1989830',
+            'slaythespire': '646570',
+            'slaythespire2': '2868840',
+            'sniperelite5': '1029690',
+            'sonicfrontiers': '1237320',
+            'sonicgenerations': '71340',
+            'spacemarine2': '2183900',
+            'spiderman': '1817070',
+            'spidermanremastered': '1817070',
+            'spidermanmilesmorales': '1817190',
+            'spiritfarer': '972660',
+            'stardewvalley': '413150',
+            'steelrising': '1283400',
+            'stellarblade': '2177030',
+            'strangerofparadise': '1399880',
+            'strandeddeep': '313120',
+            'streetfighter6': '1364780',
+            'subnautica': '264710',
+            'subnauticabelowzero': '848450',
+            'sunsetoverdrive': '847370',
+            'superliminal': '1049410',
+            'tekken8': '1778820',
+            'terraria': '105600',
+            'thebindingofisaac': '250900',
+            'thecallisto protocol': '1274920',
+            'thecallistoprotocol': '1274920',
+            'thechant': '1599940',
+            'thecourier': '1939460',
+            'theeviljudaswithin': '1975870',
+            'theevilwithin': '268050',
+            'theevilwithin2': '601430',
+            'theforest': '242760',
+            'thelastfaith': '1529190',
+            'thelastofuspart2': '2531650',
+            'themedium': '1293160',
+            'thequarry': '1456400',
+            'thewitcher3': '292030',
+            'titanfall2': '1237970',
+            'torchlight': '1310670',
+            'torchlightinfinite': '1310670',
+            'tormentedsouls': '1367590',
+            'totalk': '2317610',
+            'totalwarhammer3': '1142710',
+            'tunic': '553420',
+            'turtlebeach': '1291440',
+            'unpacking': '1135690',
+            'untilthenight': '2877040',
+            'untilthen': '1341820',
+            'vampiresurvivors': '1794680',
+            'valheim': '892970',
+            'venba': '1491670',
+            'vigil': '1557270',
+            'vigilthelangsandmonumentguard': '1557270',
+            'walkingdead': '207610',
+            'warframe': '230410',
+            'wasteland3': '719040',
+            'weirdwest': '1097350',
+            'wildhearts': '1938010',
+            'witchfire': '1399650',
+            'witness': '210970',
+            'wolfenstein': '201810',
+            'wolfenstein2': '612880',
+            'xenobladechronicles': '2710050',
+            'yakuza3remastered': '1088710',
+            'yakuza4remastered': '1105500',
+            'zombiearmy4': '694280',
         };
     }
 
@@ -3108,6 +3429,89 @@ echo "Done!"
         } catch (e) { /* ignore quota errors */ }
     }
 
+    // Split concatenated game names into words for better search
+    splitGameName(name) {
+        // Common game-related words to help split concatenated names
+        const commonWords = [
+            'the', 'of', 'and', 'in', 'on', 'at', 'to', 'for', 'is', 'a', 'an',
+            'with', 'from', 'by', 'not', 'no', 'or', 'vs', 'all',
+            'dark', 'dead', 'death', 'new', 'old', 'last', 'first', 'final',
+            'super', 'ultra', 'mega', 'hyper', 'mini', 'micro',
+            'night', 'day', 'dawn', 'dusk', 'shadow', 'light', 'fire', 'ice',
+            'star', 'moon', 'sun', 'storm', 'wind', 'rain', 'snow', 'thunder',
+            'king', 'queen', 'prince', 'lord', 'knight', 'dragon', 'demon',
+            'sword', 'blade', 'shield', 'gun', 'war', 'battle', 'fight',
+            'world', 'land', 'island', 'city', 'town', 'castle', 'tower',
+            'road', 'path', 'way', 'gate', 'door', 'bridge', 'edge',
+            'game', 'quest', 'tales', 'legend', 'legends', 'saga', 'story',
+            'rise', 'fall', 'lost', 'found', 'hunt', 'hunter', 'craft',
+            'red', 'blue', 'green', 'black', 'white', 'gold', 'silver',
+            'iron', 'steel', 'stone', 'bone', 'blood', 'soul', 'souls',
+            'doom', 'tomb', 'hell', 'haven', 'heaven', 'void', 'abyss',
+            'silent', 'silence', 'wild', 'grind', 'split', 'deep', 'high',
+            'zero', 'one', 'two', 'three', 'four', 'five', 'six',
+            'survivor', 'survivors', 'remastered', 'remake', 'edition',
+            'definitive', 'ultimate', 'deluxe', 'complete', 'collection',
+            'shop', 'corner', 'shift', 'delivery', 'deadline', 'formula',
+            'fort', 'solis', 'heretic', 'fork', 'royal', 'revolt',
+            'artisan', 'banished', 'watching', 'rat', 'line', 'dice',
+            'mirror', 'catalyst', 'kaiju', 'crack', 'magic',
+            'ages', 'age', 'pirate', 'pirates', 'caribbean', 'dagger',
+            'expedition', 'schedule', 'obscur', 'clair',
+            'lego', 'sonic', 'mario', 'zelda', 'pokemon',
+            'assassin', 'creed', 'fantasy', 'resident', 'evil',
+            'metal', 'gear', 'solid', 'monster', 'hunter'
+        ];
+
+        let result = name
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/(\d+)/g, ' $1 ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // If the name is already multi-word, return as is
+        if (result.includes(' ') && result.split(' ').length > 2) {
+            return result;
+        }
+
+        // Try to split concatenated lowercase words
+        const lower = result.toLowerCase();
+        const words = [];
+        let remaining = lower;
+
+        while (remaining.length > 0) {
+            let found = false;
+            // Try longest match first (up to 15 chars)
+            for (let len = Math.min(15, remaining.length); len >= 2; len--) {
+                const candidate = remaining.substring(0, len);
+                if (commonWords.includes(candidate) && (remaining.length === len || remaining.length - len >= 2)) {
+                    words.push(candidate);
+                    remaining = remaining.substring(len);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                // Take a chunk until we find the next known word
+                let nextWordStart = remaining.length;
+                for (let i = 2; i < remaining.length; i++) {
+                    const sub = remaining.substring(i);
+                    for (const word of commonWords) {
+                        if (sub.startsWith(word) && (sub.length === word.length || sub.length - word.length >= 2)) {
+                            nextWordStart = i;
+                            break;
+                        }
+                    }
+                    if (nextWordStart < remaining.length) break;
+                }
+                words.push(remaining.substring(0, nextWordStart));
+                remaining = remaining.substring(nextWordStart);
+            }
+        }
+
+        return words.join(' ');
+    }
+
     // Search Steam for a game and return cover image URL
     async fetchSteamCoverUrl(gameName) {
         const cache = this.getSteamCoverCache();
@@ -3122,28 +3526,16 @@ echo "Done!"
         const knownIds = this.getKnownSteamAppIds();
         const knownAppId = knownIds[cacheKey];
         if (knownAppId && knownAppId.match(/^\d+$/)) {
+            // Use cover URL directly - Steam CDN is reliable, avoid CORS HEAD check
             const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${knownAppId}/library_600x900_2x.jpg`;
-            const headerUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${knownAppId}/header.jpg`;
-            // Try portrait cover first
-            try {
-                const checkImg = await fetch(coverUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
-                if (checkImg.ok) {
-                    cache[cacheKey] = coverUrl;
-                    this.saveSteamCoverCache();
-                    return coverUrl;
-                }
-            } catch (e) { /* fall through */ }
-            cache[cacheKey] = headerUrl;
+            cache[cacheKey] = coverUrl;
             this.saveSteamCoverCache();
-            return headerUrl;
+            return coverUrl;
         }
 
         // Clean up the game name for better search results
-        const searchName = gameName
-            .replace(/([a-z])([A-Z])/g, '$1 $2')
-            .replace(/(\d+)/g, ' $1')
-            .replace(/\s+/g, ' ')
-            .trim();
+        // Handle concatenated names like "doomthedarkages" -> "doom the dark ages"
+        const searchName = this.splitGameName(gameName);
 
         const corsProxies = [
             'https://corsproxy.io/?',
@@ -3161,33 +3553,69 @@ echo "Done!"
 
                 if (data && data.items && data.items.length > 0) {
                     const appId = data.items[0].id;
-                    // Try portrait cover first (library_600x900), fall back to header
+                    // Use portrait cover directly - Steam CDN is reliable
                     const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
-                    const headerUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`;
-
-                    // Verify portrait cover exists
-                    try {
-                        const checkImg = await fetch(coverUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
-                        if (checkImg.ok) {
-                            cache[cacheKey] = coverUrl;
-                            this.saveSteamCoverCache();
-                            return coverUrl;
-                        }
-                    } catch (e) { /* fall through to header */ }
-
-                    // Use header as fallback
-                    cache[cacheKey] = headerUrl;
+                    cache[cacheKey] = coverUrl;
                     this.saveSteamCoverCache();
-                    return headerUrl;
+                    return coverUrl;
                 }
             } catch (e) {
                 continue;
             }
         }
 
+        // Fallback: Try RAWG API for games not found on Steam
+        const rawgUrl = await this.fetchRawgCoverUrl(searchName, corsProxies);
+        if (rawgUrl) {
+            cache[cacheKey] = rawgUrl;
+            this.saveSteamCoverCache();
+            return rawgUrl;
+        }
+
+        // Fallback: Try with simplified name (remove common suffixes)
+        const simplifiedName = searchName
+            .replace(/\b(remastered|remake|edition|definitive|ultimate|deluxe|complete|collection|hd|goty)\b/gi, '')
+            .replace(/\b(ii|iii|iv|v|vi|vii|viii|ix|x)\b$/gi, '')
+            .trim();
+        if (simplifiedName !== searchName && simplifiedName.length > 3) {
+            for (const proxy of corsProxies) {
+                try {
+                    const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(simplifiedName)}&l=english&cc=US`;
+                    const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                        signal: AbortSignal.timeout(8000)
+                    });
+                    const data = await response.json();
+                    if (data && data.items && data.items.length > 0) {
+                        const appId = data.items[0].id;
+                        const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
+                        cache[cacheKey] = coverUrl;
+                        this.saveSteamCoverCache();
+                        return coverUrl;
+                    }
+                } catch (e) { continue; }
+            }
+        }
+
         // Mark as not found so we don't search again
         cache[cacheKey] = 'none';
         this.saveSteamCoverCache();
+        return null;
+    }
+
+    // Fetch cover image from RAWG API as fallback
+    async fetchRawgCoverUrl(searchName, corsProxies) {
+        for (const proxy of corsProxies) {
+            try {
+                const rawgSearchUrl = `https://api.rawg.io/api/games?key=c542e67aec3a4340908f9de9e86038af&search=${encodeURIComponent(searchName)}&page_size=1`;
+                const response = await fetch(proxy + encodeURIComponent(rawgSearchUrl), {
+                    signal: AbortSignal.timeout(8000)
+                });
+                const data = await response.json();
+                if (data && data.results && data.results.length > 0 && data.results[0].background_image) {
+                    return data.results[0].background_image;
+                }
+            } catch (e) { continue; }
+        }
         return null;
     }
 
@@ -3211,28 +3639,51 @@ echo "Done!"
                         }
                     };
                     tempImg.onerror = async () => {
-                        // Local image not found - try fetching from Steam
+                        // Local image not found - try fetching from Steam/RAWG
                         const gameName = img.alt || img.dataset.src.replace('images/', '').replace('.png', '');
                         try {
-                            const steamUrl = await window.gameLibrary.fetchSteamCoverUrl(gameName);
-                            if (steamUrl) {
-                                const steamImg = new Image();
-                                steamImg.onload = () => {
-                                    img.src = steamUrl;
+                            const coverUrl = await window.gameLibrary.fetchSteamCoverUrl(gameName);
+                            if (coverUrl) {
+                                const coverImg = new Image();
+                                coverImg.onload = () => {
+                                    img.src = coverUrl;
                                     img.classList.add('loaded');
                                     const container = img.closest('.image-container');
                                     if (container) {
                                         container.style.setProperty('--shimmer-display', 'none');
                                     }
                                 };
-                                steamImg.onerror = () => {
-                                    img.classList.add('loaded');
+                                coverImg.onerror = () => {
+                                    // If library_600x900 fails, try header format
+                                    if (coverUrl.includes('library_600x900')) {
+                                        const headerUrl = coverUrl.replace('library_600x900_2x.jpg', 'header.jpg');
+                                        const headerImg = new Image();
+                                        headerImg.onload = () => {
+                                            img.src = headerUrl;
+                                            img.classList.add('loaded');
+                                            const container = img.closest('.image-container');
+                                            if (container) {
+                                                container.style.setProperty('--shimmer-display', 'none');
+                                            }
+                                            // Update cache with working URL
+                                            const cache = window.gameLibrary.getSteamCoverCache();
+                                            const cacheKey = gameName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                            cache[cacheKey] = headerUrl;
+                                            window.gameLibrary.saveSteamCoverCache();
+                                        };
+                                        headerImg.onerror = () => {
+                                            img.classList.add('loaded');
+                                        };
+                                        headerImg.src = headerUrl;
+                                    } else {
+                                        img.classList.add('loaded');
+                                    }
                                 };
-                                steamImg.src = steamUrl;
+                                coverImg.src = coverUrl;
                                 return;
                             }
                         } catch (e) {
-                            // Steam lookup failed, keep placeholder
+                            // Cover lookup failed, keep placeholder
                         }
                         img.classList.add('loaded');
                     };
