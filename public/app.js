@@ -1232,8 +1232,21 @@ class GameLibrary {
         document.getElementById('modalCategory').textContent = game.category || 'uncategorized';
         document.getElementById('modalTime').textContent = time ? `~${time} hours` : 'N/A';
         document.getElementById('modalSize').textContent = size ? `${size} GB` : 'N/A';
-        document.getElementById('modalImage').src = `images/${imageName}.png`;
-        document.getElementById('modalImage').onerror = function() {
+        const modalImg = document.getElementById('modalImage');
+        const gameName = game.name;
+        modalImg.src = `images/${imageName}.png`;
+        modalImg.onerror = async function() {
+            // Try Steam cover fallback
+            try {
+                const steamUrl = await window.gameLibrary.fetchSteamCoverUrl(gameName);
+                if (steamUrl) {
+                    modalImg.src = steamUrl;
+                    modalImg.onerror = function() {
+                        this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E";
+                    };
+                    return;
+                }
+            } catch (e) { /* fallback to placeholder */ }
             this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E";
         };
 
@@ -2732,6 +2745,452 @@ echo "Done!"
     // ============================================
     // ENHANCED IMAGE LOADING
     // ============================================
+
+    // Known Steam App ID mappings for reliable cover fetching
+    getKnownSteamAppIds() {
+        return {
+            'doomthedarkages': '2399830',
+            'silenceofthesiren': '2115010',
+            'stillwakesthedeep': '1621530',
+            'scorn': '698670',
+            'hereticsfork': '1142780',
+            'fortsolis': '1654530',
+            'thekingiswatching': '2231450',
+            'deadlinedelivery': '2595480',
+            'enshrouded': '1203620',
+            'sengokudynasty': '1702010',
+            'flintlocksiegedownleft': '1832040',
+            'starshiptroopers': '1202130',
+            'starshiptroopersultimate': '1202130',
+            'grindsurvivors': '2721250',
+            'formulalegends': '2660140',
+            'kunitsugami': '1956710',
+            'ashrust': '2750610',
+            'cornershopnightshift': '2785010',
+            'caribbeanlegendageofpirates': '3004950',
+            'caribbeanlegendagendag': '3004950',
+            'dicewithdeath': '2440410',
+            'sculptings': '2600610',
+            'dragonkinthebanished': '2637170',
+            'dragonkinthebanish': '2637170',
+            'theartisanofgilmith': '2400690',
+            'theratline': '1798820',
+            'royalrevoltsurvivors': '2829610',
+            'tombbraiderililiremastered': '2920850',
+            'tombraiderililiremastered': '2920850',
+            'kaijucrackingcorporation': '2886750',
+            'kaijucrackingcorpo': '2886750',
+            'magicraft': '2199220',
+            'mirrorsedgecatalyst': '1233570',
+            'ultratron': '219190',
+            'jackal': '1259580',
+            'myheroaccademia': '2753010',
+            'myheroacademiaallinone': '2753010',
+            'romeoanddeadman': '2799610',
+            'romeoisadeadman': '2799610',
+            'stygbladesofgreed': '2870970',
+            'styxbladesofgreed': '2870970',
+            'styxbladesofgreedpc': '2870970',
+            'styxshardsoffdarkenss': '2037860',
+            'demontides': '2594340',
+            'mailchildoffagesstor': '2934800',
+            'mailchildofages': '2934800',
+            'gravity': '1598750',
+            'talesoflittlemen': '2839830',
+            'superpixelmergeballs': '2798250',
+            'monsterworld': '2929510',
+            'thethaumaturge': '2231110',
+            'endlingextinctionisforever': '1356640',
+            'enshrouded': '1203620',
+            'eternalstrands': '1922560',
+            'expedition33': '2753390',
+            'flintlocksiegedownleft': '1832040',
+            'schedulei': '3164500',
+            'wanderstop': '2131080',
+            'southofmidnight': '2454920',
+            'themidnightwalk': '2498690',
+            'inzoi': '2456740',
+            'dawnoftheashenqueen': '2849700',
+            'nobodywantstodie': '2148970',
+            'avowed': '1545810',
+            'kingdomcomedeliverance2': '1771300',
+            'metaphorredfantazio': '2679460',
+            'metaphorreFantazio': '2679460',
+            'sensuassagahellblade2': '2740960',
+            'sensuassagahellbladeii': '2740960',
+            'stalker2': '1643320',
+            'eldenringnightreign': '2622380',
+            'splitfiction': '2366570',
+            'atomfall': '2722040',
+            'clair obscur expedition 33': '2753390',
+            'oblivionremastered': '2623190',
+            'sifu': '2138710',
+            'balatro': '2379780',
+            'neckbreak': '2628920',
+            'tinyglade': '2198150',
+            'squeakwithagun': '2067050',
+            'squirrelwithagun': '2067050',
+            'daysomething': '2332620',
+            'goatsimulator3': '1113750',
+            'hellpoint': '628670',
+            'lethalleagueblaze': '553310',
+            'wobblylife': '1211020',
+            'wreckfest': '228380',
+            'paintthetown': '337320',
+            'paintthetownred': '337320',
+            'roboquest': '692890',
+            'yakuza0': '638970',
+            'cuphead': '268910',
+            'cyberpunk2077': '1091500',
+            'deathstranding': '1190460',
+            'darksouls3': '374320',
+            'darksoulsremastered': '570940',
+            'darksouls2': '335300',
+            'demonsouls': '2816700',
+            'doometernal': '782330',
+            'dysmantle': '846770',
+            'generationzero': '704270',
+            'grounded': '962130',
+            'gunfirereborn': '1217060',
+            'humansfallfalt': '477160',
+            'humanfallflat': '477160',
+            'mortalkombat1': '1971870',
+            'mortalshell': '1110910',
+            'nioh': '485510',
+            'nioh2': '1325200',
+            'monsterrise': '1446780',
+            'monsterhunterrise': '1446780',
+            'steinsgate': '412830',
+            'steinsgateelite': '819030',
+            'stickfightthegame': '674940',
+            'spellforce3': '311290',
+            'spellforce3reforced': '311290',
+            'pathfinderwrath': '1184370',
+            'pathfinderwrathoftherighteous': '1184370',
+            'yakuzalikeadragon': '1235140',
+            'yakuza5': '1105510',
+            'yakuza6': '1388590',
+            'yakuzakiwami': '834530',
+            'yakuzakiwami2': '927380',
+            'wolongfallendynasty': '1448440',
+            'talosprinciple': '257510',
+            'talesofArise': '740130',
+            'talesrise': '740130',
+            'overcooked2': '728880',
+            'outward': '794260',
+            'voidbastards': '857980',
+            'speedrunners': '207140',
+            'gangbeasts': '467030',
+            'flatout': '6220',
+            'flatout2': '2990',
+            'magicka': '42910',
+            'magicka2': '238370',
+            'unrailed': '1016920',
+            'danganronpa': '413410',
+            'indianajones': '2677660',
+            'neopets': '2671670',
+            'legobatman2': '130100',
+            'legobatman3': '313390',
+            'legobatman3beyondgotham': '313390',
+            'legocityundercover': '578330',
+            'legoharrypotter57': '204120',
+            'legoindianajones': '32330',
+            'legojurassicworld': '352400',
+            'legomarvel': '249130',
+            'legoninjago': '640590',
+            'legostarwars': '32440',
+            'legostarwarsthecomplersaga': '32440',
+            'legoworlds': '332310',
+            'transportfever2': '1066780',
+            'handofgod': '2655800',
+            'hypercharge': '523660',
+            'melatonin': '1585220',
+            'bully': '12200',
+            'chernobylite': '1016800',
+            'critstales': '1071800',
+            'duckgame': '312530',
+            'enotria': '2102450',
+            'enotriathelastsong': '2102450',
+            'enterthegungeon': '311690',
+            'enterthegungeonadvanced': '311690',
+            'eastshade': '715560',
+            'frogun': '1460340',
+            'fullfuries': '2590',
+            'fullmetalfuries': '416600',
+            'gardenpaws': '840010',
+            'gatoroboto': '916730',
+            'griftlands': '601840',
+            'goingunder': '1154810',
+            'greakmemoriesofazur': '1311070',
+            'hammerwatchii': '2742630',
+            'heaveho': '905340',
+            'immortalsofaveum': '1736810',
+            'indivisible': '421170',
+            'journeytothesavageplanet': '530120',
+            'jurassicworldevolution2': '1244460',
+            'kaothekangaroo': '1370280',
+            'keeptalkingandnobodyexplodes': '341800',
+            'killerinstinct': '577940',
+            'kingdomcomedeliverance': '379430',
+            'kingsbounty2': '1135510',
+            'kona2': '1229560',
+            'lethalleagueblaze': '553310',
+            'lifeisstrangedoubleexposure': '2464190',
+            'littlewood': '894940',
+            'lollipopchainsaw': '2546300',
+            'lollipopchainawrepop': '2546300',
+            'loopmancer': '1580040',
+            'luigismansion2hd': '2710170',
+            'luigismansion3': '2710180',
+            'mafiadefinitiveedition': '1030840',
+            'marioluigibrothership': '2710160',
+            'mariovsdondkonkeykong': '2710190',
+            'metalgearsolid2': '2740960',
+            'metalgearsolid3': '945950',
+            'metalhellsinger': '1061910',
+            'middleearthshadowofwar': '356190',
+            'mindseye': '2747040',
+            'minecraftdungeons': '1672970',
+            'minuteofislands': '1007750',
+            'movingout2': '1626480',
+            'myfriendlyneighborhood': '1574300',
+            'mysummercar': '516750',
+            'mytimeatsandrock': '1084600',
+            'ninjagaidenmastercollection': '1580790',
+            'norco': '1221250',
+            'neocab': '794540',
+            'nexmachina': '404540',
+            'nidhogg2': '535520',
+            'nightcall': '680030',
+            'nineparchments': '471550',
+            'nostraightroads': '1306410',
+            'obduction': '306760',
+            'observation': '906100',
+            'octogeddon': '525620',
+            'omensight': '455820',
+            'onirism': '703310',
+            'openroads': '1497780',
+            'outcast': '618970',
+            'outcastanewbeginning': '618970',
+            'phogs': '850320',
+            'phantomfury': '1593870',
+            'princeofpersia': '2436640',
+            'princeofpersiathesandsoftime': '2436640',
+            'rajiancientepic': '730390',
+            'redfactionguerrilla': '667720',
+            'resistance3': '2741160',
+            'rivercitygirls2': '1974430',
+            'rivercitygirlszero': '1530760',
+            'road96': '1466640',
+            'samuraigunn2': '1397790',
+            'scarlethollow': '1419560',
+            'screencheat': '301970',
+            'selfloss': '1399100',
+            'shadowofthecolossus': '2690510',
+            'sixdaysinfallujah': '1548850',
+            'skullgirls': '245170',
+            'skullgirls2ndenchore': '245170',
+            'somerville': '1661350',
+            'steep': '460920',
+            'strayblade': '1492140',
+            'sunlesssea': '304650',
+            'sunlessskies': '596970',
+            'superbombermanr': '702700',
+            'superbombermanr2': '1736020',
+            'syberia': '1410710',
+            'syberiathrworldbefore': '1410710',
+            'tdpaahouseofashes': '1281590',
+            'tdpathedevilinme': '1567020',
+            'thedarkpicturesanthology': '1281590',
+            'thedarknesslittlehope': '1194630',
+            'thedarkpicturesanthologylittlehope': '1194630',
+            'thedarkpicturesanthologymanofmedan': '939850',
+            'tailsofiron2': '2096980',
+            'talesarise': '740130',
+            'thecastingoffrankstone': '2516790',
+            'thecosmicwheelsisterhood': '1340480',
+            'thedarkness': '2619150',
+            'thedarkness2': '2619150',
+            'theescapists2': '641990',
+            'thejackboxpartypack7': '1211630',
+            'thelegendofheroes': '1668540',
+            'thelegendofherostrailstoazure': '1668540',
+            'thelifeandsufferingofsirbrante': '1272160',
+            'thepathless': '1492680',
+            'thepluckysquire': '1472550',
+            'theprecinct': '1434660',
+            'thespiritandthemouse': '1592750',
+            'thewildatheart': '1093290',
+            'threeminutestoeight': '1783350',
+            'tinytinasassaultondragonkeep': '1712840',
+            'troversavestheuniversee': '1051200',
+            'troversavestheUniverse': '1051200',
+            'unsighted': '1062110',
+            'underthewaves': '1513960',
+            'unrulyheroes': '780350',
+            'wizardwithagun': '1150530',
+            'yokusislandexpress': '334940',
+            'ysixmonstrumnox': '1112740',
+            'zootycoon': '613880',
+            'loreleiandthelasereyes': '2008920',
+            'taintedgrailtethefallofavalon': '1335640',
+            'taintedgrail': '1335640',
+            'burnoutparadiseremastered': '1238080',
+            'cardshark': '1141190',
+            'cassettebeasts': '1321440',
+            'chicoryacolorfultale': '1123450',
+            'citizensleeper': '1578650',
+            'crimebossrockycity': '1897660',
+            'crimebossrockacity': '1897660',
+            'crimecsv': '2710450',
+            'deathbound': '1952860',
+            'deathsquared': '471810',
+            'degreesofseparation': '809880',
+            'deusexinvisiblewar': '6920',
+            'devilmacry': '220440',
+            'devilmacryhdcollection': '631510',
+            'doubledragoneon': '252350',
+            'doubledragonneon': '252350',
+            'dragonballfighterz': '678950',
+            'dragonballsparkingzero': '1790600',
+            'dragonballxenoverse2': '454650',
+            'dragonballzkakarot': '851850',
+            'dungeonsofhinterberg': '1983580',
+            'duneimperium': '2369250',
+            'eldenringshadowoftheerdtree': '1245620',
+            'eldersouls': '1685510',
+            'enadeambbq': '2595810',
+            'enadreambbq': '2595810',
+            'engarde': '1264450',
+            'enderalforgotstories': '933480',
+            'enderalforgottenstories': '933480',
+            'fahrenheit': '21620',
+            'fahrenheitindigoprophecy': '21620',
+            'falloutlondon': '2475270',
+            'farchangingtides': '1570010',
+            'flatoutheroes': '2508460',
+            'blazbluecentralfiction': '586140',
+            'arcrunner': '2170000',
+            'assassinscreedbrotherhood': '2927440',
+            'astralascent': '1668150',
+            'atelieryumia': '2849710',
+            'battletoads': '1380090',
+            'bayonetta3': '2742550',
+            'bendyandthedarkrevival': '1621490',
+            'blanc': '1902330',
+            'brightmemoryinfinite': '1178830',
+            'bugfablestheeverlastingsakling': '1082710',
+            'bugfablesteheverlastin': '1082710',
+            'sonicxshadowgenerations': '2513280',
+            'pokemonscarletviolet': '2710140',
+            'pokemonswordshield': '2710130',
+            'pokemonbrilliantdiamondandshiningpearl': '2710120',
+            'researchanddestroy': '1538tried',
+            'spintiresmudrunner': '675010',
+        };
+    }
+
+    // Steam cover image cache (persisted in localStorage)
+    getSteamCoverCache() {
+        if (!this._steamCoverCache) {
+            try {
+                this._steamCoverCache = JSON.parse(localStorage.getItem('steamCoverCache') || '{}');
+            } catch (e) {
+                this._steamCoverCache = {};
+            }
+        }
+        return this._steamCoverCache;
+    }
+
+    saveSteamCoverCache() {
+        try {
+            localStorage.setItem('steamCoverCache', JSON.stringify(this._steamCoverCache));
+        } catch (e) { /* ignore quota errors */ }
+    }
+
+    // Search Steam for a game and return cover image URL
+    async fetchSteamCoverUrl(gameName) {
+        const cache = this.getSteamCoverCache();
+        const cacheKey = gameName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        // Check cache first
+        if (cache[cacheKey]) {
+            return cache[cacheKey] === 'none' ? null : cache[cacheKey];
+        }
+
+        // Check known Steam App ID mapping first
+        const knownIds = this.getKnownSteamAppIds();
+        const knownAppId = knownIds[cacheKey];
+        if (knownAppId && knownAppId.match(/^\d+$/)) {
+            const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${knownAppId}/library_600x900_2x.jpg`;
+            const headerUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${knownAppId}/header.jpg`;
+            // Try portrait cover first
+            try {
+                const checkImg = await fetch(coverUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+                if (checkImg.ok) {
+                    cache[cacheKey] = coverUrl;
+                    this.saveSteamCoverCache();
+                    return coverUrl;
+                }
+            } catch (e) { /* fall through */ }
+            cache[cacheKey] = headerUrl;
+            this.saveSteamCoverCache();
+            return headerUrl;
+        }
+
+        // Clean up the game name for better search results
+        const searchName = gameName
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/(\d+)/g, ' $1')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const corsProxies = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            'https://api.codetabs.com/v1/proxy?quest='
+        ];
+
+        for (const proxy of corsProxies) {
+            try {
+                const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(searchName)}&l=english&cc=US`;
+                const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                    signal: AbortSignal.timeout(8000)
+                });
+                const data = await response.json();
+
+                if (data && data.items && data.items.length > 0) {
+                    const appId = data.items[0].id;
+                    // Try portrait cover first (library_600x900), fall back to header
+                    const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
+                    const headerUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`;
+
+                    // Verify portrait cover exists
+                    try {
+                        const checkImg = await fetch(coverUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+                        if (checkImg.ok) {
+                            cache[cacheKey] = coverUrl;
+                            this.saveSteamCoverCache();
+                            return coverUrl;
+                        }
+                    } catch (e) { /* fall through to header */ }
+
+                    // Use header as fallback
+                    cache[cacheKey] = headerUrl;
+                    this.saveSteamCoverCache();
+                    return headerUrl;
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+
+        // Mark as not found so we don't search again
+        cache[cacheKey] = 'none';
+        this.saveSteamCoverCache();
+        return null;
+    }
+
     lazyLoadImages() {
         const images = document.querySelectorAll('img[data-src]');
         const observer = new IntersectionObserver((entries) => {
@@ -2751,8 +3210,30 @@ echo "Done!"
                             container.style.setProperty('--shimmer-display', 'none');
                         }
                     };
-                    tempImg.onerror = () => {
-                        // Keep placeholder on error
+                    tempImg.onerror = async () => {
+                        // Local image not found - try fetching from Steam
+                        const gameName = img.alt || img.dataset.src.replace('images/', '').replace('.png', '');
+                        try {
+                            const steamUrl = await window.gameLibrary.fetchSteamCoverUrl(gameName);
+                            if (steamUrl) {
+                                const steamImg = new Image();
+                                steamImg.onload = () => {
+                                    img.src = steamUrl;
+                                    img.classList.add('loaded');
+                                    const container = img.closest('.image-container');
+                                    if (container) {
+                                        container.style.setProperty('--shimmer-display', 'none');
+                                    }
+                                };
+                                steamImg.onerror = () => {
+                                    img.classList.add('loaded');
+                                };
+                                steamImg.src = steamUrl;
+                                return;
+                            }
+                        } catch (e) {
+                            // Steam lookup failed, keep placeholder
+                        }
                         img.classList.add('loaded');
                     };
                     tempImg.src = img.dataset.src;
