@@ -54,6 +54,7 @@ class GameLibrary {
     }
 
     async init() {
+        this.clearBadImageCache();
         this.showLoading(true);
         this.detectOS();
         this.bindEvents();
@@ -1232,21 +1233,8 @@ class GameLibrary {
         document.getElementById('modalCategory').textContent = game.category || 'uncategorized';
         document.getElementById('modalTime').textContent = time ? `~${time} hours` : 'N/A';
         document.getElementById('modalSize').textContent = size ? `${size} GB` : 'N/A';
-        const modalImg = document.getElementById('modalImage');
-        const gameName = game.name;
-        modalImg.src = `images/${imageName}.png`;
-        modalImg.onerror = async function() {
-            // Try Steam cover fallback
-            try {
-                const steamUrl = await window.gameLibrary.fetchSteamCoverUrl(gameName);
-                if (steamUrl) {
-                    modalImg.src = steamUrl;
-                    modalImg.onerror = function() {
-                        this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E";
-                    };
-                    return;
-                }
-            } catch (e) { /* fallback to placeholder */ }
+        document.getElementById('modalImage').src = `images/${imageName}.png`;
+        document.getElementById('modalImage').onerror = function() {
             this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E";
         };
 
@@ -2743,11 +2731,15 @@ echo "Done!"
     }
 
     // ============================================
-    // ENHANCED IMAGE LOADING
+    // IMAGE LOADING
     // ============================================
 
-    // Known Steam App ID mappings for reliable cover fetching
-    getKnownSteamAppIds() {
+    clearBadImageCache() {
+        // Remove old broken Steam cover cache that caused wrong images
+        localStorage.removeItem('steamCoverCache');
+    }
+
+    getKnownSteamAppIds_UNUSED() {
         return {
             'doomthedarkages': '2399830',
             'silenceofthesiren': '2115010',
@@ -3090,162 +3082,28 @@ echo "Done!"
         };
     }
 
-    // Steam cover image cache (persisted in localStorage)
-    getSteamCoverCache() {
-        if (!this._steamCoverCache) {
-            try {
-                this._steamCoverCache = JSON.parse(localStorage.getItem('steamCoverCache') || '{}');
-            } catch (e) {
-                this._steamCoverCache = {};
-            }
-        }
-        return this._steamCoverCache;
-    }
-
-    saveSteamCoverCache() {
-        try {
-            localStorage.setItem('steamCoverCache', JSON.stringify(this._steamCoverCache));
-        } catch (e) { /* ignore quota errors */ }
-    }
-
-    // Search Steam for a game and return cover image URL
-    async fetchSteamCoverUrl(gameName) {
-        const cache = this.getSteamCoverCache();
-        const cacheKey = gameName.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-        // Check cache first
-        if (cache[cacheKey]) {
-            return cache[cacheKey] === 'none' ? null : cache[cacheKey];
-        }
-
-        // Check known Steam App ID mapping first
-        const knownIds = this.getKnownSteamAppIds();
-        const knownAppId = knownIds[cacheKey];
-        if (knownAppId && knownAppId.match(/^\d+$/)) {
-            const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${knownAppId}/library_600x900_2x.jpg`;
-            const headerUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${knownAppId}/header.jpg`;
-            // Try portrait cover first
-            try {
-                const checkImg = await fetch(coverUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
-                if (checkImg.ok) {
-                    cache[cacheKey] = coverUrl;
-                    this.saveSteamCoverCache();
-                    return coverUrl;
-                }
-            } catch (e) { /* fall through */ }
-            cache[cacheKey] = headerUrl;
-            this.saveSteamCoverCache();
-            return headerUrl;
-        }
-
-        // Clean up the game name for better search results
-        const searchName = gameName
-            .replace(/([a-z])([A-Z])/g, '$1 $2')
-            .replace(/(\d+)/g, ' $1')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        const corsProxies = [
-            'https://corsproxy.io/?',
-            'https://api.allorigins.win/raw?url=',
-            'https://api.codetabs.com/v1/proxy?quest='
-        ];
-
-        for (const proxy of corsProxies) {
-            try {
-                const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(searchName)}&l=english&cc=US`;
-                const response = await fetch(proxy + encodeURIComponent(searchUrl), {
-                    signal: AbortSignal.timeout(8000)
-                });
-                const data = await response.json();
-
-                if (data && data.items && data.items.length > 0) {
-                    const appId = data.items[0].id;
-                    // Try portrait cover first (library_600x900), fall back to header
-                    const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
-                    const headerUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`;
-
-                    // Verify portrait cover exists
-                    try {
-                        const checkImg = await fetch(coverUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
-                        if (checkImg.ok) {
-                            cache[cacheKey] = coverUrl;
-                            this.saveSteamCoverCache();
-                            return coverUrl;
-                        }
-                    } catch (e) { /* fall through to header */ }
-
-                    // Use header as fallback
-                    cache[cacheKey] = headerUrl;
-                    this.saveSteamCoverCache();
-                    return headerUrl;
-                }
-            } catch (e) {
-                continue;
-            }
-        }
-
-        // Mark as not found so we don't search again
-        cache[cacheKey] = 'none';
-        this.saveSteamCoverCache();
-        return null;
-    }
-
     lazyLoadImages() {
         const images = document.querySelectorAll('img[data-src]');
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const img = entry.target;
-
-                    // Create a new image to preload
                     const tempImg = new Image();
                     tempImg.onload = () => {
                         img.src = img.dataset.src;
                         img.classList.add('loaded');
-
-                        // Remove shimmer effect from parent
                         const container = img.closest('.image-container');
-                        if (container) {
-                            container.style.setProperty('--shimmer-display', 'none');
-                        }
+                        if (container) container.style.setProperty('--shimmer-display', 'none');
                     };
-                    tempImg.onerror = async () => {
-                        // Local image not found - try fetching from Steam
-                        const gameName = img.alt || img.dataset.src.replace('images/', '').replace('.png', '');
-                        try {
-                            const steamUrl = await window.gameLibrary.fetchSteamCoverUrl(gameName);
-                            if (steamUrl) {
-                                const steamImg = new Image();
-                                steamImg.onload = () => {
-                                    img.src = steamUrl;
-                                    img.classList.add('loaded');
-                                    const container = img.closest('.image-container');
-                                    if (container) {
-                                        container.style.setProperty('--shimmer-display', 'none');
-                                    }
-                                };
-                                steamImg.onerror = () => {
-                                    img.classList.add('loaded');
-                                };
-                                steamImg.src = steamUrl;
-                                return;
-                            }
-                        } catch (e) {
-                            // Steam lookup failed, keep placeholder
-                        }
+                    tempImg.onerror = () => {
+                        // No local image found - show placeholder
                         img.classList.add('loaded');
                     };
                     tempImg.src = img.dataset.src;
-
                     observer.unobserve(img);
                 }
             });
-        }, {
-            rootMargin: '100px',
-            threshold: 0.1
-        });
-
+        }, { rootMargin: '100px', threshold: 0.1 });
         images.forEach(img => observer.observe(img));
     }
 }
