@@ -17,7 +17,8 @@
     "soulslike",
     "puzzle",
     "strategy",
-    "sports"
+    "sports",
+    "storydriven"
   ],
   "gameCategories": {
     "test-persist-check": "action",
@@ -1083,5 +1084,5 @@
     "magicraft": "new",
     "kaijucrackingcorporation": "new"
   },
-  "lastUpdated": "2026-03-28T17:40:18.627Z"
+  "lastUpdated": "2026-03-28T17:40:19.173Z"
 }
