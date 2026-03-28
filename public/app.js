@@ -3416,6 +3416,20 @@ echo "Done!"
         if (!this._steamCoverCache) {
             try {
                 this._steamCoverCache = JSON.parse(localStorage.getItem('steamCoverCache') || '{}');
+                // Cache version - invalidate stale 'none' entries when known IDs are updated
+                const cacheVersion = 'v3';
+                if (this._steamCoverCache._version !== cacheVersion) {
+                    // Clear all 'none' entries so games with newly added known IDs get re-fetched
+                    const knownIds = this.getKnownSteamAppIds();
+                    for (const key of Object.keys(this._steamCoverCache)) {
+                        if (this._steamCoverCache[key] === 'none' ||
+                            (knownIds[key] && this._steamCoverCache[key] !== `https://cdn.cloudflare.steamstatic.com/steam/apps/${knownIds[key]}/library_600x900_2x.jpg`)) {
+                            delete this._steamCoverCache[key];
+                        }
+                    }
+                    this._steamCoverCache._version = cacheVersion;
+                    this.saveSteamCoverCache();
+                }
             } catch (e) {
                 this._steamCoverCache = {};
             }
