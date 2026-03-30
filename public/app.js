@@ -599,6 +599,284 @@ class GameLibrary {
         }
     }
 
+    // =============================================
+    // ADD IMAGES - Scan all games, fetch missing/wrong cover images
+    // =============================================
+    async scanAndAddImages() {
+        const btn = document.getElementById('addImagesBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Scanning...';
+
+        try {
+            // Clear stale cache entries
+            const cache = this.getSteamCoverCache();
+            const knownIds = this.getKnownSteamAppIds();
+            let cleared = 0;
+            for (const key of Object.keys(cache)) {
+                if (key === '_version') continue;
+                if (cache[key] === 'none' || (knownIds[key] && !cache[key].includes(knownIds[key]))) {
+                    delete cache[key];
+                    cleared++;
+                }
+            }
+            cache._version = 'v4-forced';
+            this.saveSteamCoverCache();
+            if (cleared > 0) {
+                this.showToast(`Cleared ${cleared} stale cache entries`, 'info');
+            }
+
+            // Find all games without local images (will need online fetch)
+            const gamesNeedingImages = [];
+            for (const game of this.games) {
+                const cacheKey = game.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const cached = cache[cacheKey];
+                // Skip if already has a valid cached URL (not 'none')
+                if (cached && cached !== 'none' && cached.startsWith('http')) continue;
+                gamesNeedingImages.push(game);
+            }
+
+            this.showToast(`Found ${gamesNeedingImages.length} games needing images. Fetching...`, 'info');
+            btn.textContent = `⏳ 0/${gamesNeedingImages.length}`;
+
+            let found = 0;
+            let failed = 0;
+            const batchSize = 3; // Process 3 at a time to avoid rate limits
+
+            for (let i = 0; i < gamesNeedingImages.length; i += batchSize) {
+                const batch = gamesNeedingImages.slice(i, i + batchSize);
+                const results = await Promise.allSettled(
+                    batch.map(game => this.fetchSteamCoverUrl(game.name))
+                );
+
+                for (let j = 0; j < results.length; j++) {
+                    if (results[j].status === 'fulfilled' && results[j].value) {
+                        found++;
+                    } else {
+                        failed++;
+                    }
+                }
+
+                btn.textContent = `⏳ ${Math.min(i + batchSize, gamesNeedingImages.length)}/${gamesNeedingImages.length}`;
+
+                // Small delay between batches
+                if (i + batchSize < gamesNeedingImages.length) {
+                    await new Promise(r => setTimeout(r, 300));
+                }
+            }
+
+            // Refresh the grid to show new images
+            this.filterAndRender();
+            this.showToast(`Images done! Found: ${found}, Not found: ${failed}`, found > 0 ? 'success' : 'warning');
+        } catch (error) {
+            this.showToast('Image scan failed: ' + error.message, 'error');
+        } finally {
+            btn.textContent = '🖼️ Add Images';
+            btn.disabled = false;
+        }
+    }
+
+    // =============================================
+    // ADD TIMES - Fetch HLTB data for all games
+    // =============================================
+    async scanAndAddTimes() {
+        const btn = document.getElementById('addTimesBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Scanning...';
+
+        try {
+            // Find games without time data
+            const gamesNeedingTimes = [];
+            for (const game of this.games) {
+                if (!this.times[game.id] && this.times[game.id] !== 0) {
+                    gamesNeedingTimes.push(game);
+                }
+            }
+
+            this.showToast(`Found ${gamesNeedingTimes.length} games without time data. Fetching...`, 'info');
+            btn.textContent = `⏳ 0/${gamesNeedingTimes.length}`;
+
+            let found = 0;
+            let failed = 0;
+            const batchSize = 3;
+
+            for (let i = 0; i < gamesNeedingTimes.length; i += batchSize) {
+                const batch = gamesNeedingTimes.slice(i, i + batchSize);
+                const results = await Promise.allSettled(
+                    batch.map(game => this.fetchHLTBTime(game))
+                );
+
+                for (let j = 0; j < results.length; j++) {
+                    if (results[j].status === 'fulfilled' && results[j].value !== null) {
+                        const game = batch[j];
+                        this.times[game.id] = results[j].value;
+                        found++;
+                    } else {
+                        failed++;
+                    }
+                }
+
+                btn.textContent = `⏳ ${Math.min(i + batchSize, gamesNeedingTimes.length)}/${gamesNeedingTimes.length}`;
+
+                if (i + batchSize < gamesNeedingTimes.length) {
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            }
+
+            // Save updated times to server
+            if (found > 0) {
+                try {
+                    await fetch('/api/save-times', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.times)
+                    });
+                } catch (e) {
+                    console.error('Failed to save times to server:', e);
+                }
+            }
+
+            // Refresh grid
+            this.filterAndRender();
+            this.showToast(`Times done! Found: ${found}, Not found: ${failed}`, found > 0 ? 'success' : 'warning');
+        } catch (error) {
+            this.showToast('Time scan failed: ' + error.message, 'error');
+        } finally {
+            btn.textContent = '⏱️ Add Times';
+            btn.disabled = false;
+        }
+    }
+
+    // Fetch HLTB time for a single game using multiple sources
+    async fetchHLTBTime(game) {
+        const gameName = this.splitGameName(game.name || game.id);
+
+        // Check known times database first
+        const knownTime = this.getKnownGameTimes()[game.id.toLowerCase().replace(/[^a-z0-9]/g, '')];
+        if (knownTime !== undefined) return knownTime;
+
+        const corsProxies = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            'https://api.codetabs.com/v1/proxy?quest='
+        ];
+
+        // Source 1: HLTB search via CORS proxy
+        for (const proxy of corsProxies) {
+            try {
+                const searchUrl = `https://howlongtobeat.com/api/search`;
+                const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        searchType: 'games',
+                        searchTerms: gameName.split(' '),
+                        searchPage: 1,
+                        size: 1,
+                        searchOptions: {
+                            games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: null, max: null }, gameplay: { perspective: '', flow: '', genre: '', subGenre: '' }, rangeYear: { min: '', max: '' }, modifier: '' },
+                            users: { sortCategory: 'postcount' },
+                            lists: { sortCategory: 'follows' },
+                            filter: '', sort: 0, randomizer: 0
+                        }
+                    }),
+                    signal: AbortSignal.timeout(10000)
+                });
+                const data = await response.json();
+                if (data && data.data && data.data.length > 0) {
+                    const result = data.data[0];
+                    // comp_main is main story in seconds
+                    const mainHours = result.comp_main ? Math.round(result.comp_main / 3600) : null;
+                    if (mainHours && mainHours > 0) return mainHours;
+                    // Fallback to comp_plus (main + extras)
+                    const plusHours = result.comp_plus ? Math.round(result.comp_plus / 3600) : null;
+                    if (plusHours && plusHours > 0) return plusHours;
+                }
+            } catch (e) { continue; }
+        }
+
+        // Source 2: RAWG API (has playtime data)
+        for (const proxy of corsProxies) {
+            try {
+                const rawgUrl = `https://api.rawg.io/api/games?key=c542e67aec3a4340908f9de9e86038af&search=${encodeURIComponent(gameName)}&page_size=1`;
+                const response = await fetch(proxy + encodeURIComponent(rawgUrl), {
+                    signal: AbortSignal.timeout(8000)
+                });
+                const data = await response.json();
+                if (data && data.results && data.results.length > 0) {
+                    const playtime = data.results[0].playtime;
+                    if (playtime && playtime > 0) return playtime;
+                }
+            } catch (e) { continue; }
+        }
+
+        // Source 3: IGDB via Twitch API proxy
+        for (const proxy of corsProxies) {
+            try {
+                const igdbSearch = `https://api.igdb.com/v4/games`;
+                // Use a search approach through proxy
+                const searchUrl = `https://www.igdb.com/search_autocomplete_all?q=${encodeURIComponent(gameName)}`;
+                const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                    signal: AbortSignal.timeout(8000)
+                });
+                const data = await response.json();
+                if (data && data.game_suggest && data.game_suggest.length > 0) {
+                    // IGDB doesn't directly return playtime in search, but we tried
+                    break;
+                }
+            } catch (e) { continue; }
+        }
+
+        return null;
+    }
+
+    // Known game completion times (fallback database)
+    getKnownGameTimes() {
+        return {
+            'doomthedarkages': 16,
+            'silenceofthesiren': 25,
+            'stillwakesthedeep': 6,
+            'scorn': 5,
+            'hereticsfork': 12,
+            'fortsolis': 4,
+            'thekingiswatching': 8,
+            'deadlinedelivery': 6,
+            'grindsurvivors': 15,
+            'formulalegends': 20,
+            'kunitsugami': 12,
+            'ashrust': 10,
+            'cornershopnightshift': 4,
+            'caribbeanlegendageofpirates': 30,
+            'caribbeanlegenddaggersoffate': 30,
+            'dicewithdeath': 8,
+            'sculplings': 10,
+            'sculptings': 10,
+            'dragonkinthebanished': 15,
+            'theartisanofgilmith': 12,
+            'theratline': 8,
+            'royalrevoltsurvivors': 10,
+            'tombbraiderililiremastered': 30,
+            'tombraiderililiremastered': 30,
+            'kaijucrackingcorporation': 10,
+            'magicraft': 15,
+            'mirrorsedgecatalyst': 12,
+            'schedulei': 25,
+            'wanderstop': 5,
+            'southofmidnight': 12,
+            'inzoi': 40,
+            'dawnoftheashenqueen': 15,
+            'nobodywantstodie': 8,
+            'avowed': 25,
+            'kingdomcomedeliverance2': 60,
+            'eldenringnightreign': 20,
+            'splitfiction': 10,
+            'atomfall': 15,
+            'oblivionremastered': 30,
+            'starshiptroopersextermination': 20,
+            'starshiptroopers': 12,
+            'dragonkinthebanish': 15,
+        };
+    }
+
     detectOS() {
         const platform = navigator.platform.toLowerCase();
         const userAgent = navigator.userAgent.toLowerCase();
@@ -697,6 +975,14 @@ class GameLibrary {
         // Action bar buttons
         document.getElementById('syncDockerBtn').addEventListener('click', () => {
             this.manualSync();
+        });
+
+        document.getElementById('addImagesBtn').addEventListener('click', () => {
+            this.scanAndAddImages();
+        });
+
+        document.getElementById('addTimesBtn').addEventListener('click', () => {
+            this.scanAndAddTimes();
         });
 
         document.getElementById('showInstalledBtn').addEventListener('click', () => {

@@ -329,6 +329,49 @@ app.use('/data', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, 'public', 'data')));
 
+// API: Save times.json (update HLTB data)
+app.post('/api/save-times', async (req, res) => {
+  try {
+    const times = req.body;
+    const timesPath = './public/data/times.json';
+    await fs.writeFile(timesPath, JSON.stringify(times, null, 4));
+
+    // Also save to GitHub for persistence
+    try {
+      const content = Buffer.from(JSON.stringify(times, null, 4)).toString('base64');
+      const ghPath = 'public/data/times.json';
+      const current = await githubRequest('GET', ghPath);
+      const body = {
+        message: `Update times data - ${new Date().toISOString()}`,
+        content: content,
+        branch: 'main'
+      };
+      if (current.status === 200) {
+        body.sha = current.data.sha;
+      }
+      await githubRequest('PUT', ghPath, body);
+    } catch (e) {
+      console.log('GitHub times save failed:', e.message);
+    }
+
+    res.json({ success: true, count: Object.keys(times).length });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API: Save games.json
+app.post('/api/save-games', async (req, res) => {
+  try {
+    const games = req.body;
+    const gamesPath = './public/data/games.json';
+    await fs.writeFile(gamesPath, JSON.stringify(games, null, 4));
+    res.json({ success: true, count: games.length });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.use(express.static('public'));
 
 // Catch-all route to serve index.html
