@@ -24,6 +24,7 @@ class GameLibrary {
         this.filteredGames = [];
         this.selectedGames = new Set();
         this.installedGames = new Set();
+        this.favouriteGames = new Set();
         this.hiddenTabs = new Set();
         this.currentTab = 'all';
         this.searchQuery = '';
@@ -928,6 +929,10 @@ class GameLibrary {
             if (e.key === 'Escape') {
                 this.closeAllModals();
             }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                e.preventDefault();
+                this.selectAllVisible();
+            }
         });
 
         // Theme toggle
@@ -976,6 +981,18 @@ class GameLibrary {
             this.copyScript();
         });
 
+                // Copy Docker Pull command
+        document.getElementById('copyPullBtn').addEventListener('click', () => {
+            if (this.currentGame) {
+                const pullCmd = `docker pull michadockermisha/backup:${this.currentGame.tag}`;
+                navigator.clipboard.writeText(pullCmd).then(() => {
+                    this.showToast('Copied pull command!', 'success');
+                }).catch(() => {
+                    this.showToast('Failed to copy', 'error');
+                });
+            }
+        });
+
         // Action bar buttons
         document.getElementById('syncDockerBtn').addEventListener('click', () => {
             this.manualSync();
@@ -989,12 +1006,24 @@ class GameLibrary {
             this.scanAndAddTimes();
         });
 
+        document.getElementById('randomGameBtn').addEventListener('click', () => {
+            this.pickRandomGame();
+        });
+
         document.getElementById('showInstalledBtn').addEventListener('click', () => {
             this.toggleInstalledFilter();
         });
 
+        document.getElementById('maxSizeFilter').addEventListener('input', () => {
+            this.filterAndRender();
+        });
+
         document.getElementById('selectAllBtn').addEventListener('click', () => {
             this.selectAllVisible();
+        });
+
+        document.getElementById('selectCategoryBtn').addEventListener('click', () => {
+            this.selectCurrentCategory();
         });
 
         document.getElementById('deselectAllBtn').addEventListener('click', () => {
@@ -1167,6 +1196,14 @@ class GameLibrary {
         const container = document.getElementById('tabsContainer');
         container.innerHTML = '';
 
+        // Render 'Recent' tab first
+        const recentGames = JSON.parse(localStorage.getItem('recentGames') || '[]');
+        const recentBtn = document.createElement('button');
+        recentBtn.className = `tab-btn ${this.currentTab === 'recent' ? 'active' : ''}`;
+        recentBtn.innerHTML = `<span>Recent</span><span class="count tab-count-badge">${recentGames.length}</span>`;
+        recentBtn.addEventListener('click', () => this.selectTab('recent'));
+        container.appendChild(recentBtn);
+
         this.tabs.forEach(tab => {
             const isAdminOnly = this.isTabAdminOnly(tab.id);
             const isHidden = this.hiddenTabs.has(tab.id);
@@ -1191,21 +1228,21 @@ class GameLibrary {
                     // Admin-only tabs show lock icon (cannot be toggled, permanently admin-only)
                     btn.innerHTML = `
                         <span>${tab.name}</span>
-                        <span class="count">${count}</span>
+                        <span class="count tab-count-badge">${count}</span>
                         <span class="admin-only-indicator" title="Admin-only tab (cannot be made public)">🔒</span>
                     `;
                 } else {
                     // Regular tabs show visibility toggle
                     btn.innerHTML = `
                         <span>${tab.name}</span>
-                        <span class="count">${count}</span>
+                        <span class="count tab-count-badge">${count}</span>
                         <span class="tab-visibility-toggle" data-tab="${tab.id}" title="${isHidden ? 'Show to all' : 'Hide from non-admins'}">${isHidden ? '👁️‍🗨️' : '👁️'}</span>
                     `;
                 }
             } else {
                 btn.innerHTML = `
                     <span>${tab.name}</span>
-                    <span class="count">${count}</span>
+                    <span class="count tab-count-badge">${count}</span>
                 `;
             }
 
@@ -1244,12 +1281,22 @@ class GameLibrary {
     }
 
     filterAndRender() {
-        let filtered = this.currentTab === 'all'
-            ? this.games.filter(g => 
+        let filtered;
+        if (this.currentTab === 'recent') {
+            const recentGames = JSON.parse(localStorage.getItem('recentGames') || '[]');
+            const recentIds = recentGames.map(r => r.id);
+            const recentMap = {};
+            recentGames.forEach((r, i) => { recentMap[r.id] = i; });
+            filtered = this.games.filter(g => recentIds.includes(g.id));
+            filtered.sort((a, b) => (recentMap[a.id] || 0) - (recentMap[b.id] || 0));
+        } else if (this.currentTab === 'all') {
+            filtered = this.games.filter(g =>
                 !this.ADMIN_ONLY_TABS.has(g.category) &&  // Exclude admin-only tabs from "All" view for everyone
                 !this.hiddenTabs.has(g.category)           // CRITICAL: Exclude hidden tabs from "All" view for EVERYONE (including admin)
-              )
-            : this.games.filter(g => g.category === this.currentTab);
+              );
+        } else {
+            filtered = this.games.filter(g => g.category === this.currentTab);
+        }
 
         // CRITICAL: Hide games from admin-only tabs for non-admins when viewing specific tabs
         if (!this.isAdmin) {
@@ -1546,6 +1593,20 @@ class GameLibrary {
         this.showToast(`Selected ${this.filteredGames.length} games`, 'success');
     }
 
+    selectCurrentCategory() {
+        if (this.currentTab === 'all') {
+            this.selectAllVisible();
+            return;
+        }
+        const categoryGames = this.games.filter(g => g.category === this.currentTab);
+        categoryGames.forEach(game => {
+            this.selectedGames.add(game.id);
+        });
+        this.filterAndRender();
+        this.updateSelectedCount();
+        this.showToast(`Selected ${categoryGames.length} games in "${this.currentTab}"`, 'success');
+    }
+
     deselectAll() {
         this.selectedGames.clear();
         this.filterAndRender();
@@ -1629,6 +1690,21 @@ class GameLibrary {
             return;
         }
         this.downloadRunScript([...this.selectedGames]);
+    }
+
+    saveRecentGame(game) {
+        try {
+            let recent = JSON.parse(localStorage.getItem('recentGames') || '[]');
+            // Remove existing entry for same game (deduplicate by id)
+            recent = recent.filter(r => r.id !== game.id);
+            // Prepend new entry
+            recent.unshift({ id: game.id, name: game.name, timestamp: Date.now() });
+            // Trim to max 20
+            if (recent.length > 20) recent = recent.slice(0, 20);
+            localStorage.setItem('recentGames', JSON.stringify(recent));
+        } catch (e) {
+            console.warn('saveRecentGame error:', e);
+        }
     }
 
     downloadRunScript(gameIds, format = 'bat') {
@@ -2275,6 +2351,14 @@ echo ""
                 ? `run_${gameIds[0]}.sh`
                 : `run_${gameCount}_games_${timestamp}.sh`;
         }
+
+        // Save recently played games to localStorage
+        gameIds.forEach(id => {
+            const game = this.games.find(g => g.id === id);
+            if (game) this.saveRecentGame(game);
+        });
+        // Re-render tabs to update Recent count
+        this.renderTabs();
 
         // Download the file
         const blob = new Blob([script], { type: 'text/plain' });

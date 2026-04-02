@@ -733,6 +733,17 @@ body {
     border-radius: 20px;
 }
 
+.tab-count-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 11px;
+    margin-left: 6px;
+    min-width: 20px;
+    text-align: center;
+}
+
 .tabs-nav {
     padding: 12px;
 }
@@ -855,8 +866,14 @@ body {
    ============================================ */
 .games-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
+    grid-template-columns: repeat(5, 1fr);
     gap: 24px;
+}
+
+@media (max-width: 1440px) {
+    .games-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }
 
 /* ============================================
@@ -2064,6 +2081,10 @@ body:not(.is-admin) .tab-btn.hidden-tab {
     .keyboard-hints {
         display: none;
     }
+
+    .games-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 @media (max-width: 768px) {
@@ -2148,6 +2169,7 @@ body:not(.is-admin) .tab-btn.hidden-tab {
     }
 
     .games-grid {
+        grid-template-columns: repeat(2, 1fr);
         gap: 16px;
     }
 
@@ -2210,6 +2232,10 @@ body:not(.is-admin) .tab-btn.hidden-tab {
 
     .game-card .meta {
         font-size: 0.7rem;
+    }
+
+    .games-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -2434,4 +2460,79 @@ body:not(.is-admin) .tab-btn.hidden-tab {
     font-weight: 600;
     min-width: 120px;
     text-align: center;
+}
+
+/* ============================================
+   STAR / FAVOURITE BUTTON
+   ============================================ */
+.star-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.4);
+    transition: color 0.2s;
+    z-index: 10;
+    line-height: 1;
+    padding: 2px;
+}
+
+.star-btn.active,
+.star-btn:hover {
+    color: #fbbf24;
+}
+
+/* ============================================
+   DOWNLOAD PROGRESS BAR
+   ============================================ */
+.download-progress-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1e1e2e;
+    padding: 12px 20px;
+    z-index: 1000;
+    border-top: 2px solid #6366f1;
+    animation: slideUpIn 0.3s ease;
+}
+
+@keyframes slideUpIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+.dp-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+#dpText {
+    color: #f8fafc;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    min-width: 280px;
+}
+
+.dp-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.dp-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6366f1, #818cf8);
+    border-radius: 4px;
+    transition: width 0.4s ease;
 }

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,6 +11,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=5.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+    <script>
+        (function() {
+            var theme = localStorage.getItem('theme');
+            if (!theme) {
+                try {
+                    var s = localStorage.getItem('gameLibrarySettings');
+                    if (s) { var p = JSON.parse(s); theme = p.theme; }
+                } catch(e) {}
+            }
+            document.documentElement.setAttribute('data-theme', theme || 'dark');
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.dataset.theme = theme || 'dark';
+            });
+        })();
+    </script>
 </head>
 <body>
     <div id="app">
@@ -65,11 +80,14 @@
                 <button id="syncDockerBtn" class="action-bar-btn sync-btn" title="Sync with Docker Hub to find new tags">🔄 Sync</button>
             </div>
             <div class="action-bar-center">
+                <label class="size-filter-label"><span>Max Size:</span><input type="number" id="maxSizeFilter" placeholder="GB" min="0" step="0.5" style="width:70px"></label>
                 <button id="showInstalledBtn" class="action-bar-btn">✅ Show Installed</button>
                 <button id="selectAllBtn" class="action-bar-btn">☑️ Select All</button>
-                <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>
+                <button id="selectCategoryBtn" class="action-bar-btn">📂 Select Category</button>
+                <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>n                <button id="copyAllCmdsBtn" class="action-bar-btn" disabled>📋 Copy Cmds</button>
                 <button id="addImagesBtn" class="action-bar-btn" title="Scan all games and fetch missing/wrong cover images from multiple databases" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;">🖼️ Add Images</button>
                 <button id="addTimesBtn" class="action-bar-btn" title="Fetch How Long To Beat data for all games from online databases" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">⏱️ Add Times</button>
+                <button id="randomGameBtn" class="action-bar-btn">🎲 Random</button>
                 <div class="run-dropdown-container">
                     <button id="runSelectedBtn" class="action-bar-btn primary" disabled>▶️ Run Selected (0)</button>
                     <button id="runFormatBtn" class="action-bar-btn primary format-toggle" disabled title="Choose script format">▼</button>
@@ -170,6 +188,10 @@
                                     <span class="btn-icon">📄</span>
                                     <span>Copy Script</span>
                                 </button>
+                                <button id="copyPullBtn" class="action-btn secondary">
+                                    <span class="btn-icon">🐳</span>
+                                    <span>Copy Pull</span>
+                                </button>
                             </div>
                             <div class="terminal-info">
                                 <p id="osInfo">Detected OS: <span id="detectedOS">Windows</span></p>
@@ -267,8 +289,16 @@
             <span><kbd>Esc</kbd> Close</span>
             <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
         </div>
+
+        <!-- Download Progress Bar -->
+        <div id="downloadProgress" class="download-progress-bar" style="display:none">
+            <div class="dp-inner">
+                <span id="dpText">Preparing...</span>
+                <div class="dp-bar"><div id="dpFill" class="dp-fill"></div></div>
+            </div>
+        </div>
     </div>
 
-    <script src="app.js?v=4.0"></script>
+    <script src="app.js?v=5.0"></script>
 </body>
 </html>
