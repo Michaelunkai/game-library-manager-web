@@ -121,7 +121,7 @@
     "moonglowbay": "new",
     "kazeandthewildmasks": "platformers",
     "latest": "action",
-    "batmanarkhamknight": "action",
+    "batmanarkhamknight": "finished",
     "tovtech": "mybackup",
     "tovplay": "mybackup",
     "profile": "mybackup",
@@ -982,7 +982,7 @@
     "judgment": "storydriven",
     "brothers": "finished",
     "madmax": "not_for_me",
-    "batmantew": "action",
+    "batmantew": "finished",
     "witcher3": "not_for_me",
     "hyperlightdrifter": "not_for_me",
     "doomethernal": "finished",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "new"
   },
-  "lastUpdated": "2026-04-02T20:05:25.976Z"
+  "lastUpdated": "2026-04-02T20:06:04.979Z"
 }
