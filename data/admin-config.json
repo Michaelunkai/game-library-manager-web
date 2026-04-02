@@ -554,7 +554,7 @@
     "Eastshade": "action",
     "Loopmancer": "not_for_me",
     "13SentinelsAegisRim": "storydriven",
-    "AITHESOMNIUMFILES": "storydriven",
+    "AITHESOMNIUMFILES": "not_for_me",
     "LethalLeagueBlaze": "localcoop",
     "NORCO": "storydriven",
     "GatoRoboto": "platformers",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "new"
   },
-  "lastUpdated": "2026-04-02T20:04:26.468Z"
+  "lastUpdated": "2026-04-02T20:04:34.276Z"
 }
