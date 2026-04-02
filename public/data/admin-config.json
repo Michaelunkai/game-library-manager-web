@@ -765,7 +765,7 @@
     "trepang2": "platformers",
     "nomoreheroes3": "action",
     "marvelsguardiansofthegalaxy": "storydriven",
-    "bioshock2": "shooters",
+    "bioshock2": "not_for_me",
     "thegunk": "action",
     "bioshock": "not_for_me",
     "jusant": "action",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "new"
   },
-  "lastUpdated": "2026-04-02T20:09:45.829Z"
+  "lastUpdated": "2026-04-02T20:10:14.050Z"
 }
