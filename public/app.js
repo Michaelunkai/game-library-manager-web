@@ -50,6 +50,10 @@ class GameLibrary {
 
         this.settings = this.loadSettings();
 
+        // Page-based pagination
+        this.gamesPerPage = 50;
+        this.currentPage = 1;
+
         this.init();
     }
 
@@ -1341,6 +1345,9 @@ class GameLibrary {
         this.filteredGames = filtered;
         document.getElementById('filteredCount').textContent = filtered.length;
 
+        // Reset to first page on filter/search change
+        this.currentPage = 1;
+
         this.renderGames();
     }
 
@@ -1351,11 +1358,27 @@ class GameLibrary {
         if (this.filteredGames.length === 0) {
             grid.innerHTML = '';
             noResults.style.display = 'block';
+            this.renderPaginationControls();
             return;
         }
 
         noResults.style.display = 'none';
-        grid.innerHTML = this.filteredGames.map(game => this.createGameCard(game)).join('');
+
+        // Page-based pagination
+        const totalPages = Math.max(1, Math.ceil(this.filteredGames.length / this.gamesPerPage));
+        if (this.currentPage > totalPages) this.currentPage = totalPages;
+        if (this.currentPage < 1) this.currentPage = 1;
+
+        const startIndex = (this.currentPage - 1) * this.gamesPerPage;
+        const endIndex = Math.min(startIndex + this.gamesPerPage, this.filteredGames.length);
+        const pageGames = this.filteredGames.slice(startIndex, endIndex);
+
+        grid.innerHTML = pageGames.map(game => this.createGameCard(game)).join('');
+
+        this.renderPaginationControls();
+
+        // Scroll to top when page changes
+        window.scrollTo({ top: 0, behavior: 'smooth' });
 
         // Add click handlers for info button
         grid.querySelectorAll('.game-card').forEach(card => {
@@ -1396,6 +1419,40 @@ class GameLibrary {
         });
 
         this.lazyLoadImages();
+    }
+
+    // Render prev/next pagination controls
+    renderPaginationControls() {
+        const totalPages = Math.max(1, Math.ceil(this.filteredGames.length / this.gamesPerPage));
+        const hasMultiplePages = totalPages > 1;
+
+        // Remove existing controls
+        document.querySelectorAll('.pagination-controls').forEach(el => el.remove());
+
+        if (!hasMultiplePages) return;
+
+        const createControls = () => {
+            const container = document.createElement('div');
+            container.className = 'pagination-controls';
+            container.innerHTML = `
+                <button class="page-btn prev-btn" ${this.currentPage <= 1 ? 'disabled' : ''}>&#8592; Prev</button>
+                <span class="page-indicator">Page ${this.currentPage} of ${totalPages}</span>
+                <button class="page-btn next-btn" ${this.currentPage >= totalPages ? 'disabled' : ''}>Next &#8594;</button>
+            `;
+            container.querySelector('.prev-btn').addEventListener('click', () => {
+                if (this.currentPage > 1) { this.currentPage--; this.renderGames(); }
+            });
+            container.querySelector('.next-btn').addEventListener('click', () => {
+                if (this.currentPage < totalPages) { this.currentPage++; this.renderGames(); }
+            });
+            return container;
+        };
+
+        const grid = document.getElementById('gamesGrid');
+        if (grid) {
+            grid.parentNode.insertBefore(createControls(), grid);
+            grid.parentNode.insertBefore(createControls(), grid.nextSibling);
+        }
     }
 
     createGameCard(game) {

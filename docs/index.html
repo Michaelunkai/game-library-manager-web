@@ -29,6 +29,7 @@
             <div class="header-center">
                 <div class="search-container">
                     <input type="text" id="searchInput" placeholder="Search games... (Ctrl+K)" autocomplete="off">
+                    <button id="searchClearBtn" class="search-clear-btn" title="Clear search" style="display:none;">&#10005;</button>
                     <span class="search-icon">🔍</span>
                     <!-- Search Suggestions Dropdown -->
                     <div id="searchSuggestions" class="search-suggestions">
@@ -66,6 +67,8 @@
                     <span id="filteredCount">0</span> shown
                     <span class="separator">|</span>
                     <span id="selectedCount">0</span> selected
+                    <span class="separator">|</span>
+                    <span id="completedCount">0</span> completed (<span id="completedPct">0</span>%)
                 </div>
                 <button id="sortBtn" class="header-btn" title="Sort games">
                     <span>Sort</span>
@@ -86,6 +89,14 @@
                 <button id="syncDockerBtn" class="action-bar-btn sync-btn" title="Sync with Docker Hub to find new tags">🔄 Sync</button>
             </div>
             <div class="action-bar-center">
+                <select id="ratingFilter" class="action-bar-btn rating-filter-select" title="Filter by minimum star rating">
+                    <option value="0">⭐ All Ratings</option>
+                    <option value="1">1+ Stars</option>
+                    <option value="2">2+ Stars</option>
+                    <option value="3">3+ Stars</option>
+                    <option value="4">4+ Stars</option>
+                    <option value="5">5 Stars</option>
+                </select>
                 <button id="showInstalledBtn" class="action-bar-btn">✅ Show Installed</button>
                 <button id="selectAllBtn" class="action-bar-btn">☑️ Select All</button>
                 <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>
@@ -99,6 +110,38 @@
             </div>
             <div class="action-bar-right">
                 <button id="killContainersBtn" class="action-bar-btn danger" title="Kill all Docker containers">🛑 Kill All</button>
+            </div>
+        </div>
+
+        <!-- Stats Dashboard -->
+        <div class="stats-dashboard" id="statsDashboard">
+            <div class="stats-card">
+                <span class="stats-icon">🎮</span>
+                <div class="stats-info">
+                    <span class="stats-value" id="statsTotalGames">0</span>
+                    <span class="stats-label">Total Games</span>
+                </div>
+            </div>
+            <div class="stats-card">
+                <span class="stats-icon">✅</span>
+                <div class="stats-info">
+                    <span class="stats-value" id="statsInstalled">0 <span class="stats-pct" id="statsInstalledPct">(0%)</span></span>
+                    <span class="stats-label">Installed</span>
+                </div>
+            </div>
+            <div class="stats-card">
+                <span class="stats-icon">⏱️</span>
+                <div class="stats-info">
+                    <span class="stats-value" id="statsAvgTime">—</span>
+                    <span class="stats-label">Avg Time-to-Beat</span>
+                </div>
+            </div>
+            <div class="stats-card">
+                <span class="stats-icon">🖼️</span>
+                <div class="stats-info">
+                    <span class="stats-value" id="statsWithImages">0</span>
+                    <span class="stats-label">Games with Covers</span>
+                </div>
             </div>
         </div>
 
@@ -273,10 +316,11 @@
 
         <!-- Keyboard Navigation Hints -->
         <div id="keyboardHints" class="keyboard-hints">
-            <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+            <span><kbd>/</kbd> Search</span>
+            <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
             <span><kbd>Enter</kbd> Open</span>
             <span><kbd>Space</kbd> Select</span>
-            <span><kbd>Esc</kbd> Clear</span>
+            <span><kbd>Esc</kbd> Clear/Close</span>
         </div>
 
         <!-- Scroll to Top Button -->
@@ -286,7 +330,7 @@
 
         <!-- Pagination Info -->
         <div id="paginationInfo" class="pagination-info">
-            <span id="paginationShown">Page 1 of 1</span> &mdash; <span id="paginationTotal">0</span> games
+            Showing <span id="paginationShown">0</span> of <span id="paginationTotal">0</span> games
         </div>
     </div>
 

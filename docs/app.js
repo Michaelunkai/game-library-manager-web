@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Game Library Manager v3.6 - Web Application
  * A full-featured Docker game library manager
  *
@@ -20,7 +20,10 @@ class GameLibrary {
         this.filteredGames = [];
         this.selectedGames = new Set();
         this.installedGames = new Set();
+        this.completedGames = new Set();
         this.hiddenTabs = new Set();
+        this.backlogOrder = []; // ordered array of game IDs for backlog priority queue
+        this.dragSrcId = null;  // drag-and-drop source game id
         this.currentTab = 'all';
         this.searchQuery = '';
         this.sortBy = 'name';
@@ -48,6 +51,9 @@ class GameLibrary {
         this.suggestionsHighlightIndex = -1;
         this.suggestionsVisible = false;
 
+        // Play session timers: { gameId: { startTime, intervalId } }
+        this.activeTimers = {};
+
         this.init();
     }
 
@@ -62,6 +68,9 @@ class GameLibrary {
         
         // Load hidden tabs configuration BEFORE rendering (needed even for non-admins to filter correctly)
         this.loadHiddenTabs();
+        this.loadCompletedGames();
+        this.loadBacklogOrder();
+        this.loadBacklogOrder();
 
         try {
             await this.loadData();
@@ -69,6 +78,8 @@ class GameLibrary {
             this.filterAndRender();
             this.showLoading(false);
             this.updateSelectedCount();
+            this.updateCompletedCount();
+            this.updateStatsDashboard();
 
             // Start automatic Docker Hub sync (every 30 seconds)
             this.startAutoSync();
@@ -668,12 +679,27 @@ class GameLibrary {
             this.adminLogout();
         });
 
-        // Search with suggestions
+        // Search with suggestions (debounced 300ms)
         const searchInput = document.getElementById('searchInput');
+        const searchClearBtn = document.getElementById('searchClearBtn');
+        let searchDebounceTimer = null;
         searchInput.addEventListener('input', (e) => {
-            this.searchQuery = e.target.value.toLowerCase();
-            this.updateSearchSuggestions(e.target.value);
+            const val = e.target.value;
+            searchClearBtn.style.display = val ? 'block' : 'none';
+            this.updateSearchSuggestions(val);
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                this.searchQuery = val.toLowerCase();
+                this.filterAndRender();
+            }, 300);
+        });
+        searchClearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            searchClearBtn.style.display = 'none';
+            this.searchQuery = '';
+            this.updateSearchSuggestions('');
             this.filterAndRender();
+            searchInput.focus();
         });
 
         // Show suggestions on focus
@@ -716,16 +742,34 @@ class GameLibrary {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
+            const activeTag = document.activeElement ? document.activeElement.tagName : '';
+            const inInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
+
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 searchInput.focus();
+                searchInput.select();
+            }
+            // "/" focuses search when not already typing in an input field
+            if (e.key === '/' && !inInput) {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
             }
             if (e.key === 'Escape') {
                 this.closeAllModals();
                 this.clearCardFocus();
+                // Also clear search input if it has content
+                if (searchInput.value) {
+                    searchInput.value = '';
+                    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    searchInput.blur();
+                }
             }
-            // Game card keyboard navigation
-            this.handleKeyboardNavigation(e);
+            // Game card keyboard navigation (skip when typing in an input)
+            if (!inInput) {
+                this.handleKeyboardNavigation(e);
+            }
         });
 
         // Theme toggle
@@ -1129,6 +1173,7 @@ class GameLibrary {
             // Add event handlers
             const infoBtn = card.querySelector('.info-btn');
             const installBtn = card.querySelector('.install-btn');
+            const completeBtn = card.querySelector('.complete-btn');
             const checkbox = card.querySelector('.select-checkbox');
 
             infoBtn.addEventListener('click', (e) => {
@@ -1141,17 +1186,27 @@ class GameLibrary {
                 this.toggleInstalled(game.id);
             });
 
+            if (completeBtn) {
+                completeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleCompleted(game.id);
+                });
+            }
+
             checkbox.addEventListener('change', (e) => {
                 e.stopPropagation();
                 this.toggleGameSelection(game.id, e.target.checked);
             });
 
             card.addEventListener('click', (e) => {
-                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn')) {
+                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn') && !e.target.closest('.notes-btn') && !e.target.closest('.notes-panel') && !e.target.closest('.complete-btn')) {
                     checkbox.checked = !checkbox.checked;
                     this.toggleGameSelection(game.id, checkbox.checked);
                 }
             });
+
+            // Bind personal notes button
+            this.bindNotesButton(card, game.id);
 
             grid.appendChild(card);
         });
@@ -1217,7 +1272,6 @@ class GameLibrary {
         paginationShown.textContent = `Page ${this.currentPage} of ${totalPages}`;
         paginationTotal.textContent = this.filteredGames.length;
 
-        // Always show pagination info when there are multiple pages
         if (this.filteredGames.length > this.gamesPerPage) {
             paginationInfo.classList.add('visible');
         } else {
@@ -1225,16 +1279,11 @@ class GameLibrary {
         }
     }
 
-    // Render prev/next pagination controls
+
     renderPaginationControls() {
         const totalPages = Math.max(1, Math.ceil(this.filteredGames.length / this.gamesPerPage));
-        const hasMultiplePages = totalPages > 1;
-
-        // Remove existing controls
         document.querySelectorAll('.pagination-controls').forEach(el => el.remove());
-
-        if (!hasMultiplePages) return;
-
+        if (totalPages <= 1) return;
         const createControls = () => {
             const container = document.createElement('div');
             container.className = 'pagination-controls';
@@ -1251,8 +1300,6 @@ class GameLibrary {
             });
             return container;
         };
-
-        // Add controls before and after the grid
         const grid = document.getElementById('gamesGrid');
         if (grid) {
             grid.parentNode.insertBefore(createControls(), grid);
@@ -1263,6 +1310,14 @@ class GameLibrary {
     renderTabs() {
         const container = document.getElementById('tabsContainer');
         container.innerHTML = '';
+
+        // Backlog virtual tab (not-started games with drag-drop priority queue)
+        const backlogCount = this.getBacklogGames().length;
+        const backlogBtn = document.createElement('button');
+        backlogBtn.className = 'tab-btn backlog-tab-btn' + (this.currentTab === 'backlog' ? ' active' : '');
+        backlogBtn.innerHTML = '<span>&#x1F4CB; Backlog</span><span class="count">' + backlogCount + '</span>';
+        backlogBtn.addEventListener('click', () => this.selectTab('backlog'));
+        container.appendChild(backlogBtn);
 
         this.tabs.forEach(tab => {
             const isHidden = this.hiddenTabs.has(tab.id);
@@ -1314,6 +1369,12 @@ class GameLibrary {
     }
 
     filterAndRender() {
+        // Backlog tab has its own render path
+        if (this.currentTab === 'backlog') {
+            this.renderBacklog();
+            return;
+        }
+
         let filtered = this.currentTab === 'all'
             ? [...this.games]
             : this.games.filter(g => g.category === this.currentTab);
@@ -1462,6 +1523,7 @@ class GameLibrary {
         grid.querySelectorAll('.game-card').forEach(card => {
             const infoBtn = card.querySelector('.info-btn');
             const installBtn = card.querySelector('.install-btn');
+            const completeBtn = card.querySelector('.complete-btn');
             const checkbox = card.querySelector('.select-checkbox');
 
             // Info button opens modal
@@ -1479,6 +1541,15 @@ class GameLibrary {
                 this.toggleInstalled(gameId);
             });
 
+            // Complete button toggles completed status
+            if (completeBtn) {
+                completeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const gameId = card.dataset.id;
+                    this.toggleCompleted(gameId);
+                });
+            }
+
             // Checkbox toggles selection
             checkbox.addEventListener('change', (e) => {
                 e.stopPropagation();
@@ -1488,15 +1559,76 @@ class GameLibrary {
 
             // Card click toggles selection
             card.addEventListener('click', (e) => {
-                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn')) {
+                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn') && !e.target.closest('.notes-btn') && !e.target.closest('.notes-panel') && !e.target.closest('.complete-btn') && !e.target.closest('.play-btn') && !e.target.closest('.stop-btn')) {
                     const gameId = card.dataset.id;
                     checkbox.checked = !checkbox.checked;
                     this.toggleGameSelection(gameId, checkbox.checked);
                 }
-            });
+    
+            // Play/Stop timer buttons
+            const playBtn = card.querySelector('.play-btn');
+            const stopBtn = card.querySelector('.stop-btn');
+            const elapsedEl = card.querySelector('.play-elapsed');
+            if (playBtn) {
+                playBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.startPlayTimer(card.dataset.id, playBtn, stopBtn, elapsedEl);
+                });
+            }
+            if (stopBtn) {
+                stopBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.stopPlayTimer(card.dataset.id, playBtn, stopBtn, elapsedEl, card);
+                });
+            }
+        });
+
+        });
+
+        // Bind personal notes buttons
+        grid.querySelectorAll('.game-card').forEach(card => {
+            this.bindNotesButton(card, card.dataset.id);
         });
 
         this.lazyLoadImages();
+    }
+
+    getGameNote(gameId) {
+        return localStorage.getItem('game_note_' + gameId) || '';
+    }
+
+    saveGameNote(gameId, text) {
+        if (text.trim()) {
+            localStorage.setItem('game_note_' + gameId, text);
+        } else {
+            localStorage.removeItem('game_note_' + gameId);
+        }
+    }
+
+    bindNotesButton(card, gameId) {
+        const notesBtn = card.querySelector('.notes-btn');
+        const notesPanel = card.querySelector('.notes-panel');
+        const textarea = card.querySelector('.notes-textarea');
+        if (!notesBtn || !notesPanel || !textarea) return;
+
+        notesBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = notesPanel.style.display !== 'none';
+            notesPanel.style.display = isOpen ? 'none' : 'block';
+            if (!isOpen) textarea.focus();
+        });
+
+        textarea.addEventListener('blur', () => {
+            const text = textarea.value;
+            this.saveGameNote(gameId, text);
+            const hasNote = text.trim().length > 0;
+            notesBtn.classList.toggle('has-note', hasNote);
+            notesBtn.title = hasNote ? 'Edit note' : 'Add note';
+            notesBtn.innerHTML = hasNote ? String.fromCodePoint(0x1F4DD) + '<span class="note-dot"></span>' : String.fromCodePoint(0x1F4DD);
+        });
+
+        textarea.addEventListener('click', (e) => e.stopPropagation());
+        textarea.addEventListener('keydown', (e) => e.stopPropagation());
     }
 
     createGameCard(game) {
@@ -1507,17 +1639,24 @@ class GameLibrary {
         const imageName = game.id.toLowerCase();
         const isSelected = this.selectedGames.has(game.id);
         const isInstalled = this.installedGames.has(game.id);
+        const isCompleted = this.completedGames.has(game.id);
         const isNew = game.category === 'new';
         const dateAdded = this.datesAdded[game.id];
         const dateStr = dateAdded ? new Date(dateAdded).toLocaleDateString() : 'N/A';
+        const noteText = this.getGameNote(game.id);
+        const hasNote = noteText.length > 0;
+        const safeNote = noteText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         return `
-            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}">
+            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''} ${isCompleted ? 'completed' : ''}" data-id="${game.id}">
                 <input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''}>
                 <button class="info-btn" title="View details">ℹ️</button>
                 <button class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}">${isInstalled ? '✅' : '📥'}</button>
+                <button class="complete-btn ${isCompleted ? 'is-completed' : ''}" title="${isCompleted ? 'Mark as not completed' : 'Mark as completed'}">${isCompleted ? '🏆' : '☑️'}</button>
+                <button class="notes-btn${hasNote ? ' has-note' : ''}" title="${hasNote ? 'Edit note' : 'Add note'}">📝${hasNote ? '<span class="note-dot"></span>' : ''}</button>
                 ${isNew ? '<div class="new-badge">🆕 NEW</div>' : ''}
                 ${isInstalled ? '<div class="installed-badge">✓ Installed</div>' : ''}
+                ${isCompleted ? '<div class="completed-badge">🏆 Completed</div>' : ''}
                 <div class="quick-tooltip">
                     <div class="tooltip-header">${game.name}</div>
                     <div class="tooltip-row"><span class="tooltip-icon">📁</span><span class="tooltip-label">Category:</span><span class="tooltip-value">${game.category || 'uncategorized'}</span></div>
@@ -1536,12 +1675,21 @@ class GameLibrary {
                     >
                 </p>
                 <div class="card-info">
-                    <div class="title" title="${game.name}">${game.name}</div>
+                    <div class="title" title="${game.name}">${this.highlightCardName(game.name, this.searchQuery)}</div>
                     <div class="meta">
                         ${this.settings.showCategories ? `<span class="category-badge">${game.category || 'uncategorized'}</span>` : ''}
                         ${this.settings.showTimes ? `<span class="time-badge">⏱️ ${timeStr}</span>` : ''}
                         <span class="size-badge">💾 ${sizeStr}</span>
                     </div>
+                </div>
+                <div class="notes-panel" style="display:none;">
+                    <textarea class="notes-textarea" placeholder="Add your personal notes..." rows="3">${safeNote}</textarea>
+                </div>
+                <div class="card-play-footer">
+                    <button class="play-btn" title="Start play session">▶ Play</button>
+                    <span class="play-elapsed" style="display:none;">⏱ 0:00</span>
+                    <button class="stop-btn" style="display:none;" title="Stop play session">■ Stop</button>
+                    <span class="play-total">Total: ${this.formatDuration(this.getTotalPlayTime(game.id))}</span>
                 </div>
             </div>
         `;
@@ -1561,6 +1709,7 @@ class GameLibrary {
         }
 
         this.updateSelectedCount();
+            this.updateCompletedCount();
     }
 
     updateSelectedCount() {
@@ -1575,12 +1724,43 @@ class GameLibrary {
         moveToBtn.disabled = count === 0;
     }
 
+    updateStatsDashboard() {
+        const total = this.games.length;
+        const installed = this.installedGames.size;
+        const pct = total > 0 ? Math.round((installed / total) * 100) : 0;
+
+        // Average HLTB time from times data
+        const timeValues = Object.values(this.times).filter(function(v) {
+            return v !== null && v !== undefined && !isNaN(Number(v));
+        });
+        let avgTimeStr = '\u2014';
+        if (timeValues.length > 0) {
+            const avg = timeValues.reduce(function(s, v) { return s + Number(v); }, 0) / timeValues.length;
+            avgTimeStr = avg >= 1 ? ('~' + avg.toFixed(1) + 'h') : ('~' + Math.round(avg * 60) + 'm');
+        }
+
+        // Games with cover images: games present in imageSizes
+        const imgKeys = Object.keys(this.imageSizes).map(function(k) { return k.toLowerCase(); });
+        const gamesWithImages = this.games.filter(function(g) {
+            return imgKeys.indexOf(g.id.toLowerCase()) !== -1;
+        }).length;
+
+        const elById = function(id) { return document.getElementById(id); };
+        if (elById('statsTotalGames')) elById('statsTotalGames').textContent = total;
+        if (elById('statsInstalled')) {
+            elById('statsInstalled').innerHTML = installed + ' <span class="stats-pct">(' + pct + '%)</span>';
+        }
+        if (elById('statsAvgTime')) elById('statsAvgTime').textContent = avgTimeStr;
+        if (elById('statsWithImages')) elById('statsWithImages').textContent = gamesWithImages;
+    }
+
     selectAllVisible() {
         this.filteredGames.forEach(game => {
             this.selectedGames.add(game.id);
         });
         this.filterAndRender();
         this.updateSelectedCount();
+            this.updateCompletedCount();
         this.showToast(`Selected ${this.filteredGames.length} games`, 'success');
     }
 
@@ -1588,6 +1768,7 @@ class GameLibrary {
         this.selectedGames.clear();
         this.filterAndRender();
         this.updateSelectedCount();
+            this.updateCompletedCount();
         this.showToast('All games deselected', 'info');
     }
 
@@ -2512,6 +2693,7 @@ echo "Done!"
         document.body.dataset.theme = newTheme;
         document.getElementById('themeBtn').textContent = newTheme === 'dark' ? '🌙' : '☀️';
         this.settings.theme = newTheme;
+        localStorage.setItem('theme', newTheme);
         this.saveSettings();
     }
 
@@ -2539,11 +2721,54 @@ echo "Done!"
         try {
             const saved = localStorage.getItem('gameLibrarySettings');
             const settings = saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+            // 'theme' standalone key takes priority for persistence compatibility
+            const standaloneTheme = localStorage.getItem('theme');
+            if (standaloneTheme === 'light' || standaloneTheme === 'dark') {
+                settings.theme = standaloneTheme;
+            }
 
             // Sync global mount path input
             setTimeout(() => {
                 const globalPath = document.getElementById('globalMountPath');
                 if (globalPath) {
+
+    loadCompletedGames() {
+        try {
+            const saved = localStorage.getItem('completedGames');
+            if (saved) {
+                this.completedGames = new Set(JSON.parse(saved));
+            }
+        } catch {
+            this.completedGames = new Set();
+        }
+    }
+
+    saveCompletedGames() {
+        localStorage.setItem('completedGames', JSON.stringify([...this.completedGames]));
+    }
+
+    toggleCompleted(gameId) {
+        if (this.completedGames.has(gameId)) {
+            this.completedGames.delete(gameId);
+            this.showToast(gameId + ' marked as not completed', 'info');
+        } else {
+            this.completedGames.add(gameId);
+            this.showToast(gameId + ' marked as completed', 'success');
+        }
+        this.saveCompletedGames();
+        this.updateCompletedCount();
+        this.filterAndRender();
+    }
+
+    updateCompletedCount() {
+        const completed = this.completedGames.size;
+        const total = this.games.length;
+        const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+        const countEl = document.getElementById('completedCount');
+        const pctEl = document.getElementById('completedPct');
+        if (countEl) countEl.textContent = completed;
+        if (pctEl) pctEl.textContent = pct;
+    }
                     globalPath.value = settings.mountPath;
                 }
             }, 100);
@@ -2695,6 +2920,21 @@ echo "Done!"
         }
 
         return result;
+    }
+
+    highlightCardName(text, query) {
+        if (!query || !text) return this.escapeHtml(text);
+        const lowerText = text.toLowerCase();
+        const lowerQuery = query.toLowerCase();
+        const idx = lowerText.indexOf(lowerQuery);
+        if (idx !== -1) {
+            return this.escapeHtml(text.substring(0, idx)) +
+                '<span class="card-name-highlight">' +
+                this.escapeHtml(text.substring(idx, idx + query.length)) +
+                '</span>' +
+                this.escapeHtml(text.substring(idx + query.length));
+        }
+        return this.escapeHtml(text);
     }
 
     updateSearchSuggestions(query) {
@@ -2990,6 +3230,7 @@ echo "Done!"
         }
         this.saveInstalledGames();
         this.filterAndRender();
+        this.updateStatsDashboard();
     }
 
     toggleInstalledFilter() {
@@ -3049,6 +3290,7 @@ echo "Done!"
                     if (data.selectedGames) {
                         this.selectedGames = new Set(data.selectedGames);
                         this.updateSelectedCount();
+            this.updateCompletedCount();
                     }
                     this.filterAndRender();
                     this.showToast('Settings imported!', 'success');
@@ -3113,6 +3355,278 @@ echo "Done!"
         }, 3000);
     }
 }
+
+
+    // ── Play Session Timer ──────────────────────────────────────────────────────
+    getPlayHistory(gameId) {
+        try {
+            return JSON.parse(localStorage.getItem('gamePlayHistory_' + gameId) || '[]');
+        } catch(e) { return []; }
+    }
+
+    getTotalPlayTime(gameId) {
+        return this.getPlayHistory(gameId).reduce((sum, s) => sum + (s.duration || 0), 0);
+    }
+
+    formatDuration(seconds) {
+        if (!seconds || seconds < 1) return '0s';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        if (h > 0) return h + 'h ' + m + 'm';
+        if (m > 0) return m + 'm ' + s + 's';
+        return s + 's';
+    }
+
+    startPlayTimer(gameId, playBtn, stopBtn, elapsedEl) {
+        if (this.activeTimers[gameId]) return; // already running
+        const startTime = Date.now();
+        playBtn.style.display = 'none';
+        stopBtn.style.display = '';
+        elapsedEl.style.display = '';
+
+        const tick = () => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const m = Math.floor(elapsed / 60);
+            const s = elapsed % 60;
+            elapsedEl.textContent = '\u23f1 ' + m + ':' + String(s).padStart(2, '0');
+        };
+        tick();
+        const intervalId = setInterval(tick, 1000);
+        this.activeTimers[gameId] = { startTime, intervalId };
+    }
+
+    stopPlayTimer(gameId, playBtn, stopBtn, elapsedEl, card) {
+        const timer = this.activeTimers[gameId];
+        if (!timer) return;
+        clearInterval(timer.intervalId);
+        delete this.activeTimers[gameId];
+
+        const duration = Math.floor((Date.now() - timer.startTime) / 1000);
+        const history = this.getPlayHistory(gameId);
+        history.push({ date: new Date().toISOString(), duration });
+        localStorage.setItem('gamePlayHistory_' + gameId, JSON.stringify(history));
+
+        playBtn.style.display = '';
+        stopBtn.style.display = 'none';
+        elapsedEl.style.display = 'none';
+        elapsedEl.textContent = '\u23f1 0:00';
+
+        // Update total in footer
+        const totalEl = card.querySelector('.play-total');
+        if (totalEl) {
+            totalEl.textContent = 'Total: ' + this.formatDuration(this.getTotalPlayTime(gameId));
+        }
+
+        this.showToast('Session saved: ' + this.formatDuration(duration), 'success');
+    }
+
+    // ===================== BACKLOG PRIORITY QUEUE =====================
+
+    getBacklogGames() {
+        // "not-started" = not completed, not installed
+        return this.games.filter(g => !this.completedGames.has(g.id) && !this.installedGames.has(g.id));
+    }
+
+    loadBacklogOrder() {
+        try {
+            const saved = localStorage.getItem('backlogOrder');
+            if (saved) {
+                this.backlogOrder = JSON.parse(saved);
+            }
+        } catch (e) {
+            this.backlogOrder = [];
+        }
+    }
+
+    saveBacklogOrder() {
+        localStorage.setItem('backlogOrder', JSON.stringify(this.backlogOrder));
+    }
+
+    getOrderedBacklog() {
+        const backlogGames = this.getBacklogGames();
+        const gameMap = {};
+        backlogGames.forEach(g => { gameMap[g.id] = g; });
+        const ordered = [];
+        // First add games in saved order
+        this.backlogOrder.forEach(id => {
+            if (gameMap[id]) {
+                ordered.push(gameMap[id]);
+                delete gameMap[id];
+            }
+        });
+        // Append any new games not yet in order
+        Object.values(gameMap).forEach(g => ordered.push(g));
+        return ordered;
+    }
+
+    renderBacklog() {
+        const grid = document.getElementById('gamesGrid');
+        const noResults = document.getElementById('noResults');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        loadingIndicator.style.display = 'none';
+
+        const orderedGames = this.getOrderedBacklog();
+
+        this.ensureBacklogToolbar();
+
+        if (orderedGames.length === 0) {
+            grid.innerHTML = '';
+            grid.style.display = 'none';
+            noResults.style.display = 'block';
+            noResults.querySelector('p').textContent = 'No backlog games. All games are installed or completed!';
+            return;
+        }
+
+        noResults.style.display = 'none';
+        grid.style.display = 'grid';
+
+        let html = '';
+        orderedGames.forEach((game, index) => {
+            html += this.createBacklogCard(game, index + 1);
+        });
+        grid.innerHTML = html;
+
+        // Lazy load images
+        this.lazyLoadImages();
+
+        // Attach drag-drop listeners
+        grid.querySelectorAll('.game-card[data-id]').forEach(card => {
+            card.setAttribute('draggable', 'true');
+            card.addEventListener('dragstart', (e) => {
+                this.dragSrcId = card.dataset.id;
+                card.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            card.addEventListener('dragend', () => {
+                card.classList.remove('dragging');
+                grid.querySelectorAll('.game-card').forEach(c => c.classList.remove('drag-over'));
+            });
+            card.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                grid.querySelectorAll('.game-card').forEach(c => c.classList.remove('drag-over'));
+                card.classList.add('drag-over');
+            });
+            card.addEventListener('drop', (e) => {
+                e.preventDefault();
+                card.classList.remove('drag-over');
+                if (this.dragSrcId && this.dragSrcId !== card.dataset.id) {
+                    this.reorderBacklog(this.dragSrcId, card.dataset.id);
+                }
+            });
+            // Open game modal on info button
+            const infoBtn = card.querySelector('.info-btn');
+            if (infoBtn) {
+                infoBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const game = this.games.find(g => g.id === card.dataset.id);
+                    if (game) this.openModal(game);
+                });
+            }
+        });
+
+        // Update pagination info
+        const paginationShown = document.getElementById('paginationShown');
+        const paginationTotal = document.getElementById('paginationTotal');
+        const paginationInfo = document.getElementById('paginationInfo');
+        if (paginationShown) paginationShown.textContent = orderedGames.length;
+        if (paginationTotal) paginationTotal.textContent = orderedGames.length;
+        if (paginationInfo) paginationInfo.classList.add('visible');
+    }
+
+    createBacklogCard(game, priority) {
+        const time = this.times[game.id];
+        const timeStr = time ? time + 'h' : 'N/A';
+        const size = this.imageSizes[game.id];
+        const sizeStr = size ? size + ' GB' : 'N/A';
+        const imageName = game.id.toLowerCase();
+
+        return `
+            <div class="game-card backlog-card" data-id="${game.id}" draggable="true">
+                <button class="info-btn" title="View details">&#x2139;&#xFE0F;</button>
+                <div class="backlog-priority-badge" title="Backlog priority #${priority}">#${priority}</div>
+                <div class="backlog-drag-handle" title="Drag to reorder">&#x2630;</div>
+                <p class="image-container">
+                    <img
+                        data-src="images/${imageName}.png"
+                        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E"
+                        alt="${game.name}"
+                        loading="lazy"
+                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22%3E%3Crect fill=%22%231f2937%22 width=%22300%22 height=%22400%22/%3E%3Ctext x=%22150%22 y=%22200%22 text-anchor=%22middle%22 fill=%22%236366f1%22 font-size=%2240%22%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E'"
+                    >
+                </p>
+                <div class="card-info">
+                    <div class="title" title="${game.name}">${game.name}</div>
+                    <div class="meta">
+                        <span class="category-badge">${game.category || 'uncategorized'}</span>
+                        <span class="time-badge">&#x23F1; ${timeStr}</span>
+                        <span class="size-badge">&#x1F4BE; ${sizeStr}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    reorderBacklog(srcId, targetId) {
+        const ordered = this.getOrderedBacklog();
+        const ids = ordered.map(g => g.id);
+        const srcIdx = ids.indexOf(srcId);
+        const targetIdx = ids.indexOf(targetId);
+        if (srcIdx === -1 || targetIdx === -1) return;
+        ids.splice(srcIdx, 1);
+        ids.splice(targetIdx, 0, srcId);
+        this.backlogOrder = ids;
+        this.saveBacklogOrder();
+        this.renderBacklog();
+        const newPos = this.backlogOrder.indexOf(srcId) + 1;
+        this.showToast(srcId + ' moved to position #' + newPos, 'success');
+    }
+
+    ensureBacklogToolbar() {
+        let toolbar = document.getElementById('backlogToolbar');
+        if (!toolbar) {
+            toolbar = document.createElement('div');
+            toolbar.id = 'backlogToolbar';
+            toolbar.className = 'backlog-toolbar';
+            toolbar.innerHTML = '<button id="exportBacklogBtn" class="action-bar-btn primary">&#x1F4E4; Export Backlog</button><span class="backlog-hint">Drag cards to reorder priority</span>';
+            const content = document.querySelector('.content');
+            if (content) content.insertBefore(toolbar, content.firstChild);
+            document.getElementById('exportBacklogBtn').addEventListener('click', () => this.exportBacklog());
+        }
+        toolbar.style.display = this.currentTab === 'backlog' ? 'flex' : 'none';
+    }
+
+    exportBacklog() {
+        const ordered = this.getOrderedBacklog();
+        if (ordered.length === 0) {
+            this.showToast('Backlog is empty', 'info');
+            return;
+        }
+        const lines = ordered.map((g, i) => (i + 1) + '. ' + g.name + ' [' + (g.category || 'uncategorized') + ']');
+        const dateStr = new Date().toLocaleDateString();
+        const text = 'Backlog Priority Queue (' + dateStr + ')\n' + '='.repeat(50) + '\n' + lines.join('\n');
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'backlog-' + new Date().toISOString().split('T')[0] + '.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+        this.showToast('Backlog exported (' + ordered.length + ' games)', 'success');
+    }
+
+    loadCompletedGames() {
+        try {
+            const saved = localStorage.getItem('completedGames');
+            if (saved) {
+                this.completedGames = new Set(JSON.parse(saved));
+            }
+        } catch (e) {
+            this.completedGames = new Set();
+        }
+    }
+
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', () => {

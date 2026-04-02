@@ -2395,3 +2395,43 @@ body:not(.is-admin) .tab-btn.hidden-tab {
         scroll-behavior: auto;
     }
 }
+
+/* Page-based pagination controls */
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 12px 0;
+    width: 100%;
+}
+
+.page-btn {
+    background: linear-gradient(135deg, var(--accent, #6366f1) 0%, var(--accent-hover, #818cf8) 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.page-btn:hover:not(:disabled) {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
+
+.page-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.page-indicator {
+    font-size: 0.9rem;
+    color: var(--text-secondary, #94a3b8);
+    font-weight: 600;
+    min-width: 120px;
+    text-align: center;
+}

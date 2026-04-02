@@ -1,0 +1,20 @@
+[build]
+  command = "echo 'Static site - no build needed'"
+  publish = "public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Route /api/admin-config to the Netlify Function (permanent GitHub persistence)
+[[redirects]]
+  from = "/api/admin-config"
+  to = "/.netlify/functions/admin-config"
+  status = 200
+  force = true
+
+# All other routes serve the SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
