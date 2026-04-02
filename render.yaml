@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: game-library-manager-web
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_TOKEN
+        value: glm-admin-2024
+      - key: PORT
+        value: 10000
+      - key: GITHUB_TOKEN
+        sync: false

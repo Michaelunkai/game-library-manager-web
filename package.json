@@ -1,0 +1,17 @@
+{
+  "name": "game-library-manager",
+  "version": "5.0.0",
+  "description": "Docker Game Library Manager - Web Version",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'No build needed'",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}
