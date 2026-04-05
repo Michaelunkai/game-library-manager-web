@@ -292,7 +292,7 @@
     "SIFU": "action",
     "BendyandtheDarkRevival": "action",
     "Cuphead": "soulslike",
-    "NINJAGAIDENMasterCollection": "action",
+    "NINJAGAIDENMasterCollection": "not_for_me",
     "Cyberpunk2077": "finished",
     "ELDENRINGNIGHTREIGN": "action",
     "MindsEye": "action",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "new"
   },
-  "lastUpdated": "2026-04-05T18:17:12.790Z"
+  "lastUpdated": "2026-04-05T18:17:38.022Z"
 }
