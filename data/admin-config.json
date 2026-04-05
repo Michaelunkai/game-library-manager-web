@@ -329,7 +329,7 @@
     "Neckbreak": "hacknslash",
     "Demonsouls": "soulslike",
     "gori": "hacknslash",
-    "TalosPrinciple": "action",
+    "TalosPrinciple": "not_for_me",
     "HYPERCHARGE": "localcoop",
     "ArcRunner": "shooters",
     "Chernobylite": "shooters",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "new"
   },
-  "lastUpdated": "2026-04-05T18:18:37.081Z"
+  "lastUpdated": "2026-04-05T18:19:23.510Z"
 }
