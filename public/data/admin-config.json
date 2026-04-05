@@ -566,7 +566,7 @@
     "YakuzaKiwami2": "openworld",
     "YakuzaKiwami": "openworld",
     "Yakuza5": "openworld",
-    "Yakuza0": "storydriven",
+    "Yakuza0": "action",
     "NoStraightRoads": "action",
     "YakuzaLikeaDragon": "openworld",
     "MetalHellsinger": "new",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-04-05T20:09:57.954Z"
+  "lastUpdated": "2026-04-05T20:10:28.256Z"
 }
