@@ -109,7 +109,7 @@
     "plantsvszombiesreplanted": "new",
     "parkitect": "new",
     "beyondblue": "new",
-    "pokemonlegendsza": "new",
+    "pokemonlegendsza": "not_for_me",
     "batmanarkhamasylumgameoftheyearedition": "finished",
     "dyinglightthebeast": "new",
     "hollowknightsilksong": "new",
@@ -747,7 +747,7 @@
     "codblackops2": "shooters",
     "prox7": "oporationsystems",
     "prox6": "oporationsystems",
-    "prey": "shooters",
+    "prey": "not_for_me",
     "seasonalettertothefuture": "storydriven",
     "sonicsuperstarts": "platformers",
     "vampirebloodlines": "not_for_me",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "new"
   },
-  "lastUpdated": "2026-04-05T18:18:02.613Z"
+  "lastUpdated": "2026-04-05T18:18:37.081Z"
 }
