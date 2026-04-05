@@ -113,7 +113,7 @@
     "batmanarkhamasylumgameoftheyearedition": "finished",
     "dyinglightthebeast": "new",
     "hollowknightsilksong": "new",
-    "histadrut": "new",
+    "histadrut": "mybackup",
     "lostrecordsbloomrage": "storydriven",
     "dispatch": "finished",
     "swordofthesea": "new",
@@ -616,7 +616,7 @@
     "rainbowsixsiege": "shooters",
     "littlekittybigcity": "action",
     "ec2": "mybackup",
-    "hades2": "action",
+    "hades2": "mybackup",
     "llama3.1": "mybackup",
     "devilmaycry4": "hacknslash",
     "saintsrow2": "action",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "new"
   },
-  "lastUpdated": "2026-04-05T19:59:15.981Z"
+  "lastUpdated": "2026-04-05T20:00:49.168Z"
 }
