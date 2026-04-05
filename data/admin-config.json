@@ -918,7 +918,7 @@
     "kali": "oporationsystems",
     "debian": "oporationsystems",
     "opensuse": "oporationsystems",
-    "oddworldsoulstorm": "soulslike",
+    "oddworldsoulstorm": "platformers",
     "eternalcylinder": "action",
     "beyond2souls": "storydriven",
     "returntomonkeyisland": "not_for_me",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "new"
   },
-  "lastUpdated": "2026-04-05T19:56:58.858Z"
+  "lastUpdated": "2026-04-05T19:59:15.981Z"
 }
