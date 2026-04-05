@@ -92,7 +92,7 @@
     "tailsofiron": "soulslike",
     "spiritfall": "new",
     "therogueprinceofpersia": "new",
-    "windowsapps-cache": "new",
+    "windowsapps-cache": "mybackup",
     "wsl-cache": "mybackup",
     "gamesaves": "mybackup",
     "claudecode": "new",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-04-05T20:10:28.256Z"
+  "lastUpdated": "2026-04-05T20:10:54.543Z"
 }
