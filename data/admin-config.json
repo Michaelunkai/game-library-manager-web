@@ -58,7 +58,7 @@
     "metalgearsolid3snakeeatermastercollection": "new",
     "cairn": "not_for_me",
     "metalgearrisingrevengeance": "new",
-    "bayonetta": "new",
+    "bayonetta": "nintendo/switch",
     "windowsapps": "mybackup",
     "dustborn": "storydriven",
     "wsl": "mybackup",
@@ -578,7 +578,7 @@
     "TLoZEchoesofWisdom": "nintendo/switch",
     "AstralAscent": "platformers",
     "DOOMEternal": "finished",
-    "Bayonetta3": "new",
+    "Bayonetta3": "nintendo/switch",
     "Akimbot": "not_for_me",
     "AngerFoot": "not_for_me",
     "Octogeddon": "platformers",
@@ -678,7 +678,7 @@
     "marvel": "action",
     "sanabi": "storydriven",
     "observer": "action",
-    "bayonetta2": "action",
+    "bayonetta2": "nintendo/switch",
     "tetriseffect": "puzzle",
     "sunhaven": "chill",
     "fuga": "action",
@@ -1081,5 +1081,5 @@
     "againstthestorm": "new",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-04-05T20:16:12.189Z"
+  "lastUpdated": "2026-04-05T20:16:43.916Z"
 }
