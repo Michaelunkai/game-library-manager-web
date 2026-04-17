@@ -332,7 +332,7 @@
     "TalosPrinciple": "not_for_me",
     "HYPERCHARGE": "localcoop",
     "ArcRunner": "shooters",
-    "Chernobylite": "shooters",
+    "Chernobylite": "not_for_me",
     "MonsterHunterRise": "action",
     "ShadowOfTheColossus": "action",
     "Expedition33": "finished",
@@ -846,7 +846,7 @@
     "windowserver22vhdx": "oporationsystems",
     "thecaseofthegoldenidol": "action",
     "shadowgambit": "action",
-    "metroredux": "shooters",
+    "metroredux": "not_for_me",
     "windows11vhdx": "oporationsystems",
     "sunsetoverdive": "action",
     "yakuza6thesongodlife": "storydriven",
@@ -986,7 +986,7 @@
     "witcher3": "not_for_me",
     "hyperlightdrifter": "not_for_me",
     "doomethernal": "finished",
-    "metroexodus": "shooters",
+    "metroexodus": "not_for_me",
     "stray": "finished",
     "transistor": "finished",
     "thesurge2": "shooters",
@@ -1082,5 +1082,5 @@
     "againstthestorm": "new",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-04-17T18:34:36.243Z"
+  "lastUpdated": "2026-04-17T20:25:49.468Z"
 }
