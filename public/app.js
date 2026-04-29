@@ -650,7 +650,12 @@ class GameLibrary {
             for (let i = 0; i < gamesNeedingImages.length; i += batchSize) {
                 const batch = gamesNeedingImages.slice(i, i + batchSize);
                 const results = await Promise.allSettled(
-                    batch.map(game => this.fetchSteamCoverUrl(game.name))
+                    batch.map(async (game) => {
+                        // Prefer tag/id lookup first, then readable name fallback
+                        const fromTag = await this.fetchSteamCoverUrl(game.id || game.tag || game.name);
+                        if (fromTag) return fromTag;
+                        return this.fetchSteamCoverUrl(game.name || game.id || game.tag);
+                    })
                 );
 
                 for (let j = 0; j < results.length; j++) {
@@ -716,7 +721,14 @@ class GameLibrary {
                         this.times[game.id] = results[j].value;
                         found++;
                     } else {
-                        failed++;
+                        const game = batch[j];
+                        const manual = this.getManualTimeOverride(game);
+                        if (manual !== null) {
+                            this.times[game.id] = manual;
+                            found++;
+                        } else {
+                            failed++;
+                        }
                     }
                 }
 
@@ -755,9 +767,9 @@ class GameLibrary {
     async fetchHLTBTime(game) {
         const gameName = this.splitGameName(game.name || game.id);
 
-        // Check known times database first
-        const knownTime = this.getKnownGameTimes()[game.id.toLowerCase().replace(/[^a-z0-9]/g, '')];
-        if (knownTime !== undefined) return knownTime;
+        // Check known/manual times database first using multiple tag/name variants
+        const knownTime = this.getManualTimeOverride(game);
+        if (knownTime !== null) return knownTime;
 
         const corsProxies = [
             'https://corsproxy.io/?',
@@ -880,6 +892,26 @@ class GameLibrary {
             'starshiptroopers': 12,
             'dragonkinthebanish': 15,
         };
+    }
+
+    // Manual time override lookup (tag/id/name variants only, no auto-estimates)
+    getManualTimeOverride(game) {
+        const known = this.getKnownGameTimes();
+        const variants = [
+            game?.id || '',
+            game?.tag || '',
+            game?.name || '',
+            this.splitGameName(game?.id || ''),
+            this.splitGameName(game?.name || '')
+        ];
+
+        for (const raw of variants) {
+            const key = String(raw).toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!key) continue;
+            if (known[key] !== undefined) return known[key];
+        }
+
+        return null;
     }
 
     detectOS() {
