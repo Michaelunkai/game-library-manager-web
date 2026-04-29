@@ -21,6 +21,11 @@
     "sports"
   ],
   "gameCategories": {
+    "1113": "new",
+    "1114": "new",
+    "1115": "new",
+    "1116": "new",
+    "1117": "new",
     "dawnoftheashenqueen": "action",
     "oriandthewillofthewisps": "not_for_me",
     "reddeadredemption": "finished",
@@ -296,7 +301,7 @@
     "NINJAGAIDENMasterCollection": "action",
     "Cyberpunk2077": "finished",
     "ELDENRINGNIGHTREIGN": "action",
-    "MindsEye": "action",
+    "MindsEye": "not_for_me",
     "DuneImperium": "action",
     "Darksouls3": "finished",
     "DarkSouls2": "finished",
@@ -1011,6 +1016,7 @@
     "nginx": "mybackup",
     "wordpress": "mybackup",
     "mirrorsedgecatalyst": "action",
+    "mouse-p-i-for-hire": "new",
     "mymainahk": "mybackup",
     "obsidion": "new",
     "credentials": "new",
@@ -1082,8 +1088,7 @@
     "castlevanialordsofshadow2": "not_for_me",
     "princeofpersiathelostcrown": "platformers",
     "againstthestorm": "strategy",
-    "hifirush": "finished",
-    "mouse-p-i-for-hire": "new"
+    "hifirush": "finished"
   },
-  "lastUpdated": "2026-04-22T02:05:30.827Z"
+  "lastUpdated": "2026-04-29T23:22:04.106Z"
 }
