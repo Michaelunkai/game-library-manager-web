@@ -32,7 +32,7 @@
     "lostepic": "action",
     "hadesii": "action",
     "hollowknight": "not_for_me",
-    "childrenofmorta": "action",
+    "childrenofmorta": "not_for_me",
     "speedtest": "mybackup",
     "gothic3": "action",
     "octopathtraveler": "rpg",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-04-29T23:22:31.347Z"
+  "lastUpdated": "2026-04-29T23:29:53.775Z"
 }
