@@ -21,11 +21,11 @@
     "sports"
   ],
   "gameCategories": {
-    "1113": "new",
-    "1114": "new",
-    "1115": "new",
-    "1116": "new",
-    "1117": "new",
+    "1113": "not_for_me",
+    "1114": "not_for_me",
+    "1115": "not_for_me",
+    "1116": "not_for_me",
+    "1117": "not_for_me",
     "dawnoftheashenqueen": "action",
     "oriandthewillofthewisps": "not_for_me",
     "reddeadredemption": "finished",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-07T20:27:58.084Z"
+  "lastUpdated": "2026-05-07T20:28:49.693Z"
 }
