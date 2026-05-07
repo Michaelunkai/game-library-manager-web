@@ -473,7 +473,7 @@
     "ubuntudesktop": "oporationsystems",
     "SenuasSagaHellblade2": "storydriven",
     "trine4": "action",
-    "Outward": "action",
+    "Outward": "not_for_me",
     "DragonBallSparkingZERO": "not_for_me",
     "SteinsGateElite": "storydriven",
     "StickFightTheGame": "action",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-07T20:26:59.049Z"
+  "lastUpdated": "2026-05-07T20:27:58.084Z"
 }
