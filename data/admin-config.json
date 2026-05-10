@@ -932,14 +932,14 @@
     "sackboy": "action",
     "plagtalerequirm": "openworld",
     "escapefromtarkov": "shooters",
-    "alanwake": "storydriven",
+    "alanwake": "not_for_me",
     "hotwheels": "action",
     "cosmicshake": "platformers",
     "moderwarfare2": "shooters",
     "ghostrunner2": "platformers",
     "riftapart": "finished",
     "subnautica": "not_for_me",
-    "systemshock": "shooters",
+    "systemshock": "not_for_me",
     "vampiresurvivors": "not_for_me",
     "highonlife": "finished",
     "thegodfather": "action",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-10T18:23:35.524Z"
+  "lastUpdated": "2026-05-10T18:26:05.295Z"
 }
