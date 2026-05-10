@@ -763,7 +763,7 @@
     "risen3": "action",
     "deadspace": "not_for_me",
     "strangerofparadaise": "action",
-    "atlasfallen": "action",
+    "atlasfallen": "not_for_me",
     "circuselectricque": "platformers",
     "firemblemwarriors3hopes": "nintendo/switch",
     "steelrising": "hacknslash",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-07T20:28:49.693Z"
+  "lastUpdated": "2026-05-10T18:15:25.900Z"
 }
