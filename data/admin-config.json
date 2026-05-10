@@ -772,7 +772,7 @@
     "nomoreheroes3": "action",
     "marvelsguardiansofthegalaxy": "storydriven",
     "bioshock2": "not_for_me",
-    "thegunk": "action",
+    "thegunk": "not_for_me",
     "bioshock": "not_for_me",
     "jusant": "action",
     "proxtruenas": "oporationsystems",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-10T18:15:25.900Z"
+  "lastUpdated": "2026-05-10T18:23:35.524Z"
 }
