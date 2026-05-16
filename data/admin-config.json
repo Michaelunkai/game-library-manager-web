@@ -458,7 +458,7 @@
     "LEGOBatman3BeyondGotham": "localcoop",
     "RiverCityGirls2": "localcoop",
     "HeaveHo": "action",
-    "HumanFallFlat": "action",
+    "HumanFallFlat": "not_for_me",
     "Magicka": "action",
     "Magicka2": "action",
     "HammerwatchII": "action",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-16T17:20:28.233Z"
+  "lastUpdated": "2026-05-16T17:21:15.735Z"
 }
