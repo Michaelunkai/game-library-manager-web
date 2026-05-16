@@ -812,7 +812,7 @@
     "tailsthebackbonepreludes": "action",
     "fatesamurairemnant": "hacknslash",
     "covergencealolstory": "storydriven",
-    "codadvancedwarfare": "shooters",
+    "codadvancedwarfare": "not_for_me",
     "covergence": "action",
     "codghosts": "shooters",
     "bombrushcyberfunk": "platformers",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-16T17:21:49.184Z"
+  "lastUpdated": "2026-05-16T17:22:31.588Z"
 }
