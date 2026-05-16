@@ -710,7 +710,7 @@
     "megamanbattlenetwork": "nintendo/switch",
     "livealive": "simulators",
     "advancedwars": "nintendo/switch",
-    "riskofrain": "action",
+    "riskofrain": "not_for_me",
     "trektoyomi": "action",
     "driversanfrancisco": "racing",
     "gns3": "mybackup",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-16T17:21:15.735Z"
+  "lastUpdated": "2026-05-16T17:21:49.184Z"
 }
