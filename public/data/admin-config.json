@@ -319,7 +319,7 @@
     "moonscars": "soulslike",
     "EldestSouls": "soulslike",
     "eldenringShadowoftheErdtree": "soulslike",
-    "Road96": "storydriven",
+    "Road96": "not_for_me",
     "TheCosmicWheelSisterhood": "action",
     "TinyGlade": "action",
     "ALittletotheLeft": "not_for_me",
@@ -1065,7 +1065,7 @@
     "minicozyroomlofi": "chill",
     "demontides": "action",
     "placidplasticdeckaquietquest": "action",
-    "towerborne": "action",
+    "towerborne": "not_for_me",
     "nioh3": "soulslike",
     "strangerofparadisefinalfantasyorigin": "action",
     "theouterworlds2": "rpg",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-16T17:22:31.588Z"
+  "lastUpdated": "2026-05-17T19:54:21.954Z"
 }
