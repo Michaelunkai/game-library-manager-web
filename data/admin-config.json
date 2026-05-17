@@ -14,7 +14,6 @@
     "simulators",
     "bulkgames",
     "fighting",
-    "soulslike",
     "storydriven",
     "puzzle",
     "strategy",
@@ -1090,5 +1089,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-16T17:22:31.588Z"
+  "lastUpdated": "2026-05-17T18:00:26.739Z"
 }
