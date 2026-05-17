@@ -14,10 +14,11 @@
     "simulators",
     "bulkgames",
     "fighting",
+    "soulslike",
+    "storydriven",
     "puzzle",
     "strategy",
-    "sports",
-    "soulslike"
+    "sports"
   ],
   "gameCategories": {
     "1113": "not_for_me",
@@ -1089,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-17T18:00:40.489Z"
+  "lastUpdated": "2026-05-16T17:22:31.588Z"
 }
