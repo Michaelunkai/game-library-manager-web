@@ -172,7 +172,7 @@
     "ariseasimplestory": "not_for_me",
     "figment2creedvalley": "action",
     "boxeslostfragments": "action",
-    "deltarune": "action",
+    "deltarune": "storydriven",
     "privazer": "win11maintaince",
     "bleachbit": "win11maintaince",
     "afishermanstale": "not_for_me",
@@ -1090,5 +1090,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-17T19:54:21.954Z"
+  "lastUpdated": "2026-05-18T11:11:28.339Z"
 }
