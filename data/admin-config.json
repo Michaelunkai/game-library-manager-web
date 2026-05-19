@@ -852,7 +852,7 @@
     "windowserver22vhdx": "oporationsystems",
     "thecaseofthegoldenidol": "action",
     "shadowgambit": "action",
-    "metroredux": "shooters",
+    "metroredux": "not_for_me",
     "windows11vhdx": "oporationsystems",
     "sunsetoverdive": "action",
     "yakuza6thesongodlife": "storydriven",
@@ -992,7 +992,7 @@
     "witcher3": "not_for_me",
     "hyperlightdrifter": "not_for_me",
     "doomethernal": "finished",
-    "metroexodus": "shooters",
+    "metroexodus": "not_for_me",
     "stray": "finished",
     "transistor": "finished",
     "thesurge2": "shooters",
@@ -1091,5 +1091,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-18T12:59:11.816Z"
+  "lastUpdated": "2026-05-19T23:03:18.188Z"
 }
