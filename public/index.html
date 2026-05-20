@@ -29,6 +29,8 @@
 </head>
 <body>
     <div id="app">
+        <a class="skip-link" href="#mainContent">Skip to main content</a>
+        <div id="resultsAnnouncement" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         <!-- Header -->
         <header class="header">
             <div class="header-left">
@@ -84,7 +86,8 @@
                 <button id="showInstalledBtn" class="action-bar-btn">✅ Show Installed</button>
                 <button id="selectAllBtn" class="action-bar-btn">☑️ Select All</button>
                 <button id="selectCategoryBtn" class="action-bar-btn">📂 Select Category</button>
-                <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>n                <button id="copyAllCmdsBtn" class="action-bar-btn" disabled>📋 Copy Cmds</button>
+                <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>
+                <button id="copyAllCmdsBtn" class="action-bar-btn" disabled>📋 Copy Cmds</button>
                 <button id="addImagesBtn" class="action-bar-btn" title="Scan all games and fetch missing/wrong cover images from multiple databases" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;">🖼️ Add Images</button>
                 <button id="addTimesBtn" class="action-bar-btn" title="Fetch How Long To Beat data for all games from online databases" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">⏱️ Add Times</button>
                 <button id="randomGameBtn" class="action-bar-btn">🎲 Random</button>
@@ -129,8 +132,8 @@
             </aside>
 
             <!-- Games Grid -->
-            <main class="content">
-                <div id="gamesGrid" class="games-grid">
+            <main id="mainContent" class="content" tabindex="-1">
+                <div id="gamesGrid" class="games-grid" role="list" aria-label="Games">
                     <!-- Games will be populated by JavaScript -->
                 </div>
                 <div id="loadingIndicator" class="loading">
@@ -138,7 +141,9 @@
                     <p>Loading games...</p>
                 </div>
                 <div id="noResults" class="no-results" style="display: none;">
-                    <p>No games found matching your search.</p>
+                    <h2>No games found</h2>
+                    <p id="noResultsMessage">Try changing your search or filters.</p>
+                    <button id="clearFiltersBtn" class="action-bar-btn">Clear filters</button>
                 </div>
             </main>
         </div>

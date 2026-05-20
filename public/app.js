@@ -1061,6 +1061,10 @@ class GameLibrary {
         document.getElementById('deselectAllBtn').addEventListener('click', () => {
             this.deselectAll();
         });
+        
+        document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+            this.clearFilters();
+        });
 
         document.getElementById('runSelectedBtn').addEventListener('click', () => {
             this.runSelectedGames();
@@ -1353,6 +1357,16 @@ class GameLibrary {
             filtered = filtered.filter(g => this.installedGames.has(g.id));
         }
 
+        // Filter by max size if user entered a value
+        const maxSizeInput = document.getElementById('maxSizeFilter');
+        const maxSizeValue = maxSizeInput ? parseFloat(maxSizeInput.value) : NaN;
+        if (!Number.isNaN(maxSizeValue) && maxSizeValue > 0) {
+            filtered = filtered.filter(g => {
+                const gameSize = this.imageSizes[g.id];
+                return gameSize !== undefined && gameSize !== null && gameSize <= maxSizeValue;
+            });
+        }
+
         filtered.sort((a, b) => {
             let valA, valB;
             let hasA, hasB; // Track if values exist for proper fallback handling
@@ -1423,6 +1437,7 @@ class GameLibrary {
 
         this.filteredGames = filtered;
         document.getElementById('filteredCount').textContent = filtered.length;
+        this.updateResultsSummary();
 
         // Reset to first page on filter/search change
         this.currentPage = 1;
@@ -1433,9 +1448,19 @@ class GameLibrary {
     renderGames() {
         const grid = document.getElementById('gamesGrid');
         const noResults = document.getElementById('noResults');
+        const noResultsMessage = document.getElementById('noResultsMessage');
 
         if (this.filteredGames.length === 0) {
             grid.innerHTML = '';
+            if (noResultsMessage) {
+                const hasSearch = this.searchQuery.length > 0;
+                const maxSizeInput = document.getElementById('maxSizeFilter');
+                const hasMaxSize = maxSizeInput && maxSizeInput.value.trim() !== '';
+                const hasInstalledOnly = this.showInstalledOnly;
+                noResultsMessage.textContent = hasSearch || hasMaxSize || hasInstalledOnly
+                    ? 'No games match your current search and filters.'
+                    : 'No games are available in this category right now.';
+            }
             noResults.style.display = 'block';
             this.renderPaginationControls();
             return;
@@ -1495,6 +1520,20 @@ class GameLibrary {
                     this.toggleGameSelection(gameId, checkbox.checked);
                 }
             });
+
+            // Keyboard access: Enter/Space toggles selection, i opens details
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    checkbox.checked = !checkbox.checked;
+                    this.toggleGameSelection(card.dataset.id, checkbox.checked);
+                }
+                if (e.key.toLowerCase() === 'i') {
+                    e.preventDefault();
+                    const game = this.games.find(g => g.id === card.dataset.id);
+                    if (game) this.openGameModal(game);
+                }
+            });
         });
 
         this.lazyLoadImages();
@@ -1545,7 +1584,7 @@ class GameLibrary {
         const isNew = game.category === 'new';
 
         return `
-            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}" role="article" aria-label="${game.name}">
+            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}" role="listitem" tabindex="0" aria-label="${game.name}">
                 <input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''} aria-label="Select ${game.name}">
                 ${isSelected ? '<span class="checkmark-icon">✓</span>' : ''}
                 <button class="info-btn" title="View details" aria-label="View details for ${game.name}">ℹ️</button>
@@ -1592,6 +1631,7 @@ class GameLibrary {
     updateSelectedCount() {
         const count = this.selectedGames.size;
         document.getElementById('selectedCount').textContent = count;
+        this.updateResultsSummary();
 
         const runBtn = document.getElementById('runSelectedBtn');
         runBtn.textContent = `▶️ Run Selected (${count})`;
@@ -1614,6 +1654,36 @@ class GameLibrary {
         if (moveToBtn) {
             moveToBtn.disabled = count === 0 || !this.isAdmin;
         }
+    }
+
+    updateResultsSummary() {
+        const selectedCount = this.selectedGames.size;
+        const filteredCount = this.filteredGames.length;
+        const totalCount = this.games.length;
+        const tabLabel = this.currentTab === 'all' ? 'all categories' : this.currentTab;
+        const message = `${filteredCount} of ${totalCount} games shown in ${tabLabel}. ${selectedCount} selected.`;
+        const announcement = document.getElementById('resultsAnnouncement');
+        if (announcement) {
+            announcement.textContent = message;
+        }
+    }
+
+    clearFilters() {
+        this.searchQuery = '';
+        this.currentTab = 'all';
+        this.showInstalledOnly = false;
+
+        const searchInput = document.getElementById('searchInput');
+        const maxSizeInput = document.getElementById('maxSizeFilter');
+        const showInstalledBtn = document.getElementById('showInstalledBtn');
+
+        if (searchInput) searchInput.value = '';
+        if (maxSizeInput) maxSizeInput.value = '';
+        if (showInstalledBtn) showInstalledBtn.classList.remove('active');
+
+        this.renderTabs();
+        this.filterAndRender();
+        this.showToast('Filters cleared', 'info');
     }
 
     selectAllVisible() {

@@ -99,6 +99,35 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+.skip-link {
+    position: absolute;
+    top: -48px;
+    left: 16px;
+    z-index: 1000;
+    background: var(--accent);
+    color: white;
+    text-decoration: none;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: top var(--transition-fast);
+}
+
+.skip-link:focus {
+    top: 10px;
+}
+
 /* Custom selection color */
 ::selection {
     background: var(--accent);
@@ -933,6 +962,11 @@ body {
     border-color: var(--accent);
 }
 
+.game-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 .game-card:hover::before {
     opacity: 0.5;
 }
@@ -1312,6 +1346,13 @@ body {
 
 .no-results p {
     font-size: 1.1rem;
+    margin-bottom: 16px;
+}
+
+.no-results h2 {
+    margin-bottom: 8px;
+    font-size: 1.5rem;
+    color: var(--text-primary);
 }
 
 /* ============================================
