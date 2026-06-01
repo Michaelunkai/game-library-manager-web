@@ -1023,7 +1023,7 @@
     "linux": "mybackup",
     "codex": "new",
     "Desktop": "new",
-    "hermes": "new",
+    "hermes": "mybackup",
     "mmenu_import_test": "new",
     "mmenu_overflow_smoke": "new",
     "mmenu_mb_progress_test": "new",
@@ -1107,5 +1107,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-01T20:53:57.034Z"
+  "lastUpdated": "2026-06-01T20:54:10.487Z"
 }
