@@ -467,7 +467,7 @@
     "DuckGame": "action",
     "GangBeasts": "action",
     "apk": "mybackup",
-    "CassetteBeasts": "not_for_me",
+    "CassetteBeasts": "action",
     "neva": "action",
     "planetoflana": "action",
     "ubuntudesktop": "oporationsystems",
@@ -1107,5 +1107,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-01T11:27:38.915Z"
+  "lastUpdated": "2026-06-01T11:26:53.895Z"
 }
