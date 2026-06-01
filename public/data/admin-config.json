@@ -1016,7 +1016,7 @@
     "nginx": "mybackup",
     "wordpress": "mybackup",
     "mirrorsedgecatalyst": "action",
-    "black-myth-wukong": "new",
+    "black-myth-wukong": "finished",
     "life-is-strange-reunion": "new",
     "credentials": "new",
     "obsidion": "new",
@@ -1107,5 +1107,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-01T11:26:53.895Z"
+  "lastUpdated": "2026-06-01T20:52:29.982Z"
 }
