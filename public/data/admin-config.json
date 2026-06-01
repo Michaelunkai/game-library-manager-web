@@ -1018,11 +1018,11 @@
     "mirrorsedgecatalyst": "action",
     "black-myth-wukong": "finished",
     "life-is-strange-reunion": "storydriven",
-    "credentials": "new",
+    "credentials": "mybackup",
     "obsidion": "new",
     "linux": "mybackup",
-    "codex": "new",
-    "Desktop": "new",
+    "codex": "mybackup",
+    "Desktop": "mybackup",
     "hermes": "mybackup",
     "mmenu_import_test": "new",
     "mmenu_overflow_smoke": "new",
@@ -1107,5 +1107,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-01T20:54:10.487Z"
+  "lastUpdated": "2026-06-01T20:54:31.884Z"
 }
