@@ -613,7 +613,7 @@
     "DYSMANTLE": "action",
     "nobodysavestheworld": "action",
     "laracroftandthetempleofosiris": "action",
-    "sonicmania": "platformers",
+    "sonicmania": "not_for_me",
     "kingdomclassic": "nintendo/switch",
     "Danganronpa": "storydriven",
     "chantsofsennaar": "platformers",
@@ -1107,5 +1107,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-01T20:55:43.552Z"
+  "lastUpdated": "2026-06-01T22:42:52.581Z"
 }
