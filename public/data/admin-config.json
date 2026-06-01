@@ -1024,11 +1024,11 @@
     "codex": "mybackup",
     "Desktop": "mybackup",
     "hermes": "mybackup",
-    "mmenu_import_test": "new",
-    "mmenu_overflow_smoke": "new",
-    "mmenu_mb_progress_test": "new",
-    "mmenu_test_payload": "new",
-    "mmenu_ignore_test": "new",
+    "mmenu_import_test": "not_for_me",
+    "mmenu_overflow_smoke": "not_for_me",
+    "mmenu_mb_progress_test": "not_for_me",
+    "mmenu_test_payload": "not_for_me",
+    "mmenu_ignore_test": "not_for_me",
     "crimson-desert": "new",
     "stellar-blade": "new",
     "like-a-dragon-pirate-yakuza-in-hawaii": "openworld",
@@ -1107,5 +1107,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-01T20:54:31.884Z"
+  "lastUpdated": "2026-06-01T20:54:42.711Z"
 }
