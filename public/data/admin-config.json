@@ -1016,6 +1016,8 @@
     "nginx": "mybackup",
     "wordpress": "mybackup",
     "mirrorsedgecatalyst": "action",
+    "black-myth-wukong": "new",
+    "life-is-strange-reunion": "new",
     "credentials": "new",
     "obsidion": "new",
     "linux": "new",
@@ -1058,7 +1060,7 @@
     "hereticsfork": "new",
     "royalrevoltsurvivors": "new",
     "thekingiswatching": "not_for_me",
-    "dicewithdeath": "new",
+    "dicewithdeath": "not_for_me",
     "magicraft": "new",
     "kaijucrackingcorporation": "new",
     "dishonored": "not_for_me",
@@ -1105,5 +1107,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-05-28T01:08:53.249Z"
+  "lastUpdated": "2026-06-01T11:26:53.895Z"
 }
