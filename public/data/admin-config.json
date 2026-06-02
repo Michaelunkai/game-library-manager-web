@@ -435,7 +435,7 @@
     "TheLifeAndSufferingOfSirBrante": "action",
     "PathfinderWrathoftheRighteous": "action",
     "kingdomtwocrowns": "action",
-    "Enshrouded": "action",
+    "Enshrouded": "not_for_me",
     "DaysGone": "finished",
     "GoatSimulator3": "simulators",
     "TheJackboxPartyPack7": "localcoop",
@@ -1016,6 +1016,11 @@
     "nginx": "mybackup",
     "wordpress": "mybackup",
     "mirrorsedgecatalyst": "action",
+    "CrusaderKings3": "new",
+    "hellpie": "new",
+    "marsupilamihoobadventure": "new",
+    "amongtrees": "new",
+    "REPLACED": "new",
     "black-myth-wukong": "finished",
     "life-is-strange-reunion": "storydriven",
     "credentials": "mybackup",
@@ -1107,5 +1112,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-01T22:46:47.810Z"
+  "lastUpdated": "2026-06-02T18:02:15.580Z"
 }
