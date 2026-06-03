@@ -1016,6 +1016,20 @@
     "nginx": "mybackup",
     "wordpress": "mybackup",
     "mirrorsedgecatalyst": "action",
+    "shinobiartofvengeance": "new",
+    "Kristala": "new",
+    "goodnightuniverse": "new",
+    "007firstlight": "new",
+    "chronosbeforetheashes": "new",
+    "thepalebeyond": "new",
+    "echoesoftheend": "new",
+    "bladeofdarkness": "new",
+    "whilewewaithere": "new",
+    "strayedlights": "new",
+    "wanteddead": "new",
+    "thecouncil": "new",
+    "batoralosthaven": "new",
+    "hermes-push-smoke-20260602": "new",
     "CrusaderKings3": "new",
     "hellpie": "new",
     "marsupilamihoobadventure": "new",
@@ -1037,7 +1051,7 @@
     "crimson-desert": "new",
     "stellar-blade": "action",
     "like-a-dragon-pirate-yakuza-in-hawaii": "openworld",
-    "edge-of-eternity": "new",
+    "edge-of-eternity": "not_for_me",
     "pragmata": "new",
     "mixtape": "storydriven",
     "mouse-p-i-for-hire": "new",
@@ -1112,5 +1126,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-02T18:02:15.580Z"
+  "lastUpdated": "2026-06-03T21:06:39.404Z"
 }
