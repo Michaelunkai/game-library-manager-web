@@ -118,7 +118,7 @@
     "pokemonlegendsza": "nintendo/switch",
     "batmanarkhamasylumgameoftheyearedition": "finished",
     "dyinglightthebeast": "action",
-    "hollowknightsilksong": "platformers",
+    "hollowknightsilksong": "not_for_me",
     "histadrut": "mybackup",
     "lostrecordsbloomrage": "storydriven",
     "dispatch": "finished",
@@ -1127,7 +1127,8 @@
     "castlevanialordsofshadow2": "not_for_me",
     "princeofpersiathelostcrown": "platformers",
     "againstthestorm": "strategy",
-    "hifirush": "finished"
+    "hifirush": "finished",
+    "thelongdark": "new"
   },
-  "lastUpdated": "2026-06-04T00:54:38.507Z"
+  "lastUpdated": "2026-06-04T01:03:05.624Z"
 }
