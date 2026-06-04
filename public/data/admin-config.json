@@ -949,7 +949,7 @@
     "haveanicedeath": "action",
     "cocoon": "finished",
     "oblivion": "not_for_me",
-    "seaofstars": "action",
+    "seaofstars": "not_for_me",
     "citieskylines2": "simulators",
     "eldenrings": "finished",
     "kingdomofamalur": "action",
@@ -1016,6 +1016,8 @@
     "nginx": "mybackup",
     "wordpress": "mybackup",
     "mirrorsedgecatalyst": "action",
+    "pascalswagerdefinitiveedition": "new",
+    "deathsgambitafterlifedeathsgambitAfterlife": "new",
     "shinobiartofvengeance": "new",
     "Kristala": "new",
     "goodnightuniverse": "new",
@@ -1126,5 +1128,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-03T21:06:39.404Z"
+  "lastUpdated": "2026-06-04T00:23:41.989Z"
 }
