@@ -946,7 +946,7 @@
     "scarface": "not_for_me",
     "unpacking": "chill",
     "scarletnexus": "storydriven",
-    "haveanicedeath": "action",
+    "haveanicedeath": "not_for_me",
     "cocoon": "finished",
     "oblivion": "not_for_me",
     "seaofstars": "not_for_me",
@@ -1016,6 +1016,7 @@
     "nginx": "mybackup",
     "wordpress": "mybackup",
     "mirrorsedgecatalyst": "action",
+    "legacyofkaindefianceremastered": "new",
     "pascalswagerdefinitiveedition": "new",
     "deathsgambitafterlifedeathsgambitAfterlife": "new",
     "shinobiartofvengeance": "new",
@@ -1128,5 +1129,5 @@
     "againstthestorm": "strategy",
     "hifirush": "finished"
   },
-  "lastUpdated": "2026-06-04T00:23:41.989Z"
+  "lastUpdated": "2026-06-04T00:54:38.507Z"
 }
