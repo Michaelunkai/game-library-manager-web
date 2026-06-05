@@ -649,7 +649,7 @@
     "visionsofmana": "platformers",
     "Avowed": "not_for_me",
     "spiderman2": "finished",
-    "KingdomComeDeliverance2": "action",
+    "KingdomComeDeliverance2": "not_for_me",
     "Overcooked2": "localcoop",
     "LostRecordsBloomRage": "new",
     "ridersrepublic": "action",
@@ -1327,5 +1327,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-05T18:12:40.559Z"
+  "lastUpdated": "2026-06-05T19:48:04.966Z"
 }
