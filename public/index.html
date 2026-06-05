@@ -4,36 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Game Library Manager - A Docker-based game library manager for downloading and organizing your game collection">
-    <meta name="theme-color" content="#6366f1">
+    <meta name="theme-color" content="#0b1020">
     <title>Game Library Manager v5.0</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=5.0">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=5.1">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
 </head>
 <body>
     <div id="app">
         <!-- Header -->
-        <header class="header">
+        <header class="header" role="banner">
             <div class="header-left">
                 <a href="https://github.com/Michaelunkai/game-library-manager-web" target="_blank" class="github-link" title="View on GitHub">
                     <svg height="24" width="24" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
                     </svg>
                 </a>
-                <h1>🎮 Game Library Manager</h1>
+                <h1><span class="brand-mark">🎮</span> Game Library</h1>
                 <span class="version">v5.0</span>
             </div>
             <div class="header-center">
                 <div class="search-container">
-                    <input type="text" id="searchInput" placeholder="Search games... (Ctrl+K)" autocomplete="off">
+                    <input type="text" id="searchInput" placeholder="Find a game, tag, category, or Docker image..." autocomplete="off" aria-label="Search games">
                     <span class="search-icon">🔍</span>
                 </div>
             </div>
             <div class="header-right">
                 <div class="admin-login" id="adminLoginBox">
-                    <input type="password" id="adminPassword" placeholder="🔐 Admin" autocomplete="off">
+                    <input type="password" id="adminPassword" placeholder="Admin key" autocomplete="off" aria-label="Admin password">
                 </div>
                 <div class="admin-logged" id="adminLoggedBox" style="display: none;">
                     <span class="admin-badge">👑 Admin</span>
@@ -46,21 +46,21 @@
                     <span class="separator">|</span>
                     <span id="selectedCount">0</span> selected
                 </div>
-                <button id="sortBtn" class="header-btn" title="Sort games">
+                <button id="sortBtn" class="header-btn" title="Sort games" aria-haspopup="menu">
                     <span>Sort</span>
                     <span id="sortIndicator">↓ Name</span>
                 </button>
-                <button id="themeBtn" class="header-btn" title="Toggle theme">🌙</button>
-                <button id="settingsBtn" class="header-btn" title="Settings">⚙️</button>
+                <button id="themeBtn" class="header-btn icon-only" title="Toggle theme" aria-label="Toggle theme">🌙</button>
+                <button id="settingsBtn" class="header-btn icon-only" title="Settings" aria-label="Open settings">⚙️</button>
             </div>
         </header>
 
         <!-- Action Bar -->
-        <div class="action-bar">
+        <div class="action-bar" role="toolbar" aria-label="Library actions">
             <div class="action-bar-left">
                 <label class="path-input-label">
                     <span>📁 Mount Path:</span>
-                    <input type="text" id="globalMountPath" value="F:/Games" placeholder="F:/Games">
+                    <input type="text" id="globalMountPath" value="F:/Games" placeholder="F:/Games" aria-label="Global mount path">
                 </label>
                 <button id="syncDockerBtn" class="action-bar-btn sync-btn" title="Sync with Docker Hub to find new tags">🔄 Sync</button>
             </div>
@@ -79,8 +79,8 @@
                 <button id="showInstalledBtn" class="action-bar-btn">✅ Show Installed</button>
                 <button id="selectAllBtn" class="action-bar-btn">☑️ Select All</button>
                 <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>
-                <button id="addImagesBtn" class="action-bar-btn" title="Scan all games and fetch missing/wrong cover images from multiple databases" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;">🖼️ Add Images</button>
-                <button id="addTimesBtn" class="action-bar-btn" title="Fetch How Long To Beat data for all games from online databases" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">⏱️ Add Times</button>
+                <button id="addImagesBtn" class="action-bar-btn enrich-images" title="Scan all games and fetch missing/wrong cover images from multiple databases">🖼️ Add Images</button>
+                <button id="addTimesBtn" class="action-bar-btn enrich-times" title="Fetch How Long To Beat data for all games from online databases">⏱️ Add Times</button>
                 <div class="run-dropdown-container">
                     <button id="runSelectedBtn" class="action-bar-btn primary" disabled>▶️ Run Selected (0)</button>
                     <button id="runFormatBtn" class="action-bar-btn primary format-toggle" disabled title="Choose script format">▼</button>
@@ -148,27 +148,39 @@
         <!-- Main Content -->
         <div class="main-container">
             <!-- Tabs Sidebar -->
-            <aside class="sidebar">
+            <aside class="sidebar" aria-label="Game categories">
                 <div class="tabs-header">
                     <h3>Categories</h3>
                     <span id="tabCount" class="tab-count">29 tabs</span>
                 </div>
+                <section id="adminCategoryPanel" class="admin-category-panel admin-only" aria-label="Admin category manager">
+                    <div class="admin-category-panel__header">
+                        <span>Category Control</span>
+                        <small>Permanent admin tools</small>
+                    </div>
+                    <div class="admin-category-create">
+                        <input type="text" id="newCategoryName" placeholder="New category name" autocomplete="off" aria-label="New category name">
+                        <button type="button" id="createCategoryBtn" class="admin-category-btn primary">Create</button>
+                    </div>
+                    <p class="admin-category-hint">Rename, hide, delete, or move selected games. Saves immediately to the live site config.</p>
+                </section>
                 <nav id="tabsContainer" class="tabs-nav">
                     <!-- Tabs will be populated by JavaScript -->
                 </nav>
             </aside>
 
             <!-- Games Grid -->
-            <main class="content">
+            <main class="content" aria-label="Games">
                 <div id="gamesGrid" class="games-grid">
                     <!-- Games will be populated by JavaScript -->
                 </div>
                 <div id="loadingIndicator" class="loading">
                     <div class="spinner"></div>
-                    <p>Loading games...</p>
+                    <p>Loading the full Docker library...</p>
                 </div>
                 <div id="noResults" class="no-results" style="display: none;">
-                    <p>No games found matching your search.</p>
+                    <p>No games matched this view.</p>
+                    <small>Try clearing search, rating, tag, installed, or category filters.</small>
                 </div>
             </main>
         </div>
@@ -282,7 +294,7 @@
         </div>
 
         <!-- Sort Menu -->
-        <div id="sortMenu" class="dropdown-menu" style="display: none;">
+        <div id="sortMenu" class="dropdown-menu" style="display: none;" role="menu" aria-label="Sort games">
             <button data-sort="name" data-order="asc" class="sort-option active">↓ Name (A-Z)</button>
             <button data-sort="name" data-order="desc" class="sort-option">↑ Name (Z-A)</button>
             <button data-sort="time" data-order="asc" class="sort-option">⏱️ Time to Beat (Low-High)</button>
@@ -320,6 +332,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=4.0"></script>
+    <script src="app.js?v=5.1"></script>
 </body>
 </html>

@@ -919,6 +919,22 @@ class GameLibrary {
             this.adminLogout();
         });
 
+        const createCategoryBtn = document.getElementById('createCategoryBtn');
+        const newCategoryName = document.getElementById('newCategoryName');
+        if (createCategoryBtn && newCategoryName) {
+            createCategoryBtn.addEventListener('click', () => {
+                this.createCategoryFromInput(newCategoryName.value);
+                newCategoryName.value = '';
+            });
+            newCategoryName.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.createCategoryFromInput(newCategoryName.value);
+                    newCategoryName.value = '';
+                }
+            });
+        }
+
         // Search
         const searchInput = document.getElementById('searchInput');
         searchInput.addEventListener('input', (e) => {
@@ -1176,9 +1192,48 @@ class GameLibrary {
         return false;
     }
 
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        })[char]);
+    }
+
+    createCategoryId(name) {
+        const base = String(name || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+        return base || `category_${Date.now()}`;
+    }
+
+    normalizeTabs(tabs) {
+        const seen = new Set();
+        const normalized = [];
+        (Array.isArray(tabs) ? tabs : []).forEach(tab => {
+            if (!tab || !tab.id) return;
+            const id = String(tab.id);
+            if (seen.has(id)) return;
+            seen.add(id);
+            normalized.push({
+                id,
+                name: String(tab.name || id)
+            });
+        });
+        return normalized;
+    }
+
     renderTabs() {
         const container = document.getElementById('tabsContainer');
         container.innerHTML = '';
+        const tabCount = document.getElementById('tabCount');
+        if (tabCount) {
+            tabCount.textContent = `${this.tabs.length} tabs`;
+        }
 
         // Add Wishlist tab at the top
         const wishlistBtn = document.createElement('button');
@@ -1205,27 +1260,33 @@ class GameLibrary {
             const count = this.getTabCount(tab.id);
             const btn = document.createElement('button');
             btn.className = `tab-btn ${tab.id === this.currentTab ? 'active' : ''} ${isHidden ? 'hidden-tab' : ''} ${isAdminOnly ? 'admin-only-tab' : ''}`;
+            btn.type = 'button';
 
             // ONLY admins see visibility controls - NEVER show to non-admins
             if (this.isAdmin === true && tab.id !== 'all') {
+                const safeName = this.escapeHtml(tab.name);
                 if (isAdminOnly) {
                     // Admin-only tabs show lock icon (cannot be toggled, permanently admin-only)
                     btn.innerHTML = `
-                        <span>${tab.name}</span>
+                        <span>${safeName}</span>
                         <span class="count">${count}</span>
                         <span class="admin-only-indicator" title="Admin-only tab (cannot be made public)">🔒</span>
                     `;
                 } else {
                     // Regular tabs show visibility toggle
                     btn.innerHTML = `
-                        <span>${tab.name}</span>
+                        <span>${safeName}</span>
                         <span class="count">${count}</span>
-                        <span class="tab-visibility-toggle" data-tab="${tab.id}" title="${isHidden ? 'Show to all' : 'Hide from non-admins'}">${isHidden ? '👁️‍🗨️' : '👁️'}</span>
+                        <span class="tab-admin-actions" aria-label="Admin category actions">
+                            <span class="tab-visibility-toggle" data-tab="${this.escapeHtml(tab.id)}" title="${isHidden ? 'Show to all' : 'Hide from non-admins'}">${isHidden ? '👁️‍🗨️' : '👁️'}</span>
+                            <span class="tab-rename-btn" data-tab="${this.escapeHtml(tab.id)}" title="Rename category">✎</span>
+                            <span class="tab-delete-btn" data-tab="${this.escapeHtml(tab.id)}" title="Delete category">×</span>
+                        </span>
                     `;
                 }
             } else {
                 btn.innerHTML = `
-                    <span>${tab.name}</span>
+                    <span>${this.escapeHtml(tab.name)}</span>
                     <span class="count">${count}</span>
                 `;
             }
@@ -1234,12 +1295,111 @@ class GameLibrary {
                 if (e.target.classList.contains('tab-visibility-toggle')) {
                     e.stopPropagation();
                     this.toggleTabVisibility(e.target.dataset.tab);
+                } else if (e.target.classList.contains('tab-rename-btn')) {
+                    e.stopPropagation();
+                    this.renameCategory(e.target.dataset.tab);
+                } else if (e.target.classList.contains('tab-delete-btn')) {
+                    e.stopPropagation();
+                    this.deleteCategory(e.target.dataset.tab);
                 } else {
                     this.selectTab(tab.id);
                 }
             });
             container.appendChild(btn);
         });
+    }
+
+    createCategoryFromInput(name) {
+        if (!this.isAdmin) {
+            this.showToast('Admin access required to create categories', 'error');
+            return;
+        }
+
+        const cleanName = String(name || '').trim();
+        if (!cleanName) {
+            this.showToast('Enter a category name first', 'warning');
+            return;
+        }
+
+        let id = this.createCategoryId(cleanName);
+        const existingIds = new Set(this.tabs.map(tab => tab.id));
+        const originalId = id;
+        let suffix = 2;
+        while (existingIds.has(id)) {
+            id = `${originalId}_${suffix++}`;
+        }
+
+        this.tabs.push({ id, name: cleanName });
+        this.currentTab = id;
+        this.persistCategoryConfig(`Created category "${cleanName}"`);
+    }
+
+    renameCategory(tabId) {
+        if (!this.isAdmin) return;
+        if (tabId === 'all' || this.isTabAdminOnly(tabId)) {
+            this.showToast('This category cannot be renamed', 'warning');
+            return;
+        }
+
+        const tab = this.tabs.find(t => t.id === tabId);
+        if (!tab) return;
+
+        const nextName = prompt('Rename category:', tab.name);
+        if (nextName === null) return;
+        const cleanName = nextName.trim();
+        if (!cleanName) {
+            this.showToast('Category name cannot be empty', 'error');
+            return;
+        }
+
+        tab.name = cleanName;
+        this.persistCategoryConfig(`Renamed category to "${cleanName}"`);
+    }
+
+    deleteCategory(tabId) {
+        if (!this.isAdmin) return;
+        if (tabId === 'all' || this.isTabAdminOnly(tabId)) {
+            this.showToast('This category cannot be deleted', 'warning');
+            return;
+        }
+
+        const tab = this.tabs.find(t => t.id === tabId);
+        if (!tab) return;
+
+        const fallbackTabs = this.tabs.filter(t => t.id !== tabId && !this.isTabAdminOnly(t.id));
+        const fallback = fallbackTabs.find(t => t.id === 'new') || fallbackTabs.find(t => t.id === 'action') || fallbackTabs.find(t => t.id !== 'all');
+        if (!fallback) {
+            this.showToast('Create another category before deleting this one', 'error');
+            return;
+        }
+
+        const affectedCount = this.games.filter(game => game.category === tabId).length;
+        const ok = confirm(`Delete "${tab.name}"? ${affectedCount} game(s) will move to "${fallback.name}". This saves permanently.`);
+        if (!ok) return;
+
+        this.games.forEach(game => {
+            if (game.category === tabId) {
+                game.category = fallback.id;
+            }
+        });
+        this.tabs = this.tabs.filter(t => t.id !== tabId);
+        this.hiddenTabs.delete(tabId);
+        if (this.currentTab === tabId) {
+            this.currentTab = fallback.id;
+        }
+        this.persistCategoryConfig(`Deleted "${tab.name}" and moved ${affectedCount} game(s)`);
+    }
+
+    persistCategoryConfig(successMessage) {
+        localStorage.setItem('gameLibraryTabs', JSON.stringify(this.tabs));
+        localStorage.setItem('gameLibraryGames', JSON.stringify(this.games));
+        this.renderTabs();
+        this.filterAndRender();
+        this.updateSelectedCount();
+        this.saveAdminConfigToServer();
+        if (successMessage) {
+            this.showToast(`${successMessage}. Saving permanently...`, 'success');
+        }
     }
 
     getTabCount(tabId) {
@@ -1468,6 +1628,15 @@ class GameLibrary {
                     this.toggleGameSelection(gameId, checkbox.checked);
                 }
             });
+
+            card.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target === card) {
+                    e.preventDefault();
+                    const gameId = card.dataset.id;
+                    checkbox.checked = !checkbox.checked;
+                    this.toggleGameSelection(gameId, checkbox.checked);
+                }
+            });
         });
 
         this.lazyLoadImages();
@@ -1489,19 +1658,19 @@ class GameLibrary {
         const isNew = game.category === 'new';
         const isWishlisted = this.wishlist.has(game.id);
         const gameRating = this.getGameRating(game.id);
-        const ratingStars = [1,2,3,4,5].map(s => `<span class="star-btn ${s <= gameRating ? 'star-filled' : ''}" data-star="${s}" title="Rate ${s} star${s>1?'s':''}">&#9733;</span>`).join('');
+        const ratingStars = [1,2,3,4,5].map(s => `<button type="button" class="star-btn ${s <= gameRating ? 'star-filled' : ''}" data-star="${s}" title="Rate ${s} star${s>1?'s':''}" aria-label="Rate ${game.name} ${s} star${s>1?'s':''}" aria-pressed="${s <= gameRating}">&#9733;</button>`).join('');
 
         return `
-            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}" role="article" aria-label="${game.name}">
+            <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}" role="article" tabindex="0" aria-label="${game.name}. Press Enter or Space to select.">
                 <input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''} aria-label="Select ${game.name}">
                 ${isSelected ? '<span class="checkmark-icon">✓</span>' : ''}
-                <button class="info-btn" title="View details" aria-label="View details for ${game.name}">ℹ️</button>
-                <button class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}" aria-label="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}">${isInstalled ? '✅' : '📥'}</button>
-                <button class="youtube-btn" title="Watch trailer on YouTube" aria-label="Watch ${game.name} trailer on YouTube" onclick="window.open('https://www.youtube.com/results?search_query=${encodeURIComponent(game.name + ' trailer')}', '_blank', 'noopener')">▶</button>
+                <button type="button" class="info-btn" title="View details" aria-label="View details for ${game.name}">ℹ️</button>
+                <button type="button" class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}" aria-label="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}" aria-pressed="${isInstalled}">${isInstalled ? '✅' : '📥'}</button>
+                <button type="button" class="youtube-btn" title="Watch trailer on YouTube" aria-label="Watch ${game.name} trailer on YouTube" onclick="window.open('https://www.youtube.com/results?search_query=${encodeURIComponent(game.name + ' trailer')}', '_blank', 'noopener')">▶</button>
                 ${isNew ? '<div class="new-badge">🆕 NEW</div>' : ''}
                 ${isInstalled ? '<div class="installed-badge">✓ Installed</div>' : ''}
                 ${isWishlisted ? '<div class="wishlist-badge">&#9829;</div>' : ''}
-                <button class="wishlist-btn ${isWishlisted ? 'wishlisted' : ''}" title="${isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}" aria-label="Toggle wishlist">&#9829;</button>
+                <button type="button" class="wishlist-btn ${isWishlisted ? 'wishlisted' : ''}" title="${isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}" aria-label="${isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}" aria-pressed="${isWishlisted}">&#9829;</button>
                 <p class="image-container">
                     <img
                         data-src="${imageSrc}"
@@ -2478,8 +2647,8 @@ echo "Done!"
 
         // Populate the menu with tabs
         menu.innerHTML = this.tabs.map(tab => `
-            <button class="move-to-option" data-tab="${tab.id}">
-                ${tab.name} (${this.getTabCount(tab.id)})
+            <button class="move-to-option" data-tab="${this.escapeHtml(tab.id)}">
+                ${this.escapeHtml(tab.name)} (${this.getTabCount(tab.id)})
             </button>
         `).join('');
 
@@ -2551,6 +2720,18 @@ echo "Done!"
 
     loadSavedGameChanges() {
         // Load any saved game modifications from localStorage
+        const savedTabs = localStorage.getItem('gameLibraryTabs');
+        if (savedTabs) {
+            try {
+                const normalizedTabs = this.normalizeTabs(JSON.parse(savedTabs));
+                if (normalizedTabs.length > 0) {
+                    this.tabs = normalizedTabs;
+                }
+            } catch (e) {
+                console.error('Failed to load saved tab changes:', e);
+            }
+        }
+
         const savedGames = localStorage.getItem('gameLibraryGames');
         if (savedGames) {
             try {
@@ -2634,7 +2815,7 @@ echo "Done!"
                 const r = this.getGameRating(gameId);
                 starsEl.innerHTML = [1,2,3,4,5].map(s => {
                     const filled = s <= r ? 'star-filled' : '';
-                    return `<span class="star-btn ${filled}" data-star="${s}" title="Rate ${s} star${s>1?'s':''}">&#9733;</span>`;
+                    return `<button type="button" class="star-btn ${filled}" data-star="${s}" title="Rate ${s} star${s>1?'s':''}" aria-label="Rate ${gameId} ${s} star${s>1?'s':''}" aria-pressed="${s <= r}">&#9733;</button>`;
                 }).join('');
                 starsEl.querySelectorAll('.star-btn').forEach(star => {
                     star.addEventListener('click', (e) => {
@@ -2814,6 +2995,11 @@ echo "Done!"
                     // Apply server admin rules to ALL users
                     this.hiddenTabs = new Set(data.config.hiddenTabs || []);
 
+                    if (Array.isArray(data.config.tabs) && data.config.tabs.length > 0) {
+                        this.tabs = this.normalizeTabs(data.config.tabs);
+                        localStorage.setItem('gameLibraryTabs', JSON.stringify(this.tabs));
+                    }
+
                     // Store server categories for reference
                     this.serverGameCategories = data.config.gameCategories || {};
 
@@ -2868,6 +3054,11 @@ echo "Done!"
                 if (staticConfig.hiddenTabs && Array.isArray(staticConfig.hiddenTabs)) {
                     this.hiddenTabs = new Set(staticConfig.hiddenTabs);
                 }
+
+                if (Array.isArray(staticConfig.tabs) && staticConfig.tabs.length > 0) {
+                    this.tabs = this.normalizeTabs(staticConfig.tabs);
+                    localStorage.setItem('gameLibraryTabs', JSON.stringify(this.tabs));
+                }
                 
                 // Apply game category overrides
                 if (staticConfig.gameCategories && this.games && this.games.length > 0) {
@@ -2911,7 +3102,8 @@ echo "Done!"
 
             const payload = {
                 hiddenTabs: [...this.hiddenTabs],
-                gameCategories: gameCategories
+                gameCategories: gameCategories,
+                tabs: this.normalizeTabs(this.tabs)
             };
 
             const response = await fetch('/api/admin-config', {

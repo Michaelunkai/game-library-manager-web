@@ -66,7 +66,7 @@ async function readFromGitHub() {
   } catch (e) {
     console.error('GitHub read error:', e.message);
   }
-  return { config: { hiddenTabs: [], gameCategories: {}, lastUpdated: new Date().toISOString() }, sha: null };
+  return { config: { hiddenTabs: [], gameCategories: {}, tabs: null, lastUpdated: new Date().toISOString() }, sha: null };
 }
 
 async function writeToGitHub(data) {
@@ -142,6 +142,7 @@ exports.handler = async (event, context) => {
     const data = {
       hiddenTabs: payload.hiddenTabs || [],
       gameCategories: payload.gameCategories || {},
+      tabs: Array.isArray(payload.tabs) ? payload.tabs : undefined,
       lastUpdated: new Date().toISOString()
     };
 
