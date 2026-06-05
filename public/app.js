@@ -190,6 +190,7 @@ class GameLibrary {
         this.times = timesData;
         this.imageSizes = imageSizesData;
         this.datesAdded = datesAddedData;
+        this.normalizeAllGameMetadata();
 
         console.log(`📦 Loaded ${this.games.length} games from games.json`);
 
@@ -281,16 +282,19 @@ class GameLibrary {
                     image: this.createGeneratedCoverDataUrl(id),
                     time: this.getGenreEstimate({ id, name: this.formatGameName(id), category: 'new' })
                 };
+                this.ensureGameDetails(game);
                 this.games.push(game);
                 gamesById.set(id, game);
                 added++;
                 addedIds.push(id);
             } else {
-                if (!game.dockerImage) game.dockerImage = dockerImage;
-                if (!game.dockerImageUrl) game.dockerImageUrl = dockerImageUrl;
+                game.dockerImage = this.isRunnableDockerImage(game.dockerImage) ? game.dockerImage : dockerImage;
+                game.dockerImageUrl = dockerImageUrl;
+                if (!game.image) game.image = this.createGeneratedCoverDataUrl(id);
                 if (game.time == null && this.times[id] == null) {
                     this.times[id] = this.getGenreEstimate(game);
                 }
+                this.ensureGameDetails(game);
                 updated++;
             }
 
@@ -307,6 +311,61 @@ class GameLibrary {
         }
 
         return { added, updated };
+    }
+
+    normalizeAllGameMetadata() {
+        for (const game of this.games) {
+            if (!game || !game.id) continue;
+            this.normalizeGameMetadata(game, this.settings.dockerUsername, this.settings.repoName);
+        }
+    }
+
+    normalizeGameMetadata(game, dockerUser = 'michadockermisha', repoName = 'backup') {
+        game.name = game.name || this.formatGameName(game.id);
+        game.category = game.category || 'new';
+        game.image = game.image || this.createGeneratedCoverDataUrl(game.id);
+
+        const dockerImage = `${dockerUser}/${repoName}:${game.id}`;
+        if (!this.isRunnableDockerImage(game.dockerImage)) {
+            game.dockerImage = dockerImage;
+        }
+        game.dockerImageUrl = this.getDockerHubTagUrl(game.id, dockerUser, repoName);
+
+        if (game.time == null && this.times[game.id] == null) {
+            this.times[game.id] = this.getGenreEstimate(game);
+        }
+
+        if (!this.datesAdded[game.id]) {
+            this.datesAdded[game.id] = new Date().toISOString().split('T')[0];
+        }
+
+        this.ensureGameDetails(game);
+        return game;
+    }
+
+    ensureGameDetails(game) {
+        if (game.description && game.details) return;
+
+        const time = this.getGameTime(game);
+        const size = this.imageSizes[game.id];
+        const timeText = (time != null && time !== '') ? `~${time} hours` : 'approximate time unavailable';
+        const sizeText = (size != null && size !== '') ? `${size} GB Docker image` : 'Docker image size pending from Docker Hub';
+        const details = `${game.name} is available from Docker tag ${game.id}. Category: ${game.category || 'uncategorized'}. Time to beat: ${timeText}. Size: ${sizeText}.`;
+
+        game.description = game.description || details;
+        game.details = game.details || details;
+    }
+
+    isRunnableDockerImage(value) {
+        return typeof value === 'string' && /^[^/\s]+\/[^:\s]+:.+/.test(value) && !value.startsWith('http');
+    }
+
+    getDockerHubTagUrl(id, dockerUser = 'michadockermisha', repoName = 'backup') {
+        return `https://hub.docker.com/r/${dockerUser}/${repoName}/tags?name=${encodeURIComponent(id)}`;
+    }
+
+    getGameTime(game) {
+        return (game && game.time != null) ? game.time : this.times[game.id];
     }
 
     async fetchAllDockerTags(dockerUser, repoName) {
@@ -1416,13 +1475,15 @@ class GameLibrary {
 
     createGameCard(game) {
         // Use time from game entry (games.json) first, fall back to times.json lookup
-        const time = (game.time != null) ? game.time : this.times[game.id];
-        const timeStr = time ? `${time}h` : 'N/A';
+        const time = this.getGameTime(game);
+        const hasTime = time != null && time !== '';
+        const timeStr = hasTime ? `${time}h` : 'N/A';
         const size = this.imageSizes[game.id];
-        const sizeStr = size ? `${size} GB` : 'N/A';
+        const hasSize = size != null && size !== '';
+        const sizeStr = hasSize ? `${size} GB` : 'N/A';
         // Use image path from game entry (games.json) first, fall back to derived path
         const imageSrc = game.image || `images/${game.id.toLowerCase()}.png`;
-        const dockerImageUrl = game.dockerImageUrl || null;
+        const dockerImageUrl = game.dockerImageUrl || this.getDockerHubTagUrl(game.id, this.settings.dockerUsername, this.settings.repoName);
         const isSelected = this.selectedGames.has(game.id);
         const isInstalled = this.installedGames.has(game.id);
         const isNew = game.category === 'new';
@@ -1454,7 +1515,7 @@ class GameLibrary {
                     <div class="title" title="${game.name}">${game.name}</div>
                     <div class="meta">
                         ${this.settings.showCategories ? `<span class="category-badge">${game.category || 'uncategorized'}</span>` : ''}
-                        ${this.settings.showTimes ? `<span class="time-badge" title="${time ? `~${time} hours to complete` : 'No time data'}">⏱️ ${timeStr}</span>` : ''}
+                        ${this.settings.showTimes ? `<span class="time-badge" title="${hasTime ? `~${time} hours to complete` : 'No time data'}">⏱️ ${timeStr}</span>` : ''}
                         <span class="size-badge">💾 ${sizeStr}</span>
                         ${dockerImageUrl ? `<a class="docker-badge" href="${dockerImageUrl}" target="_blank" title="View on Docker Hub" rel="noopener">🐳</a>` : ''}
                     </div>
@@ -1568,17 +1629,20 @@ class GameLibrary {
 
     openGameModal(game) {
         const modal = document.getElementById('gameModal');
-        const time = this.times[game.id];
+        const time = this.getGameTime(game);
         const size = this.imageSizes[game.id];
-        const imageName = game.id.toLowerCase();
 
         document.getElementById('modalTitle').textContent = game.name;
         document.getElementById('modalCategory').textContent = game.category || 'uncategorized';
-        document.getElementById('modalTime').textContent = time ? `~${time} hours` : 'N/A';
-        document.getElementById('modalSize').textContent = size ? `${size} GB` : 'N/A';
+        document.getElementById('modalTime').textContent = (time != null && time !== '') ? `~${time} hours` : 'N/A';
+        document.getElementById('modalSize').textContent = (size != null && size !== '') ? `${size} GB` : 'N/A';
+        const modalDescription = document.getElementById('modalDescription');
+        if (modalDescription) {
+            modalDescription.textContent = game.details || game.description || '';
+        }
         const modalImg = document.getElementById('modalImage');
         const gameName = game.name;
-        modalImg.src = `images/${imageName}.png`;
+        modalImg.src = game.image || this.createGeneratedCoverDataUrl(game.id);
         modalImg.onerror = async function() {
             // Try Steam cover fallback
             try {

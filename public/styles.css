@@ -1656,6 +1656,16 @@ body {
     font-weight: 500;
 }
 
+.modal-description {
+    margin: -10px 0 24px;
+    padding: 14px 16px;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius-sm);
+    line-height: 1.55;
+}
+
 .docker-section {
     background: var(--bg-tertiary);
     border-radius: var(--border-radius);
