@@ -1,0 +1,1380 @@
+{
+  "totalTargetsAtStart": 137,
+  "enriched": 137,
+  "nonGame": 0,
+  "unresolved": 0,
+  "unresolvedItems": [],
+  "warnings": [],
+  "results": [
+    {
+      "id": "thelegendoftianding",
+      "status": "enriched-existing-image",
+      "query": "Thelegendoftianding",
+      "name": "Thelegendoftianding",
+      "image": "images/thelegendoftianding.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "thethaumaturge",
+      "status": "enriched-existing-image",
+      "query": "Thethaumaturge",
+      "name": "Thethaumaturge",
+      "image": "images/thethaumaturge.jpg",
+      "source": "existing-local-image",
+      "steamAppId": "2231110",
+      "time": 15
+    },
+    {
+      "id": "spaceinvadersdeckcommander",
+      "status": "enriched-existing-image",
+      "query": "Spaceinvadersdeckcommander",
+      "name": "Spaceinvadersdeckcommander",
+      "image": "images/spaceinvadersdeckcommander.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 30
+    },
+    {
+      "id": "titanquestanniversaryedition",
+      "status": "enriched-existing-image",
+      "query": "Titanquestanniversaryedition",
+      "name": "Titanquestanniversaryedition",
+      "image": "images/titanquestanniversaryedition.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 25
+    },
+    {
+      "id": "pipistrelloandthecursedyoyo",
+      "status": "enriched-existing-image",
+      "query": "Pipistrelloandthecursedyoyo",
+      "name": "Pipistrelloandthecursedyoyo",
+      "image": "images/pipistrelloandthecursedyoyo.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 6
+    },
+    {
+      "id": "scottpilgrimvstheworldce",
+      "status": "enriched-existing-image",
+      "query": "Scottpilgrimvstheworldce",
+      "name": "Scottpilgrimvstheworldce",
+      "image": "images/scottpilgrimvstheworldce.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "norestforthewicked",
+      "status": "enriched-existing-image",
+      "query": "Norestforthewicked",
+      "name": "Norestforthewicked",
+      "image": "images/norestforthewicked.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 25
+    },
+    {
+      "id": "suikodeniandiihdremaster",
+      "status": "enriched-existing-image",
+      "query": "Suikodeniandiihdremaster",
+      "name": "Suikodeniandiihdremaster",
+      "image": "images/suikodeniandiihdremaster.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 35
+    },
+    {
+      "id": "ninjagaidenragebound",
+      "status": "enriched-existing-image",
+      "query": "Ninjagaidenragebound",
+      "name": "Ninjagaidenragebound",
+      "image": "images/ninjagaidenragebound.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "spongebobsquarepantstitansofthetide",
+      "status": "enriched-existing-image",
+      "query": "Spongebobsquarepantstitansofthetide",
+      "name": "Spongebobsquarepantstitansofthetide",
+      "image": "images/spongebobsquarepantstitansofthetide.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "metalgearsolid3snakeeatermastercollection",
+      "status": "enriched-existing-image",
+      "query": "Metalgearsolid 3snakeeatermastercollection",
+      "name": "Metalgearsolid 3snakeeatermastercollection",
+      "image": "images/metalgearsolid3snakeeatermastercollection.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 17
+    },
+    {
+      "id": "metalgearrisingrevengeance",
+      "status": "enriched-existing-image",
+      "query": "Metalgearrisingrevengeance",
+      "name": "Metalgearrisingrevengeance",
+      "image": "images/metalgearrisingrevengeance.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "dragonballxenoverse",
+      "status": "enriched-existing-image",
+      "query": "Dragonballxenoverse",
+      "name": "Dragonballxenoverse",
+      "image": "images/dragonballxenoverse.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 18
+    },
+    {
+      "id": "thelegendofzeldaechoesofwisdom",
+      "status": "enriched-existing-image",
+      "query": "Thelegendofzeldaechoesofwisdom",
+      "name": "Thelegendofzeldaechoesofwisdom",
+      "image": "images/thelegendofzeldaechoesofwisdom.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 18
+    },
+    {
+      "id": "princeofpersiatheforgottensands",
+      "status": "enriched-existing-image",
+      "query": "Princeofpersiatheforgottensands",
+      "name": "Princeofpersiatheforgottensands",
+      "image": "images/princeofpersiatheforgottensands.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "dragonquestviireimagined",
+      "status": "enriched-existing-image",
+      "query": "Dragonquestviireimagined",
+      "name": "Dragonquestviireimagined",
+      "image": "images/dragonquestviireimagined.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 100
+    },
+    {
+      "id": "southparkthestickoftruth",
+      "status": "enriched-existing-image",
+      "query": "Southparkthestickoftruth",
+      "name": "Southparkthestickoftruth",
+      "image": "images/southparkthestickoftruth.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 13
+    },
+    {
+      "id": "blazblueentropyeffect",
+      "status": "enriched-existing-image",
+      "query": "Blazblueentropyeffect",
+      "name": "Blazblueentropyeffect",
+      "image": "images/blazblueentropyeffect.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 15
+    },
+    {
+      "id": "aspacefortheunbound",
+      "status": "enriched-existing-image",
+      "query": "Aspacefortheunbound",
+      "name": "Aspacefortheunbound",
+      "image": "images/aspacefortheunbound.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "bopathoftheteallotus",
+      "status": "enriched-existing-image",
+      "query": "Bopathoftheteallotus",
+      "name": "Bopathoftheteallotus",
+      "image": "images/bopathoftheteallotus.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "highlandsong",
+      "status": "enriched-existing-image",
+      "query": "Highlandsong",
+      "name": "Highlandsong",
+      "image": "images/highlandsong.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 4
+    },
+    {
+      "id": "unchartedlegacyofthievescollection",
+      "status": "enriched-existing-image",
+      "query": "Unchartedlegacyofthievescollection",
+      "name": "Unchartedlegacyofthievescollection",
+      "image": "images/unchartedlegacyofthievescollection.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 22
+    },
+    {
+      "id": "halothemasterchiefcollection",
+      "status": "enriched-existing-image",
+      "query": "Halothemasterchiefcollection",
+      "name": "Halothemasterchiefcollection",
+      "image": "images/halothemasterchiefcollection.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 42
+    },
+    {
+      "id": "miomemoriesinorbit",
+      "status": "enriched-existing-image",
+      "query": "Miomemoriesinorbit",
+      "name": "Miomemoriesinorbit",
+      "image": "images/miomemoriesinorbit.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 18
+    },
+    {
+      "id": "deliverusthemoon",
+      "status": "enriched-existing-image",
+      "query": "Deliverusthemoon",
+      "name": "Deliverusthemoon",
+      "image": "images/deliverusthemoon.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "wherewindmeet",
+      "status": "enriched-existing-image",
+      "query": "Wherewindmeet",
+      "name": "Wherewindmeet",
+      "image": "images/wherewindmeet.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 30
+    },
+    {
+      "id": "bravelydefaultii",
+      "status": "enriched-existing-image",
+      "query": "Bravelydefaultii",
+      "name": "Bravelydefaultii",
+      "image": "images/bravelydefaultii.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 55
+    },
+    {
+      "id": "plantsvszombiesreplanted",
+      "status": "enriched-existing-image",
+      "query": "Plantsvszombiesreplanted",
+      "name": "Plantsvszombiesreplanted",
+      "image": "images/plantsvszombiesreplanted.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "pokemonlegendsza",
+      "status": "enriched-existing-image",
+      "query": "Pokemonlegendsza",
+      "name": "Pokemonlegendsza",
+      "image": "images/pokemonlegendsza.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 35
+    },
+    {
+      "id": "batmanarkhamasylumgameoftheyearedition",
+      "status": "enriched-existing-image",
+      "query": "Batmanarkhamasylumgameoftheyearedition",
+      "name": "Batmanarkhamasylumgameoftheyearedition",
+      "image": "images/batmanarkhamasylumgameoftheyearedition.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 18
+    },
+    {
+      "id": "dyinglightthebeast",
+      "status": "enriched-existing-image",
+      "query": "Dyinglightthebeast",
+      "name": "Dyinglightthebeast",
+      "image": "images/dyinglightthebeast.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 25
+    },
+    {
+      "id": "newsuperluckystale",
+      "status": "enriched-existing-image",
+      "query": "Newsuperluckystale",
+      "name": "Newsuperluckystale",
+      "image": "images/newsuperluckystale.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 18
+    },
+    {
+      "id": "kazeandthewildmasks",
+      "status": "enriched-existing-image",
+      "query": "Kazeandthewildmasks",
+      "name": "Kazeandthewildmasks",
+      "image": "images/kazeandthewildmasks.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "batmanarkhamknight",
+      "status": "enriched-existing-image",
+      "query": "Batmanarkhamknight",
+      "name": "Batmanarkhamknight",
+      "image": "images/batmanarkhamknight.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 18
+    },
+    {
+      "id": "theelderscrollsivoblivionremastered",
+      "status": "enriched-existing-image",
+      "query": "Theelderscrollsivoblivionremastered",
+      "name": "Theelderscrollsivoblivionremastered",
+      "image": "images/theelderscrollsivoblivionremastered.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 27
+    },
+    {
+      "id": "lacunaascifinoiradventure",
+      "status": "enriched-existing-image",
+      "query": "Lacunaascifinoiradventure",
+      "name": "Lacunaascifinoiradventure",
+      "image": "images/lacunaascifinoiradventure.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "growsongoftheevertree",
+      "status": "enriched-existing-image",
+      "query": "Growsongoftheevertree",
+      "name": "Growsongoftheevertree",
+      "image": "images/growsongoftheevertree.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 25
+    },
+    {
+      "id": "wuchangfallenfeathers",
+      "status": "enriched-existing-image",
+      "query": "Wuchangfallenfeathers",
+      "name": "Wuchangfallenfeathers",
+      "image": "images/wuchangfallenfeathers.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 30
+    },
+    {
+      "id": "vigilthelongestnight",
+      "status": "enriched-existing-image",
+      "query": "Vigilthelongestnight",
+      "name": "Vigilthelongestnight",
+      "image": "images/vigilthelongestnight.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "thewanderingvillage",
+      "status": "enriched-existing-image",
+      "query": "Thewanderingvillage",
+      "name": "Thewanderingvillage",
+      "image": "images/thewanderingvillage.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 15
+    },
+    {
+      "id": "underthewitch",
+      "status": "enriched-existing-image",
+      "query": "Underthewitch",
+      "name": "Underthewitch",
+      "image": "images/underthewitch.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 2
+    },
+    {
+      "id": "theeternalcastleremastered",
+      "status": "enriched-existing-image",
+      "query": "Theeternalcastleremastered",
+      "name": "Theeternalcastleremastered",
+      "image": "images/theeternalcastleremastered.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 3
+    },
+    {
+      "id": "legacyofkainsr12r",
+      "status": "enriched-existing-image",
+      "query": "Legacyofkainsr 12r",
+      "name": "Legacyofkainsr 12r",
+      "image": "images/legacyofkainsr12r.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 20
+    },
+    {
+      "id": "ariseasimplestory",
+      "status": "enriched-existing-image",
+      "query": "Ariseasimplestory",
+      "name": "Ariseasimplestory",
+      "image": "images/ariseasimplestory.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 4
+    },
+    {
+      "id": "boxeslostfragments",
+      "status": "enriched-existing-image",
+      "query": "Boxeslostfragments",
+      "name": "Boxeslostfragments",
+      "image": "images/boxeslostfragments.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 3.5
+    },
+    {
+      "id": "honeyijoinedacult",
+      "status": "enriched-existing-image",
+      "query": "Honeyijoinedacult",
+      "name": "Honeyijoinedacult",
+      "image": "images/honeyijoinedacult.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "childrenofsilentown",
+      "status": "enriched-existing-image",
+      "query": "Childrenofsilentown",
+      "name": "Childrenofsilentown",
+      "image": "images/childrenofsilentown.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "thelastfaith",
+      "status": "enriched-existing-image",
+      "query": "Thelastfaith",
+      "name": "Thelastfaith",
+      "image": "images/thelastfaith.jpg",
+      "source": "existing-local-image",
+      "steamAppId": "1529190",
+      "time": 15
+    },
+    {
+      "id": "whitehadows",
+      "status": "enriched-existing-image",
+      "query": "Whitehadows",
+      "name": "Whitehadows",
+      "image": "images/whitehadows.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 2.5
+    },
+    {
+      "id": "oguandthesecretforest",
+      "status": "enriched-existing-image",
+      "query": "Oguandthesecretforest",
+      "name": "Oguandthesecretforest",
+      "image": "images/oguandthesecretforest.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "kingdomtwocrowns",
+      "status": "enriched-existing-image",
+      "query": "Kingdomtwocrowns",
+      "name": "Kingdomtwocrowns",
+      "image": "images/kingdomtwocrowns.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 20
+    },
+    {
+      "id": "gameaboutdiggingahole",
+      "status": "enriched-existing-image",
+      "query": "Gameaboutdiggingahole",
+      "name": "Gameaboutdiggingahole",
+      "image": "images/gameaboutdiggingahole.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 2
+    },
+    {
+      "id": "sekiroshadowsdietwice",
+      "status": "enriched-existing-image",
+      "query": "Sekiroshadowsdietwice",
+      "name": "Sekiroshadowsdietwice",
+      "image": "images/sekiroshadowsdietwice.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 30
+    },
+    {
+      "id": "loversinadangerouspacetime",
+      "status": "enriched-existing-image",
+      "query": "Loversinadangerouspacetime",
+      "name": "Loversinadangerouspacetime",
+      "image": "images/loversinadangerouspacetime.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "AITHESOMNIUMFILES",
+      "status": "enriched-existing-image",
+      "query": "AITHESOMNIUMFILES",
+      "name": "AITHESOMNIUMFILES",
+      "image": "images/aithesomniumfiles.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 20
+    },
+    {
+      "id": "nobodysavestheworld",
+      "status": "enriched-existing-image",
+      "query": "Nobodysavestheworld",
+      "name": "Nobodysavestheworld",
+      "image": "images/nobodysavestheworld.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 13
+    },
+    {
+      "id": "laracroftandthetempleofosiris",
+      "status": "enriched-existing-image",
+      "query": "Laracroftandthetempleofosiris",
+      "name": "Laracroftandthetempleofosiris",
+      "image": "images/laracroftandthetempleofosiris.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "littlekittybigcity",
+      "status": "enriched-existing-image",
+      "query": "Littlekittybigcity",
+      "name": "Littlekittybigcity",
+      "image": "images/littlekittybigcity.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 3
+    },
+    {
+      "id": "eiyudenchromicle",
+      "status": "enriched-existing-image",
+      "query": "Eiyudenchromicle",
+      "name": "Eiyudenchromicle",
+      "image": "images/eiyudenchromicle.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 40
+    },
+    {
+      "id": "twinmirrors",
+      "status": "enriched-existing-image",
+      "query": "Twinmirrors",
+      "name": "Twinmirrors",
+      "image": "images/twinmirrors.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "anothercrabstreasure",
+      "status": "enriched-existing-image",
+      "query": "Anothercrabstreasure",
+      "name": "Anothercrabstreasure",
+      "image": "images/anothercrabstreasure.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 14
+    },
+    {
+      "id": "fistforgedinshadow",
+      "status": "enriched-existing-image",
+      "query": "Fistforgedinshadow",
+      "name": "Fistforgedinshadow",
+      "image": "images/fistforgedinshadow.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "powerwashsimulator",
+      "status": "enriched-existing-image",
+      "query": "Powerwashsimulator",
+      "name": "Powerwashsimulator",
+      "image": "images/powerwashsimulator.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 25
+    },
+    {
+      "id": "artfulescape",
+      "status": "enriched-existing-image",
+      "query": "Artfulescape",
+      "name": "Artfulescape",
+      "image": "images/artfulescape.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 3.5
+    },
+    {
+      "id": "pcbuildingsimulator",
+      "status": "enriched-existing-image",
+      "query": "Pcbuildingsimulator",
+      "name": "Pcbuildingsimulator",
+      "image": "images/pcbuildingsimulator.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 20
+    },
+    {
+      "id": "circuselectrique",
+      "status": "enriched-existing-image",
+      "query": "Circuselectrique",
+      "name": "Circuselectrique",
+      "image": "images/circuselectrique.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 16
+    },
+    {
+      "id": "cookingsimulator",
+      "status": "enriched-existing-image",
+      "query": "Cookingsimulator",
+      "name": "Cookingsimulator",
+      "image": "images/cookingsimulator.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "americanarcedia",
+      "status": "enriched-existing-image",
+      "query": "Americanarcedia",
+      "name": "Americanarcedia",
+      "image": "images/americanarcedia.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 6
+    },
+    {
+      "id": "midnightfightexpress",
+      "status": "enriched-existing-image",
+      "query": "Midnightfightexpress",
+      "name": "Midnightfightexpress",
+      "image": "images/midnightfightexpress.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 6
+    },
+    {
+      "id": "cheflifesimulator",
+      "status": "enriched-existing-image",
+      "query": "Cheflifesimulator",
+      "name": "Cheflifesimulator",
+      "image": "images/cheflifesimulator.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 30
+    },
+    {
+      "id": "miandthedragonprincess",
+      "status": "enriched-existing-image",
+      "query": "Miandthedragonprincess",
+      "name": "Miandthedragonprincess",
+      "image": "images/miandthedragonprincess.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 1.5
+    },
+    {
+      "id": "darkpicturesanthology",
+      "status": "enriched-existing-image",
+      "query": "Darkpicturesanthology",
+      "name": "Darkpicturesanthology",
+      "image": "images/darkpicturesanthology.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 4.5
+    },
+    {
+      "id": "firstdatelatetodate",
+      "status": "enriched-existing-image",
+      "query": "Firstdatelatetodate",
+      "name": "Firstdatelatetodate",
+      "image": "images/firstdatelatetodate.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 1.5
+    },
+    {
+      "id": "exithegungeon",
+      "status": "enriched-existing-image",
+      "query": "Exithegungeon",
+      "name": "Exithegungeon",
+      "image": "images/exithegungeon.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 3
+    },
+    {
+      "id": "firemblemengage",
+      "status": "enriched-existing-image",
+      "query": "Firemblemengage",
+      "name": "Firemblemengage",
+      "image": "images/firemblemengage.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 40
+    },
+    {
+      "id": "zeldalinktothepast",
+      "status": "enriched-existing-image",
+      "query": "Zeldalinktothepast",
+      "name": "Zeldalinktothepast",
+      "image": "images/zeldalinktothepast.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 15
+    },
+    {
+      "id": "trianglestrategy",
+      "status": "enriched-existing-image",
+      "query": "Trianglestrategy",
+      "name": "Trianglestrategy",
+      "image": "images/trianglestrategy.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 34
+    },
+    {
+      "id": "megamanbattlenetwork",
+      "status": "enriched-existing-image",
+      "query": "Megamanbattlenetwork",
+      "name": "Megamanbattlenetwork",
+      "image": "images/megamanbattlenetwork.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 15
+    },
+    {
+      "id": "advancedwars",
+      "status": "enriched-existing-image",
+      "query": "Advancedwars",
+      "name": "Advancedwars",
+      "image": "images/advancedwars.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 15
+    },
+    {
+      "id": "driversanfrancisco",
+      "status": "enriched-existing-image",
+      "query": "Driversanfrancisco",
+      "name": "Driversanfrancisco",
+      "image": "images/driversanfrancisco.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 7
+    },
+    {
+      "id": "legendoftianding",
+      "status": "enriched-existing-image",
+      "query": "Legendoftianding",
+      "name": "Legendoftianding",
+      "image": "images/legendoftianding.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "priceofpersia",
+      "status": "enriched-existing-image",
+      "query": "Priceofpersia",
+      "name": "Priceofpersia",
+      "image": "images/priceofpersia.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 11
+    },
+    {
+      "id": "cosmicwheelsisterhood",
+      "status": "enriched-existing-image",
+      "query": "Cosmicwheelsisterhood",
+      "name": "Cosmicwheelsisterhood",
+      "image": "images/cosmicwheelsisterhood.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 7
+    },
+    {
+      "id": "doubledragongaiden",
+      "status": "enriched-existing-image",
+      "query": "Doubledragongaiden",
+      "name": "Doubledragongaiden",
+      "image": "images/doubledragongaiden.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 2.5
+    },
+    {
+      "id": "codinfinitewarfare",
+      "status": "enriched-existing-image",
+      "query": "Codinfinitewarfare",
+      "name": "Codinfinitewarfare",
+      "image": "images/codinfinitewarfare.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 6
+    },
+    {
+      "id": "seasonalettertothefuture",
+      "status": "enriched-existing-image",
+      "query": "Seasonalettertothefuture",
+      "name": "Seasonalettertothefuture",
+      "image": "images/seasonalettertothefuture.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "sonicsuperstarts",
+      "status": "enriched-existing-image",
+      "query": "Sonicsuperstarts",
+      "name": "Sonicsuperstarts",
+      "image": "images/sonicsuperstarts.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "vampirebloodlines",
+      "status": "enriched-existing-image",
+      "query": "Vampirebloodlines",
+      "name": "Vampirebloodlines",
+      "image": "images/vampirebloodlines.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 20
+    },
+    {
+      "id": "lordsofthefallen",
+      "status": "enriched-existing-image",
+      "query": "Lordsofthefallen",
+      "name": "Lordsofthefallen",
+      "image": "images/lordsofthefallen.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 25
+    },
+    {
+      "id": "strangerofparadaise",
+      "status": "enriched-existing-image",
+      "query": "Strangerofparadaise",
+      "name": "Strangerofparadaise",
+      "image": "images/strangerofparadaise.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 20
+    },
+    {
+      "id": "circuselectricque",
+      "status": "enriched-existing-image",
+      "query": "Circuselectricque",
+      "name": "Circuselectricque",
+      "image": "images/circuselectricque.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 16
+    },
+    {
+      "id": "marvelsguardiansofthegalaxy",
+      "status": "enriched-existing-image",
+      "query": "Marvelsguardiansofthegalaxy",
+      "name": "Marvelsguardiansofthegalaxy",
+      "image": "images/marvelsguardiansofthegalaxy.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 17
+    },
+    {
+      "id": "neotheworldendswithyou",
+      "status": "enriched-existing-image",
+      "query": "Neotheworldendswithyou",
+      "name": "Neotheworldendswithyou",
+      "image": "images/neotheworldendswithyou.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 38
+    },
+    {
+      "id": "codblackops",
+      "status": "enriched-existing-image",
+      "query": "Codblackops",
+      "name": "Codblackops",
+      "image": "images/codblackops.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 7
+    },
+    {
+      "id": "sherlockholmescrimesandpunishments",
+      "status": "enriched-existing-image",
+      "query": "Sherlockholmescrimesandpunishments",
+      "name": "Sherlockholmescrimesandpunishments",
+      "image": "images/sherlockholmescrimesandpunishments.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "battlefieldhardline",
+      "status": "enriched-existing-image",
+      "query": "Battlefieldhardline",
+      "name": "Battlefieldhardline",
+      "image": "images/battlefieldhardline.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 7
+    },
+    {
+      "id": "tailsthebackbonepreludes",
+      "status": "enriched-existing-image",
+      "query": "Tailsthebackbonepreludes",
+      "name": "Tailsthebackbonepreludes",
+      "image": "images/tailsthebackbonepreludes.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 3
+    },
+    {
+      "id": "fatesamurairemnant",
+      "status": "enriched-existing-image",
+      "query": "Fatesamurairemnant",
+      "name": "Fatesamurairemnant",
+      "image": "images/fatesamurairemnant.jpg",
+      "source": "existing-local-image",
+      "steamAppId": "1814070",
+      "time": 30
+    },
+    {
+      "id": "covergencealolstory",
+      "status": "enriched-existing-image",
+      "query": "Covergencealolstory",
+      "name": "Covergencealolstory",
+      "image": "images/covergencealolstory.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 18
+    },
+    {
+      "id": "codadvancedwarfare",
+      "status": "enriched-existing-image",
+      "query": "Codadvancedwarfare",
+      "name": "Codadvancedwarfare",
+      "image": "images/codadvancedwarfare.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 7
+    },
+    {
+      "id": "bombrushcyberfunk",
+      "status": "enriched-existing-image",
+      "query": "Bombrushcyberfunk",
+      "name": "Bombrushcyberfunk",
+      "image": "images/bombrushcyberfunk.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "spacefortheunbound",
+      "status": "enriched-existing-image",
+      "query": "Spacefortheunbound",
+      "name": "Spacefortheunbound",
+      "image": "images/spacefortheunbound.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "codinfinfinitewarfare",
+      "status": "enriched-existing-image",
+      "query": "Codinfinfinitewarfare",
+      "name": "Codinfinfinitewarfare",
+      "image": "images/codinfinfinitewarfare.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 6
+    },
+    {
+      "id": "metalgearsolidmaster",
+      "status": "enriched-existing-image",
+      "query": "Metalgearsolidmaster",
+      "name": "Metalgearsolidmaster",
+      "image": "images/metalgearsolidmaster.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "nobodysavedtheworld",
+      "status": "enriched-existing-image",
+      "query": "Nobodysavedtheworld",
+      "name": "Nobodysavedtheworld",
+      "image": "images/nobodysavedtheworld.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 13
+    },
+    {
+      "id": "codvanguard",
+      "status": "enriched-existing-image",
+      "query": "Codvanguard",
+      "name": "Codvanguard",
+      "image": "images/codvanguard.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 6
+    },
+    {
+      "id": "deeprockgalactic",
+      "status": "enriched-existing-image",
+      "query": "Deeprockgalactic",
+      "name": "Deeprockgalactic",
+      "image": "images/deeprockgalactic.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 30
+    },
+    {
+      "id": "thecaseofthegoldenidol",
+      "status": "enriched-existing-image",
+      "query": "Thecaseofthegoldenidol",
+      "name": "Thecaseofthegoldenidol",
+      "image": "images/thecaseofthegoldenidol.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 6
+    },
+    {
+      "id": "sunsetoverdive",
+      "status": "enriched-existing-image",
+      "query": "Sunsetoverdive",
+      "name": "Sunsetoverdive",
+      "image": "images/sunsetoverdive.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 9
+    },
+    {
+      "id": "skulheroslayer",
+      "status": "enriched-existing-image",
+      "query": "Skulheroslayer",
+      "name": "Skulheroslayer",
+      "image": "images/skulheroslayer.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 15
+    },
+    {
+      "id": "systemshockremake",
+      "status": "enriched-existing-image",
+      "query": "Systemshockremake",
+      "name": "Systemshockremake",
+      "image": "images/systemshockremake.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "detroitbecomehuman",
+      "status": "enriched-existing-image",
+      "query": "Detroitbecomehuman",
+      "name": "Detroitbecomehuman",
+      "image": "images/detroitbecomehuman.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "brewmasterbeersimulator",
+      "status": "enriched-existing-image",
+      "query": "Brewmasterbeersimulator",
+      "name": "Brewmasterbeersimulator",
+      "image": "images/brewmasterbeersimulator.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 4
+    },
+    {
+      "id": "sniperghostwarriorcontracts",
+      "status": "enriched-existing-image",
+      "query": "Sniperghostwarriorcontracts",
+      "name": "Sniperghostwarriorcontracts",
+      "image": "images/sniperghostwarriorcontracts.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "pacmanworldrepac",
+      "status": "enriched-existing-image",
+      "query": "Pacmanworldrepac",
+      "name": "Pacmanworldrepac",
+      "image": "images/pacmanworldrepac.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "bloodsrainedritualofthenight",
+      "status": "enriched-existing-image",
+      "query": "Bloodsrainedritualofthenight",
+      "name": "Bloodsrainedritualofthenight",
+      "image": "images/bloodsrainedritualofthenight.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "eiyudenchroniclerising",
+      "status": "enriched-existing-image",
+      "query": "Eiyudenchroniclerising",
+      "name": "Eiyudenchroniclerising",
+      "image": "images/eiyudenchroniclerising.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "lifeistrangeremasterd",
+      "status": "enriched-existing-image",
+      "query": "Lifeistrangeremasterd",
+      "name": "Lifeistrangeremasterd",
+      "image": "images/lifeistrangeremasterd.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "fistforgedinshadowtorch",
+      "status": "enriched-existing-image",
+      "query": "Fistforgedinshadowtorch",
+      "name": "Fistforgedinshadowtorch",
+      "image": "images/fistforgedinshadowtorch.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "hellbladesenuasacrifice",
+      "status": "enriched-existing-image",
+      "query": "Hellbladesenuasacrifice",
+      "name": "Hellbladesenuasacrifice",
+      "image": "images/hellbladesenuasacrifice.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 7
+    },
+    {
+      "id": "cafeownersimulation",
+      "status": "enriched-existing-image",
+      "query": "Cafeownersimulation",
+      "name": "Cafeownersimulation",
+      "image": "images/cafeownersimulation.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "sherlockholmeschapterone",
+      "status": "enriched-existing-image",
+      "query": "Sherlockholmeschapterone",
+      "name": "Sherlockholmeschapterone",
+      "image": "images/sherlockholmeschapterone.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "spongbobbfbbr",
+      "status": "enriched-existing-image",
+      "query": "Spongbobbfbbr",
+      "name": "Spongbobbfbbr",
+      "image": "images/spongbobbfbbr.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "ancestorshumankind",
+      "status": "enriched-existing-image",
+      "query": "Ancestorshumankind",
+      "name": "Ancestorshumankind",
+      "image": "images/ancestorshumankind.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 15
+    },
+    {
+      "id": "immortalsfenyxrising",
+      "status": "enriched-existing-image",
+      "query": "Immortalsfenyxrising",
+      "name": "Immortalsfenyxrising",
+      "image": "images/immortalsfenyxrising.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 23
+    },
+    {
+      "id": "oddworldsoulstorm",
+      "status": "enriched-existing-image",
+      "query": "Oddworldsoulstorm",
+      "name": "Oddworldsoulstorm",
+      "image": "images/oddworldsoulstorm.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 12
+    },
+    {
+      "id": "returntomonkeyisland",
+      "status": "enriched-existing-image",
+      "query": "Returntomonkeyisland",
+      "name": "Returntomonkeyisland",
+      "image": "images/returntomonkeyisland.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "plagtalerequirm",
+      "status": "enriched-existing-image",
+      "query": "Plagtalerequirm",
+      "name": "Plagtalerequirm",
+      "image": "images/plagtalerequirm.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 16
+    },
+    {
+      "id": "thegodfather",
+      "status": "enriched-existing-image",
+      "query": "Thegodfather",
+      "name": "Thegodfather",
+      "image": "images/thegodfather.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 14
+    },
+    {
+      "id": "kingdomofamalur",
+      "status": "enriched-existing-image",
+      "query": "Kingdomofamalur",
+      "name": "Kingdomofamalur",
+      "image": "images/kingdomofamalur.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 25
+    },
+    {
+      "id": "elpasoelswere",
+      "status": "enriched-existing-image",
+      "query": "Elpasoelswere",
+      "name": "Elpasoelswere",
+      "image": "images/elpasoelswere.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 5
+    },
+    {
+      "id": "theradstringclub",
+      "status": "enriched-existing-image",
+      "query": "Theradstringclub",
+      "name": "Theradstringclub",
+      "image": "images/theradstringclub.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 4
+    },
+    {
+      "id": "goodbyevolcanohigh",
+      "status": "enriched-existing-image",
+      "query": "Goodbyevolcanohigh",
+      "name": "Goodbyevolcanohigh",
+      "image": "images/goodbyevolcanohigh.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 6
+    },
+    {
+      "id": "thegreataceattorney",
+      "status": "enriched-existing-image",
+      "query": "Thegreataceattorney",
+      "name": "Thegreataceattorney",
+      "image": "images/thegreataceattorney.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 60
+    },
+    {
+      "id": "gtviv",
+      "status": "enriched-existing-image",
+      "query": "Gtviv",
+      "name": "Gtviv",
+      "image": "images/gtviv.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 28
+    },
+    {
+      "id": "hyperlightdrifter",
+      "status": "enriched-existing-image",
+      "query": "Hyperlightdrifter",
+      "name": "Hyperlightdrifter",
+      "image": "images/hyperlightdrifter.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 8
+    },
+    {
+      "id": "doomethernal",
+      "status": "enriched-existing-image",
+      "query": "Doomethernal",
+      "name": "Doomethernal",
+      "image": "images/doomethernal.jpg",
+      "source": "existing-local-image",
+      "steamAppId": null,
+      "time": 14
+    }
+  ]
+}
