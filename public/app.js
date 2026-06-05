@@ -935,6 +935,28 @@ class GameLibrary {
             });
         }
 
+        const moveCategoryClose = document.getElementById('moveCategoryClose');
+        const moveCategoryModal = document.getElementById('moveCategoryModal');
+        const moveCategorySearch = document.getElementById('moveCategorySearch');
+        if (moveCategoryClose) {
+            moveCategoryClose.addEventListener('click', () => this.closeCategoryMovePanel());
+        }
+        if (moveCategoryModal) {
+            moveCategoryModal.addEventListener('click', (e) => {
+                if (e.target === moveCategoryModal) {
+                    this.closeCategoryMovePanel();
+                }
+            });
+        }
+        if (moveCategorySearch) {
+            moveCategorySearch.addEventListener('input', () => this.renderCategoryMoveOptions());
+            moveCategorySearch.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.closeCategoryMovePanel();
+                }
+            });
+        }
+
         // Search
         const searchInput = document.getElementById('searchInput');
         searchInput.addEventListener('input', (e) => {
@@ -1567,6 +1589,7 @@ class GameLibrary {
         grid.querySelectorAll('.game-card').forEach(card => {
             const infoBtn = card.querySelector('.info-btn');
             const installBtn = card.querySelector('.install-btn');
+            const moveBtn = card.querySelector('.admin-card-move-inline');
             const checkbox = card.querySelector('.select-checkbox');
 
             // Info button opens modal
@@ -1583,6 +1606,14 @@ class GameLibrary {
                 const gameId = card.dataset.id;
                 this.toggleInstalled(gameId);
             });
+
+            if (moveBtn) {
+                moveBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const gameId = card.dataset.id;
+                    this.openCategoryMovePanel([gameId], 'single-card');
+                });
+            }
 
             // Checkbox toggles selection
             checkbox.addEventListener('change', (e) => {
@@ -1622,7 +1653,7 @@ class GameLibrary {
 
             // Card click toggles selection
             card.addEventListener('click', (e) => {
-                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn') && !e.target.closest('.card-tag-chip') && !e.target.closest('.wishlist-btn') && !e.target.closest('.rating-stars')) {
+                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn') && !e.target.closest('.admin-card-move-inline') && !e.target.closest('.card-tag-chip') && !e.target.closest('.wishlist-btn') && !e.target.closest('.rating-stars')) {
                     const gameId = card.dataset.id;
                     checkbox.checked = !checkbox.checked;
                     this.toggleGameSelection(gameId, checkbox.checked);
@@ -1689,6 +1720,7 @@ class GameLibrary {
                         ${dockerImageUrl ? `<a class="docker-badge" href="${dockerImageUrl}" target="_blank" title="View on Docker Hub" rel="noopener">🐳</a>` : ''}
                     </div>
                     ${this._renderCardTags(game.id)}
+                    <button type="button" class="admin-card-move-inline admin-only" aria-label="Move ${game.name} to another category">↪ Move category</button>
                     <div class="rating-stars" data-gameid="${game.id}" title="Rate this game">${ratingStars}</div>
                 </div>
             </div>
@@ -1734,6 +1766,8 @@ class GameLibrary {
         }
 
         if (moveToBtn) {
+            moveToBtn.textContent = count > 0 ? `📁 Move Selected (${count})` : '📁 Move Selected';
+            moveToBtn.title = count > 0 ? 'Move selected games to a permanent category' : 'Select games first, or use the Move button on a card';
             moveToBtn.disabled = count === 0 || !this.isAdmin;
         }
     }
@@ -1873,11 +1907,18 @@ class GameLibrary {
     }
 
     closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('active');
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+        }
     }
 
     closeAllModals() {
-        document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+        document.querySelectorAll('.modal').forEach(m => {
+            m.classList.remove('active');
+            m.setAttribute('aria-hidden', 'true');
+        });
         document.getElementById('sortMenu').style.display = 'none';
     }
 
@@ -2634,56 +2675,155 @@ echo "Done!"
 
     toggleMoveToMenu(e) {
         e.stopPropagation();
-        
-        // CRITICAL: Only admins can access Move To functionality
-        if (!this.isAdmin) {
-            this.showToast('Admin access required to move games', 'error');
-            return;
-        }
-        
-        const menu = document.getElementById('moveToMenu');
-        const btn = document.getElementById('moveToBtn');
-        const rect = btn.getBoundingClientRect();
-
-        // Populate the menu with tabs
-        menu.innerHTML = this.tabs.map(tab => `
-            <button class="move-to-option" data-tab="${this.escapeHtml(tab.id)}">
-                ${this.escapeHtml(tab.name)} (${this.getTabCount(tab.id)})
-            </button>
-        `).join('');
-
-        // Add click handlers
-        menu.querySelectorAll('.move-to-option').forEach(option => {
-            option.addEventListener('click', (e) => {
-                const tabId = e.target.dataset.tab;
-                this.moveSelectedGamesToTab(tabId);
-                menu.style.display = 'none';
-            });
-        });
-
-        menu.style.top = `${rect.bottom + 5}px`;
-        menu.style.left = `${rect.left}px`;
-        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        this.openCategoryMovePanel([...this.selectedGames], 'bulk-toolbar');
     }
 
     moveSelectedGamesToTab(tabId) {
+        this.moveGamesToTab([...this.selectedGames], tabId);
+    }
+
+    openCategoryMovePanel(gameIds, mode = 'bulk-toolbar') {
         // CRITICAL: Only admins can move games between categories
         if (!this.isAdmin) {
             this.showToast('Admin access required to move games', 'error');
             return;
         }
 
-        if (this.selectedGames.size === 0) {
+        const ids = [...new Set((gameIds || []).filter(Boolean))];
+        if (ids.length === 0) {
+            this.showToast('Select one or more games first, or use the Move button on a game card', 'warning');
+            return;
+        }
+
+        this.pendingMoveGameIds = ids;
+        this.pendingMoveMode = mode;
+
+        const modal = document.getElementById('moveCategoryModal');
+        const search = document.getElementById('moveCategorySearch');
+        if (search) search.value = '';
+        this.renderCategoryMoveOptions();
+        if (modal) {
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+        if (search) {
+            setTimeout(() => search.focus(), 50);
+        }
+    }
+
+    closeCategoryMovePanel() {
+        const modal = document.getElementById('moveCategoryModal');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        this.pendingMoveGameIds = [];
+        this.pendingMoveMode = null;
+    }
+
+    getMovableTabs() {
+        const tabsById = new Map(this.tabs.filter(tab => tab.id !== 'all').map(tab => [tab.id, { ...tab }]));
+        this.games.forEach(game => {
+            if (game.category && game.category !== 'all' && !tabsById.has(game.category)) {
+                tabsById.set(game.category, {
+                    id: game.category,
+                    name: this.formatCategoryLabel(game.category)
+                });
+            }
+        });
+        return [...tabsById.values()];
+    }
+
+    formatCategoryLabel(categoryId) {
+        return String(categoryId || 'Uncategorized')
+            .replace(/[_-]+/g, ' ')
+            .replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    renderCategoryMoveOptions() {
+        const grid = document.getElementById('moveCategoryGrid');
+        const summary = document.getElementById('moveCategorySummary');
+        const subtitle = document.getElementById('moveCategorySubtitle');
+        const search = document.getElementById('moveCategorySearch');
+        if (!grid) return;
+
+        const ids = this.pendingMoveGameIds || [];
+        const games = ids.map(id => this.games.find(g => g.id === id)).filter(Boolean);
+        const query = (search?.value || '').trim().toLowerCase();
+
+        if (summary) {
+            if (games.length === 1) {
+                summary.textContent = `Moving "${games[0].name}" from ${this.getTabName(games[0].category)}.`;
+            } else {
+                summary.textContent = `Moving ${games.length} selected games in bulk.`;
+            }
+        }
+        if (subtitle) {
+            subtitle.textContent = 'Choose a destination category. The change saves to the live website immediately.';
+        }
+
+        const tabs = this.getMovableTabs().filter(tab => {
+            const haystack = `${tab.name} ${tab.id}`.toLowerCase();
+            return !query || haystack.includes(query);
+        });
+
+        if (tabs.length === 0) {
+            grid.innerHTML = '<div class="move-category-empty">No matching categories. Create a category from the sidebar first.</div>';
+            return;
+        }
+
+        const currentCategories = new Set(games.map(game => game.category));
+        grid.innerHTML = tabs.map(tab => {
+            const isCurrent = games.length === 1 && currentCategories.has(tab.id);
+            const isHidden = this.hiddenTabs.has(tab.id);
+            const isAdminOnly = this.isTabAdminOnly(tab.id);
+            return `
+                <button type="button" class="move-category-option ${isCurrent ? 'is-current' : ''}" data-tab="${this.escapeHtml(tab.id)}" role="option" aria-selected="${isCurrent}">
+                    <span class="move-category-name">${this.escapeHtml(tab.name)}</span>
+                    <span class="move-category-meta">
+                        ${this.getTabCount(tab.id)} games
+                        ${isCurrent ? ' · current' : ''}
+                        ${isHidden ? ' · hidden' : ''}
+                        ${isAdminOnly ? ' · admin only' : ''}
+                    </span>
+                </button>
+            `;
+        }).join('');
+
+        grid.querySelectorAll('.move-category-option').forEach(option => {
+            option.addEventListener('click', () => {
+                this.moveGamesToTab(this.pendingMoveGameIds || [], option.dataset.tab);
+            });
+        });
+    }
+
+    getTabName(tabId) {
+        const tab = this.tabs.find(t => t.id === tabId);
+        return tab ? tab.name : (tabId || 'Uncategorized');
+    }
+
+    moveGamesToTab(gameIds, tabId) {
+        if (!this.isAdmin) {
+            this.showToast('Admin access required to move games', 'error');
+            return;
+        }
+
+        const ids = [...new Set((gameIds || []).filter(Boolean))];
+        if (ids.length === 0) {
             this.showToast('No games selected', 'error');
             return;
         }
 
         const tab = this.tabs.find(t => t.id === tabId);
+        if (!tab || tab.id === 'all') {
+            this.showToast('Choose a real category, not All', 'error');
+            return;
+        }
+
         const tabName = tab ? tab.name : tabId;
         let movedCount = 0;
 
-        // Update each selected game's category
-        this.selectedGames.forEach(gameId => {
+        ids.forEach(gameId => {
             const game = this.games.find(g => g.id === gameId);
             if (game && game.category !== tabId) {
                 game.category = tabId;
@@ -2699,13 +2839,14 @@ echo "Done!"
             this.renderTabs();
             this.filterAndRender();
 
-            this.showToast(`Moved ${movedCount} game(s) to "${tabName}"`, 'success');
+            this.showToast(`Moved ${movedCount} game(s) to "${tabName}" permanently`, 'success');
         } else {
             this.showToast('Games are already in this category', 'info');
         }
 
-        // Optionally clear selection after move
-        this.deselectAll();
+        this.closeCategoryMovePanel();
+        ids.forEach(id => this.selectedGames.delete(id));
+        this.updateSelectedCount();
     }
 
     saveGameChanges() {

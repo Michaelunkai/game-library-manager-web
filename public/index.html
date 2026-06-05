@@ -293,6 +293,23 @@
             </div>
         </div>
 
+        <!-- Admin Move Category Modal -->
+        <div id="moveCategoryModal" class="modal" aria-hidden="true">
+            <div class="modal-content move-category-modal" role="dialog" aria-modal="true" aria-labelledby="moveCategoryTitle">
+                <button type="button" class="modal-close" id="moveCategoryClose" aria-label="Close category mover">&times;</button>
+                <div class="move-category-hero">
+                    <span class="move-category-eyebrow">Admin category move</span>
+                    <h2 id="moveCategoryTitle">Move games permanently</h2>
+                    <p id="moveCategorySubtitle">Choose the destination category. The change saves to the live website immediately.</p>
+                </div>
+                <div class="move-category-summary" id="moveCategorySummary">No games selected yet.</div>
+                <div class="move-category-search">
+                    <input type="text" id="moveCategorySearch" placeholder="Search categories..." autocomplete="off" aria-label="Search move categories">
+                </div>
+                <div id="moveCategoryGrid" class="move-category-grid" role="listbox" aria-label="Destination categories"></div>
+            </div>
+        </div>
+
         <!-- Sort Menu -->
         <div id="sortMenu" class="dropdown-menu" style="display: none;" role="menu" aria-label="Sort games">
             <button data-sort="name" data-order="asc" class="sort-option active">↓ Name (A-Z)</button>
