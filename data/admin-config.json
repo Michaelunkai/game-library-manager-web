@@ -34,11 +34,11 @@
     "thevagrant": "new",
     "gamesaves": "mybackup",
     "kaku": "new",
-    "hermes-speed-20mb-under5": "new",
-    "hermes-speed-20mb-final2": "new",
-    "hermes-speed-20mb-buildxloadpush": "new",
-    "hermes-speed-20mb-localpush": "new",
-    "hermes-speed-20mb-final": "new",
+    "hermes-speed-20mb-under5": "3th_party_tools",
+    "hermes-speed-20mb-final2": "3th_party_tools",
+    "hermes-speed-20mb-buildxloadpush": "3th_party_tools",
+    "hermes-speed-20mb-localpush": "3th_party_tools",
+    "hermes-speed-20mb-final": "3th_party_tools",
     "linux": "mybackup",
     "RuffyandtheRiverside": "new",
     "erebanshadowlegacy": "new",
@@ -1323,5 +1323,5 @@
       "name": "replay"
     }
   ],
-  "lastUpdated": "2026-06-05T17:48:59.297Z"
+  "lastUpdated": "2026-06-05T18:09:57.265Z"
 }
