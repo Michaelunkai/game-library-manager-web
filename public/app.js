@@ -1422,7 +1422,7 @@ class GameLibrary {
         const sizeStr = size ? `${size} GB` : 'N/A';
         // Use image path from game entry (games.json) first, fall back to derived path
         const imageSrc = game.image || `images/${game.id.toLowerCase()}.png`;
-        const dockerImageUrl = game.dockerImage || null;
+        const dockerImageUrl = game.dockerImageUrl || null;
         const isSelected = this.selectedGames.has(game.id);
         const isInstalled = this.installedGames.has(game.id);
         const isNew = game.category === 'new';
