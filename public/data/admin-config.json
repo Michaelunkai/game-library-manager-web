@@ -57,7 +57,7 @@
     "shinobiartofvengeance": "new",
     "Kristala": "new",
     "goodnightuniverse": "new",
-    "007firstlight": "new",
+    "007firstlight": "replay",
     "chronosbeforetheashes": "new",
     "thepalebeyond": "new",
     "reddeadredemption": "finished",
@@ -89,11 +89,11 @@
     "mmenu_mb_progress_test": "not_for_me",
     "mmenu_test_payload": "not_for_me",
     "mmenu_ignore_test": "not_for_me",
-    "crimson-desert": "new",
+    "crimson-desert": "replay",
     "stellar-blade": "action",
-    "like-a-dragon-pirate-yakuza-in-hawaii": "openworld",
+    "like-a-dragon-pirate-yakuza-in-hawaii": "replay",
     "edge-of-eternity": "not_for_me",
-    "pragmata": "new",
+    "pragmata": "replay",
     "creds": "mybackup",
     "mixtape": "storydriven",
     "study": "mybackup",
@@ -1327,5 +1327,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-05T18:11:22.505Z"
+  "lastUpdated": "2026-06-05T18:12:20.590Z"
 }
