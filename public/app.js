@@ -256,7 +256,7 @@ class GameLibrary {
     }
 
     mergeDockerHubTags(allTags, dockerUser, repoName) {
-        const gamesById = new Map(this.games.map(game => [game.id.toLowerCase(), game]));
+        const gamesById = new Map(this.games.map(game => [game.id, game]));
         let added = 0;
         let updated = 0;
         const addedIds = [];
@@ -265,12 +265,11 @@ class GameLibrary {
             if (!tag || !tag.name) continue;
 
             const id = tag.name;
-            const key = id.toLowerCase();
             const dockerImage = `${dockerUser}/${repoName}:${id}`;
             const dockerImageUrl = `https://hub.docker.com/r/${dockerUser}/${repoName}/tags?name=${encodeURIComponent(id)}`;
             const date = tag.last_updated ? tag.last_updated.split('T')[0] : new Date().toISOString().split('T')[0];
             const sizeGb = tag.full_size ? Math.round(tag.full_size / 1073741824 * 100) / 100 : null;
-            let game = gamesById.get(key);
+            let game = gamesById.get(id);
 
             if (!game) {
                 game = {
@@ -283,7 +282,7 @@ class GameLibrary {
                     time: this.getGenreEstimate({ id, name: this.formatGameName(id), category: 'new' })
                 };
                 this.games.push(game);
-                gamesById.set(key, game);
+                gamesById.set(id, game);
                 added++;
                 addedIds.push(id);
             } else {
