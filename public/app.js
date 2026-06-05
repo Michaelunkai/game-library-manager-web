@@ -1999,7 +1999,7 @@ for /L %%i in (1,1,5) do (
             ipconfig /flushdns >nul 2>&1
             call :recover_docker
             echo [INFO] Waiting !RETRY_DELAY! seconds...
-            timeout /t !RETRY_DELAY! /nobreak >nul
+            call :glm_wait !RETRY_DELAY!
             set /a "RETRY_DELAY=RETRY_DELAY*2"
             if !RETRY_DELAY! GTR 60 set "RETRY_DELAY=60"
         )
@@ -2046,7 +2046,7 @@ for /L %%a in (1,1,3) do (
             docker rm -f ${id} >nul 2>&1
             if %%a LSS 3 (
                 echo [INFO] Waiting 10 seconds before retry...
-                timeout /t 10 /nobreak >nul
+                call :glm_wait 10
                 call :recover_docker
             )
         )
@@ -2063,7 +2063,7 @@ if !RUN_SUCCESS! EQU 0 (
 if ${idx + 1} LSS ${gameCount} (
     echo.
     echo [NEXT] Moving to next game in 3 seconds...
-    timeout /t 3 /nobreak >nul
+    call :glm_wait 3
 )`;
             }).join('\n');
 
@@ -2117,7 +2117,7 @@ if %ERRORLEVEL% NEQ 0 (
     echo [WARNING] Cannot reach Docker Hub, resetting network...
     ipconfig /flushdns >nul 2>&1
     netsh winsock reset >nul 2>&1
-    timeout /t 5 /nobreak >nul
+    call :glm_wait 5
 
     ping -n 1 registry-1.docker.io >nul 2>&1
     if !ERRORLEVEL! NEQ 0 (
@@ -2152,9 +2152,9 @@ echo [RECOVERY] Attempting Docker Desktop recovery...
 REM First, try to restart the Docker service
 echo [RECOVERY] Restarting Docker service...
 net stop com.docker.service >nul 2>&1
-timeout /t 3 /nobreak >nul
+call :glm_wait 3
 net start com.docker.service >nul 2>&1
-timeout /t 5 /nobreak >nul
+call :glm_wait 5
 
 REM Check if Docker is responding now
 docker info >nul 2>&1
@@ -2168,7 +2168,7 @@ echo [RECOVERY] Restarting Docker Desktop application...
 taskkill /f /im "Docker Desktop.exe" >nul 2>&1
 taskkill /f /im "com.docker.backend.exe" >nul 2>&1
 taskkill /f /im "com.docker.proxy.exe" >nul 2>&1
-timeout /t 5 /nobreak >nul
+call :glm_wait 5
 
 REM Try to start Docker Desktop
 start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe" >nul 2>&1
@@ -2180,7 +2180,7 @@ echo [RECOVERY] Waiting for Docker to initialize (up to 60 seconds)...
 set "DOCKER_READY=0"
 for /L %%w in (1,1,12) do (
     if !DOCKER_READY! EQU 0 (
-        timeout /t 5 /nobreak >nul
+        call :glm_wait 5
         docker info >nul 2>&1
         if !ERRORLEVEL! EQU 0 (
             set "DOCKER_READY=1"
@@ -2194,6 +2194,19 @@ for /L %%w in (1,1,12) do (
 if !DOCKER_READY! EQU 0 (
     echo [RECOVERY] Docker Desktop recovery may have failed, will continue trying...
 )
+goto :eof
+
+:glm_wait
+set "GLM_WAIT_SECONDS=%~1"
+if "%GLM_WAIT_SECONDS%"=="" set "GLM_WAIT_SECONDS=1"
+if exist "%SystemRoot%\\System32\\timeout.exe" (
+    "%SystemRoot%\\System32\\timeout.exe" /t %GLM_WAIT_SECONDS% /nobreak >nul 2>nul
+    goto :eof
+)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds ([int]$env:GLM_WAIT_SECONDS)" >nul 2>nul
+if !ERRORLEVEL! EQU 0 goto :eof
+set /a "GLM_PING_COUNT=GLM_WAIT_SECONDS+1" >nul 2>nul
+ping 127.0.0.1 -n !GLM_PING_COUNT! >nul 2>nul
 goto :eof
 
 :end
