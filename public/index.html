@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,21 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=5.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
-    <script>
-        (function() {
-            var theme = localStorage.getItem('theme');
-            if (!theme) {
-                try {
-                    var s = localStorage.getItem('gameLibrarySettings');
-                    if (s) { var p = JSON.parse(s); theme = p.theme; }
-                } catch(e) {}
-            }
-            document.documentElement.setAttribute('data-theme', theme || 'dark');
-            document.addEventListener('DOMContentLoaded', function() {
-                document.body.dataset.theme = theme || 'dark';
-            });
-        })();
-    </script>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
     <div id="app">
@@ -80,14 +67,22 @@
                 <button id="syncDockerBtn" class="action-bar-btn sync-btn" title="Sync with Docker Hub to find new tags">🔄 Sync</button>
             </div>
             <div class="action-bar-center">
-                <label class="size-filter-label"><span>Max Size:</span><input type="number" id="maxSizeFilter" placeholder="GB" min="0" step="0.5" style="width:70px"></label>
+                <label class="rating-filter-label" title="Filter games by minimum star rating">
+                    &#9733; Rating:
+                    <select id="ratingFilter" class="action-bar-select">
+                        <option value="0">All</option>
+                        <option value="1">1+ Stars</option>
+                        <option value="2">2+ Stars</option>
+                        <option value="3">3+ Stars</option>
+                        <option value="4">4+ Stars</option>
+                        <option value="5">5 Stars</option>
+                    </select>
+                </label>
                 <button id="showInstalledBtn" class="action-bar-btn">✅ Show Installed</button>
                 <button id="selectAllBtn" class="action-bar-btn">☑️ Select All</button>
-                <button id="selectCategoryBtn" class="action-bar-btn">📂 Select Category</button>
-                <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>n                <button id="copyAllCmdsBtn" class="action-bar-btn" disabled>📋 Copy Cmds</button>
+                <button id="deselectAllBtn" class="action-bar-btn">⬜ Deselect All</button>
                 <button id="addImagesBtn" class="action-bar-btn" title="Scan all games and fetch missing/wrong cover images from multiple databases" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;">🖼️ Add Images</button>
                 <button id="addTimesBtn" class="action-bar-btn" title="Fetch How Long To Beat data for all games from online databases" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">⏱️ Add Times</button>
-                <button id="randomGameBtn" class="action-bar-btn">🎲 Random</button>
                 <div class="run-dropdown-container">
                     <button id="runSelectedBtn" class="action-bar-btn primary" disabled>▶️ Run Selected (0)</button>
                     <button id="runFormatBtn" class="action-bar-btn primary format-toggle" disabled title="Choose script format">▼</button>
@@ -111,6 +106,43 @@
                         <button class="format-option" data-format="ps1">📘 Download .PS1 (PowerShell)</button>
                         <button class="format-option" data-format="bat">📗 Download .BAT (Batch)</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Filter Bar -->
+        <div id="tagFilterBar" class="tag-filter-bar">
+            <!-- Tag chips populated by JS -->
+        </div>
+
+        <!-- Stats Dashboard -->
+        <div class="stats-dashboard" id="statsDashboard">
+            <div class="stats-card">
+                <span class="stats-icon">&#127918;</span>
+                <div class="stats-info">
+                    <span class="stats-value" id="statsTotalGames">0</span>
+                    <span class="stats-label">Total Games</span>
+                </div>
+            </div>
+            <div class="stats-card">
+                <span class="stats-icon">&#9989;</span>
+                <div class="stats-info">
+                    <span class="stats-value" id="statsInstalled">0 <span class="stats-pct" id="statsInstalledPct">(0%)</span></span>
+                    <span class="stats-label">Installed</span>
+                </div>
+            </div>
+            <div class="stats-card">
+                <span class="stats-icon">&#9201;</span>
+                <div class="stats-info">
+                    <span class="stats-value" id="statsAvgTime">&#8212;</span>
+                    <span class="stats-label">Avg Time-to-Beat</span>
+                </div>
+            </div>
+            <div class="stats-card">
+                <span class="stats-icon">&#128444;</span>
+                <div class="stats-info">
+                    <span class="stats-value" id="statsWithImages">0</span>
+                    <span class="stats-label">Games with Covers</span>
                 </div>
             </div>
         </div>
@@ -188,10 +220,6 @@
                                     <span class="btn-icon">📄</span>
                                     <span>Copy Script</span>
                                 </button>
-                                <button id="copyPullBtn" class="action-btn secondary">
-                                    <span class="btn-icon">🐳</span>
-                                    <span>Copy Pull</span>
-                                </button>
                             </div>
                             <div class="terminal-info">
                                 <p id="osInfo">Detected OS: <span id="detectedOS">Windows</span></p>
@@ -258,12 +286,14 @@
         <div id="sortMenu" class="dropdown-menu" style="display: none;">
             <button data-sort="name" data-order="asc" class="sort-option active">↓ Name (A-Z)</button>
             <button data-sort="name" data-order="desc" class="sort-option">↑ Name (Z-A)</button>
-            <button data-sort="time" data-order="asc" class="sort-option">↓ Time (Low-High)</button>
-            <button data-sort="time" data-order="desc" class="sort-option">↑ Time (High-Low)</button>
+            <button data-sort="time" data-order="asc" class="sort-option">⏱️ Time to Beat (Low-High)</button>
+            <button data-sort="time" data-order="desc" class="sort-option">⏱️ Time to Beat (High-Low)</button>
+            <button data-sort="date" data-order="desc" class="sort-option">🆕 Recently Added</button>
+            <button data-sort="date" data-order="asc" class="sort-option">📅 Oldest First</button>
+            <button data-sort="rating" data-order="desc" class="sort-option">⭐ Rating (High-Low)</button>
+            <button data-sort="rating" data-order="asc" class="sort-option">⭐ Rating (Low-High)</button>
             <button data-sort="size" data-order="asc" class="sort-option">↓ Size (Small-Large)</button>
             <button data-sort="size" data-order="desc" class="sort-option">↑ Size (Large-Small)</button>
-            <button data-sort="date" data-order="desc" class="sort-option">↓ Date (Newest-Oldest)</button>
-            <button data-sort="date" data-order="asc" class="sort-option">↑ Date (Oldest-Newest)</button>
             <button data-sort="category" data-order="asc" class="sort-option">↓ Category</button>
         </div>
 
@@ -289,16 +319,17 @@
             <span><kbd>Esc</kbd> Close</span>
             <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
         </div>
-
-        <!-- Download Progress Bar -->
-        <div id="downloadProgress" class="download-progress-bar" style="display:none">
-            <div class="dp-inner">
-                <span id="dpText">Preparing...</span>
-                <div class="dp-bar"><div id="dpFill" class="dp-fill"></div></div>
-            </div>
-        </div>
     </div>
 
-    <script src="app.js?v=5.0"></script>
+    <script src="app.js?v=4.0"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(reg) { console.log('[PWA] SW registered:', reg.scope); })
+            .catch(function(err) { console.warn('[PWA] SW registration failed:', err); });
+        });
+      }
+    </script>
 </body>
 </html>

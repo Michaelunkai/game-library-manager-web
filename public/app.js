@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Game Library Manager v5.0 - Enhanced UX Edition
  * A full-featured Docker game library manager with premium UX
  *
@@ -24,14 +24,19 @@ class GameLibrary {
         this.filteredGames = [];
         this.selectedGames = new Set();
         this.installedGames = new Set();
-        this.favouriteGames = new Set();
         this.hiddenTabs = new Set();
+        this.wishlist = new Set(JSON.parse(localStorage.getItem('gameWishlist') || '[]'));
         this.currentTab = 'all';
         this.searchQuery = '';
-        this.sortBy = 'name';
-        this.sortOrder = 'asc';
+        const _savedSort = (() => { try { return JSON.parse(localStorage.getItem('gameLibrarySortPref') || 'null'); } catch(e) { return null; } })();
+        this.sortBy = (_savedSort && _savedSort.by) || 'name';
+        this.sortOrder = (_savedSort && _savedSort.order) || 'asc';
+        this.ratings = (() => { try { return JSON.parse(localStorage.getItem('gameLibraryRatings') || '{}'); } catch(e) { return {}; } })();
         this.showInstalledOnly = false;
         this.isAdmin = false;
+        this.gameTags = this.loadGameTags();   // Map: gameId -> Set<string>
+        this.activeTagFilter = null;            // Currently active tag filter
+        this.minRatingFilter = 0;              // Minimum star rating filter (0 = show all)
         // SHA-256 hash of admin password - NEVER store plaintext passwords in source code
         // Password: Blackablacka3!
         this.adminHash = 'fba92b2c989a5072544ca49d7f75db2005e6479bf286a38902de90e487230762';
@@ -50,10 +55,6 @@ class GameLibrary {
         ]);
 
         this.settings = this.loadSettings();
-
-        // Page-based pagination
-        this.gamesPerPage = 50;
-        this.currentPage = 1;
 
         this.init();
     }
@@ -78,9 +79,11 @@ class GameLibrary {
             await this.loadAdminConfigFromServer();
 
             this.renderTabs();
+            this.renderTagFilterBar();
             this.filterAndRender();
             this.showLoading(false);
             this.updateSelectedCount();
+            this.updateStatsDashboard();
 
             // Start automatic Docker Hub sync (every 30 seconds)
             this.startAutoSync();
@@ -243,8 +246,8 @@ class GameLibrary {
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
 
-        // Sync with Docker Hub IMMEDIATELY for any new tags not in games.json yet
-        await this.syncDockerHubTags();
+        // Do not block initial rendering on Docker Hub or third-party CORS proxies.
+        // The bundled Netlify data is the startup source of truth; sync stays optional.
     }
 
     async syncDockerHubTags() {
@@ -357,7 +360,7 @@ class GameLibrary {
         updateSyncStatus('🔄 Syncing...');
 
         // Helper to fetch with timeout
-        const fetchWithTimeout = async (url, timeout = 15000) => {
+        const fetchWithTimeout = async (url, timeout = 5000) => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeout);
             try {
@@ -383,8 +386,8 @@ class GameLibrary {
             return await fetchWithTimeout(fullUrl);
         };
 
-        // Fetch a page with AGGRESSIVE retry logic - NEVER give up easily
-        const fetchPageWithRetry = async (page, maxRetries = 5) => {
+        // Fetch a page with bounded retry logic so sync failures never wedge the UI.
+        const fetchPageWithRetry = async (page, maxRetries = 1) => {
             const dockerUrl = `https://hub.docker.com/v2/repositories/${dockerUser}/${repoName}/tags?page=${page}&page_size=${pageSize}&_=${cacheBuster}_${page}`;
             
             // Try 1: Race all proxies (fastest wins)
@@ -430,14 +433,13 @@ class GameLibrary {
         };
 
         try {
-            // Step 1: Fetch first page to get total count (CRITICAL - retry more)
+            // Step 1: Fetch first page to get total count.
             updateSyncStatus('🔄 Connecting...');
             let firstPage = null;
-            for (let attempt = 0; attempt < 10; attempt++) {
-                firstPage = await fetchPageWithRetry(1, 3);
+            for (let attempt = 0; attempt < 1; attempt++) {
+                firstPage = await fetchPageWithRetry(1, 1);
                 if (firstPage && firstPage.results) break;
                 console.log(`First page attempt ${attempt + 1} failed, retrying...`);
-                await new Promise(r => setTimeout(r, 2000));
             }
 
             if (!firstPage || !firstPage.results) {
@@ -650,12 +652,7 @@ class GameLibrary {
             for (let i = 0; i < gamesNeedingImages.length; i += batchSize) {
                 const batch = gamesNeedingImages.slice(i, i + batchSize);
                 const results = await Promise.allSettled(
-                    batch.map(async (game) => {
-                        // Prefer tag/id lookup first, then readable name fallback
-                        const fromTag = await this.fetchSteamCoverUrl(game.id || game.tag || game.name);
-                        if (fromTag) return fromTag;
-                        return this.fetchSteamCoverUrl(game.name || game.id || game.tag);
-                    })
+                    batch.map(game => this.fetchSteamCoverUrl(game.name))
                 );
 
                 for (let j = 0; j < results.length; j++) {
@@ -718,17 +715,19 @@ class GameLibrary {
                 for (let j = 0; j < results.length; j++) {
                     if (results[j].status === 'fulfilled' && results[j].value !== null) {
                         const game = batch[j];
-                        this.times[game.id] = results[j].value;
-                        found++;
-                    } else {
-                        const game = batch[j];
-                        const manual = this.getManualTimeOverride(game);
-                        if (manual !== null) {
-                            this.times[game.id] = manual;
+                        const val = results[j].value;
+                        if (val && typeof val === 'object' && val.estimated) {
+                            // Fallback estimate — store hours and mark with a note for the UI
+                            this.times[game.id] = val.hours;
+                            if (!this._estimatedGames) this._estimatedGames = [];
+                            this._estimatedGames.push(game.name || game.id);
                             found++;
                         } else {
-                            failed++;
+                            this.times[game.id] = val;
+                            found++;
                         }
+                    } else {
+                        failed++;
                     }
                 }
 
@@ -754,7 +753,13 @@ class GameLibrary {
 
             // Refresh grid
             this.filterAndRender();
-            this.showToast(`Times done! Found: ${found}, Not found: ${failed}`, found > 0 ? 'success' : 'warning');
+            const estimatedCount = (this._estimatedGames || []).length;
+            this._estimatedGames = [];
+            let toastMsg = `Times done! Found: ${found}, Not found: ${failed}`;
+            if (estimatedCount > 0) {
+                toastMsg += ` (${estimatedCount} estimated ~10h — not found on HLTB)`;
+            }
+            this.showToast(toastMsg, found > 0 ? 'success' : 'warning');
         } catch (error) {
             this.showToast('Time scan failed: ' + error.message, 'error');
         } finally {
@@ -765,11 +770,14 @@ class GameLibrary {
 
     // Fetch HLTB time for a single game using multiple sources
     async fetchHLTBTime(game) {
-        const gameName = this.splitGameName(game.name || game.id);
+        const rawName = game.name || game.id;
+        const normalizedName = this.normalizeGameName(rawName);
+        // Use normalized name for lookup; fall back to original split if different
+        const gameName = normalizedName;
 
-        // Check known/manual times database first using multiple tag/name variants
-        const knownTime = this.getManualTimeOverride(game);
-        if (knownTime !== null) return knownTime;
+        // Check known times database first
+        const knownTime = this.getKnownGameTimes()[game.id.toLowerCase().replace(/[^a-z0-9]/g, '')];
+        if (knownTime !== undefined) return knownTime;
 
         const corsProxies = [
             'https://corsproxy.io/?',
@@ -778,37 +786,44 @@ class GameLibrary {
         ];
 
         // Source 1: HLTB search via CORS proxy
+        // Try normalized name first, then fall back to original raw name
+        const originalName = this.splitGameName(rawName);
+        const searchNames = normalizedName !== originalName
+            ? [normalizedName, originalName]
+            : [normalizedName];
         for (const proxy of corsProxies) {
-            try {
-                const searchUrl = `https://howlongtobeat.com/api/search`;
-                const response = await fetch(proxy + encodeURIComponent(searchUrl), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        searchType: 'games',
-                        searchTerms: gameName.split(' '),
-                        searchPage: 1,
-                        size: 1,
-                        searchOptions: {
-                            games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: null, max: null }, gameplay: { perspective: '', flow: '', genre: '', subGenre: '' }, rangeYear: { min: '', max: '' }, modifier: '' },
-                            users: { sortCategory: 'postcount' },
-                            lists: { sortCategory: 'follows' },
-                            filter: '', sort: 0, randomizer: 0
-                        }
-                    }),
-                    signal: AbortSignal.timeout(10000)
-                });
-                const data = await response.json();
-                if (data && data.data && data.data.length > 0) {
-                    const result = data.data[0];
-                    // comp_main is main story in seconds
-                    const mainHours = result.comp_main ? Math.round(result.comp_main / 3600) : null;
-                    if (mainHours && mainHours > 0) return mainHours;
-                    // Fallback to comp_plus (main + extras)
-                    const plusHours = result.comp_plus ? Math.round(result.comp_plus / 3600) : null;
-                    if (plusHours && plusHours > 0) return plusHours;
-                }
-            } catch (e) { continue; }
+            for (const searchName of searchNames) {
+                try {
+                    const searchUrl = `https://howlongtobeat.com/api/search`;
+                    const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            searchType: 'games',
+                            searchTerms: searchName.split(' '),
+                            searchPage: 1,
+                            size: 1,
+                            searchOptions: {
+                                games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: null, max: null }, gameplay: { perspective: '', flow: '', genre: '', subGenre: '' }, rangeYear: { min: '', max: '' }, modifier: '' },
+                                users: { sortCategory: 'postcount' },
+                                lists: { sortCategory: 'follows' },
+                                filter: '', sort: 0, randomizer: 0
+                            }
+                        }),
+                        signal: AbortSignal.timeout(10000)
+                    });
+                    const data = await response.json();
+                    if (data && data.data && data.data.length > 0) {
+                        const result = data.data[0];
+                        // comp_main is main story in seconds
+                        const mainHours = result.comp_main ? Math.round(result.comp_main / 3600) : null;
+                        if (mainHours && mainHours > 0) return mainHours;
+                        // Fallback to comp_plus (main + extras)
+                        const plusHours = result.comp_plus ? Math.round(result.comp_plus / 3600) : null;
+                        if (plusHours && plusHours > 0) return plusHours;
+                    }
+                } catch (e) { continue; }
+            }
         }
 
         // Source 2: RAWG API (has playtime data)
@@ -843,7 +858,116 @@ class GameLibrary {
             } catch (e) { continue; }
         }
 
-        return null;
+        // ── FALLBACK STRATEGY 1: Retry HLTB with alternate name normalizations ──
+        const altNames = [];
+        // Remove subtitle (everything after : or dash)
+        const noSubtitle = gameName.replace(/\s*[:\u2013\u2014\-]\s*.+$/, '').trim();
+        if (noSubtitle && noSubtitle !== gameName) altNames.push(noSubtitle);
+        // Remove edition/remaster suffixes
+        const noEdition = gameName.replace(/\b(remastered|remake|edition|definitive|ultimate|deluxe|complete|collection|hd|goty|anniversary)\b.*/gi, '').trim();
+        if (noEdition && noEdition !== gameName && noEdition !== noSubtitle) altNames.push(noEdition);
+        // camelCase split from raw id
+        const camelSplit = (game.id || '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim();
+        if (camelSplit && camelSplit !== gameName) altNames.push(camelSplit);
+
+        for (const altName of altNames) {
+            for (const proxy of corsProxies) {
+                try {
+                    const searchUrl = `https://howlongtobeat.com/api/search`;
+                    const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            searchType: 'games',
+                            searchTerms: altName.split(' '),
+                            searchPage: 1,
+                            size: 1,
+                            searchOptions: {
+                                games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: null, max: null }, gameplay: { perspective: '', flow: '', genre: '', subGenre: '' }, rangeYear: { min: '', max: '' }, modifier: '' },
+                                users: { sortCategory: 'postcount' },
+                                lists: { sortCategory: 'follows' },
+                                filter: '', sort: 0, randomizer: 0
+                            }
+                        }),
+                        signal: AbortSignal.timeout(10000)
+                    });
+                    const data = await response.json();
+                    if (data && data.data && data.data.length > 0) {
+                        const result = data.data[0];
+                        const mainHours = result.comp_main ? Math.round(result.comp_main / 3600) : null;
+                        if (mainHours && mainHours > 0) return mainHours;
+                        const plusHours = result.comp_plus ? Math.round(result.comp_plus / 3600) : null;
+                        if (plusHours && plusHours > 0) return plusHours;
+                    }
+                } catch (e) { continue; }
+            }
+        }
+
+        // ── FALLBACK STRATEGY 2: Retry HLTB with first title word(s) only ──
+        const titleWords = gameName.split(' ').filter(w => w.length > 2);
+        if (titleWords.length > 1) {
+            const shortName = titleWords.slice(0, 2).join(' ');
+            for (const proxy of corsProxies) {
+                try {
+                    const searchUrl = `https://howlongtobeat.com/api/search`;
+                    const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            searchType: 'games',
+                            searchTerms: shortName.split(' '),
+                            searchPage: 1,
+                            size: 3,
+                            searchOptions: {
+                                games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: null, max: null }, gameplay: { perspective: '', flow: '', genre: '', subGenre: '' }, rangeYear: { min: '', max: '' }, modifier: '' },
+                                users: { sortCategory: 'postcount' },
+                                lists: { sortCategory: 'follows' },
+                                filter: '', sort: 0, randomizer: 0
+                            }
+                        }),
+                        signal: AbortSignal.timeout(10000)
+                    });
+                    const data = await response.json();
+                    if (data && data.data && data.data.length > 0) {
+                        // Pick the result whose name best matches our game
+                        const lowerGame = gameName.toLowerCase();
+                        const best = data.data.find(r => r.game_name && lowerGame.includes(r.game_name.toLowerCase().split(' ')[0])) || data.data[0];
+                        const mainHours = best.comp_main ? Math.round(best.comp_main / 3600) : null;
+                        if (mainHours && mainHours > 0) return mainHours;
+                        const plusHours = best.comp_plus ? Math.round(best.comp_plus / 3600) : null;
+                        if (plusHours && plusHours > 0) return plusHours;
+                    }
+                } catch (e) { continue; }
+            }
+        }
+
+        // ── FALLBACK STRATEGY 3: Genre-based or generic approximate estimate (~10h) ──
+        const estimatedHours = this.getGenreEstimate(game);
+        // Return an object flagged as estimated so the caller can notify the user
+        return { estimated: true, hours: estimatedHours };
+    }
+
+    // Return a genre/name-based approximate time estimate for games not found in HLTB
+    getGenreEstimate(game) {
+        const combined = ((game.name || '') + ' ' + (game.id || '') + ' ' + (game.genre || '') + ' ' + (game.category || '')).toLowerCase();
+
+        if (/\b(utility|server|driver|launcher|installer|browser|office)\b/.test(combined)) return 0;
+        if (/\b(visual.novel|kinetic novel|vn)\b/.test(combined)) return 8;
+        if (/\b(rpg|role.playing|jrpg|wrpg|open.world)\b/.test(combined)) return 40;
+        if (/\b(strategy|rts|turn.based|grand.strategy|4x)\b/.test(combined)) return 30;
+        if (/\b(simulation|sandbox|city.builder|farming|tycoon)\b/.test(combined)) return 20;
+        if (/\b(action.rpg|arpg|soulslike|souls.like)\b/.test(combined)) return 25;
+        if (/\b(metroidvania|metroid)\b/.test(combined)) return 12;
+        if (/\b(horror|survival.horror)\b/.test(combined)) return 10;
+        if (/\b(shooter|fps|tps)\b/.test(combined)) return 8;
+        if (/\b(platformer|platform)\b/.test(combined)) return 8;
+        if (/\b(puzzle|point.and.click)\b/.test(combined)) return 10;
+        if (/\b(fighting|beat.em.up|brawler)\b/.test(combined)) return 6;
+        if (/\b(racing|sport|sports)\b/.test(combined)) return 8;
+        if (/\b(roguelike|roguelite|rogue)\b/.test(combined)) return 15;
+        if (/\b(indie)\b/.test(combined)) return 10;
+
+        return 10; // Generic default ~10 hours
     }
 
     // Known game completion times (fallback database)
@@ -894,26 +1018,6 @@ class GameLibrary {
         };
     }
 
-    // Manual time override lookup (tag/id/name variants only, no auto-estimates)
-    getManualTimeOverride(game) {
-        const known = this.getKnownGameTimes();
-        const variants = [
-            game?.id || '',
-            game?.tag || '',
-            game?.name || '',
-            this.splitGameName(game?.id || ''),
-            this.splitGameName(game?.name || '')
-        ];
-
-        for (const raw of variants) {
-            const key = String(raw).toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (!key) continue;
-            if (known[key] !== undefined) return known[key];
-        }
-
-        return null;
-    }
-
     detectOS() {
         const platform = navigator.platform.toLowerCase();
         const userAgent = navigator.userAgent.toLowerCase();
@@ -960,10 +1064,6 @@ class GameLibrary {
             }
             if (e.key === 'Escape') {
                 this.closeAllModals();
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-                e.preventDefault();
-                this.selectAllVisible();
             }
         });
 
@@ -1013,18 +1113,6 @@ class GameLibrary {
             this.copyScript();
         });
 
-                // Copy Docker Pull command
-        document.getElementById('copyPullBtn').addEventListener('click', () => {
-            if (this.currentGame) {
-                const pullCmd = `docker pull michadockermisha/backup:${this.currentGame.tag}`;
-                navigator.clipboard.writeText(pullCmd).then(() => {
-                    this.showToast('Copied pull command!', 'success');
-                }).catch(() => {
-                    this.showToast('Failed to copy', 'error');
-                });
-            }
-        });
-
         // Action bar buttons
         document.getElementById('syncDockerBtn').addEventListener('click', () => {
             this.manualSync();
@@ -1038,24 +1126,12 @@ class GameLibrary {
             this.scanAndAddTimes();
         });
 
-        document.getElementById('randomGameBtn').addEventListener('click', () => {
-            this.pickRandomGame();
-        });
-
         document.getElementById('showInstalledBtn').addEventListener('click', () => {
             this.toggleInstalledFilter();
         });
 
-        document.getElementById('maxSizeFilter').addEventListener('input', () => {
-            this.filterAndRender();
-        });
-
         document.getElementById('selectAllBtn').addEventListener('click', () => {
             this.selectAllVisible();
-        });
-
-        document.getElementById('selectCategoryBtn').addEventListener('click', () => {
-            this.selectCurrentCategory();
         });
 
         document.getElementById('deselectAllBtn').addEventListener('click', () => {
@@ -1114,6 +1190,12 @@ class GameLibrary {
         // Move To button
         document.getElementById('moveToBtn').addEventListener('click', (e) => {
             this.toggleMoveToMenu(e);
+        });
+
+        // Rating filter dropdown
+        document.getElementById('ratingFilter').addEventListener('change', (e) => {
+            this.minRatingFilter = parseInt(e.target.value, 10);
+            this.filterAndRender();
         });
 
         // Global mount path
@@ -1228,13 +1310,13 @@ class GameLibrary {
         const container = document.getElementById('tabsContainer');
         container.innerHTML = '';
 
-        // Render 'Recent' tab first
-        const recentGames = JSON.parse(localStorage.getItem('recentGames') || '[]');
-        const recentBtn = document.createElement('button');
-        recentBtn.className = `tab-btn ${this.currentTab === 'recent' ? 'active' : ''}`;
-        recentBtn.innerHTML = `<span>Recent</span><span class="count tab-count-badge">${recentGames.length}</span>`;
-        recentBtn.addEventListener('click', () => this.selectTab('recent'));
-        container.appendChild(recentBtn);
+        // Add Wishlist tab at the top
+        const wishlistBtn = document.createElement('button');
+        const wishlistCount = this.wishlist.size;
+        wishlistBtn.className = `tab-btn wishlist-tab-btn ${this.currentTab === 'wishlist' ? 'active' : ''}`;
+        wishlistBtn.innerHTML = `<span>♥ Wishlist</span><span class="count">${wishlistCount}</span>`;
+        wishlistBtn.addEventListener('click', () => this.selectTab('wishlist'));
+        container.appendChild(wishlistBtn);
 
         this.tabs.forEach(tab => {
             const isAdminOnly = this.isTabAdminOnly(tab.id);
@@ -1260,21 +1342,21 @@ class GameLibrary {
                     // Admin-only tabs show lock icon (cannot be toggled, permanently admin-only)
                     btn.innerHTML = `
                         <span>${tab.name}</span>
-                        <span class="count tab-count-badge">${count}</span>
+                        <span class="count">${count}</span>
                         <span class="admin-only-indicator" title="Admin-only tab (cannot be made public)">🔒</span>
                     `;
                 } else {
                     // Regular tabs show visibility toggle
                     btn.innerHTML = `
                         <span>${tab.name}</span>
-                        <span class="count tab-count-badge">${count}</span>
+                        <span class="count">${count}</span>
                         <span class="tab-visibility-toggle" data-tab="${tab.id}" title="${isHidden ? 'Show to all' : 'Hide from non-admins'}">${isHidden ? '👁️‍🗨️' : '👁️'}</span>
                     `;
                 }
             } else {
                 btn.innerHTML = `
                     <span>${tab.name}</span>
-                    <span class="count tab-count-badge">${count}</span>
+                    <span class="count">${count}</span>
                 `;
             }
 
@@ -1313,22 +1395,14 @@ class GameLibrary {
     }
 
     filterAndRender() {
-        let filtered;
-        if (this.currentTab === 'recent') {
-            const recentGames = JSON.parse(localStorage.getItem('recentGames') || '[]');
-            const recentIds = recentGames.map(r => r.id);
-            const recentMap = {};
-            recentGames.forEach((r, i) => { recentMap[r.id] = i; });
-            filtered = this.games.filter(g => recentIds.includes(g.id));
-            filtered.sort((a, b) => (recentMap[a.id] || 0) - (recentMap[b.id] || 0));
-        } else if (this.currentTab === 'all') {
-            filtered = this.games.filter(g =>
+        let filtered = this.currentTab === 'all'
+            ? this.games.filter(g =>
                 !this.ADMIN_ONLY_TABS.has(g.category) &&  // Exclude admin-only tabs from "All" view for everyone
                 !this.hiddenTabs.has(g.category)           // CRITICAL: Exclude hidden tabs from "All" view for EVERYONE (including admin)
-              );
-        } else {
-            filtered = this.games.filter(g => g.category === this.currentTab);
-        }
+              )
+            : this.currentTab === 'wishlist'
+            ? this.games.filter(g => this.wishlist.has(g.id))
+            : this.games.filter(g => g.category === this.currentTab);
 
         // CRITICAL: Hide games from admin-only tabs for non-admins when viewing specific tabs
         if (!this.isAdmin) {
@@ -1348,9 +1422,22 @@ class GameLibrary {
             );
         }
 
+        // Filter by active tag
+        if (this.activeTagFilter) {
+            filtered = filtered.filter(g => {
+                const tags = this.gameTags[g.id];
+                return tags && tags.includes(this.activeTagFilter);
+            });
+        }
+
         // Filter by installed status if enabled
         if (this.showInstalledOnly) {
             filtered = filtered.filter(g => this.installedGames.has(g.id));
+        }
+
+        // Filter by minimum star rating
+        if (this.minRatingFilter > 0) {
+            filtered = filtered.filter(g => this.getGameRating(g.id) >= this.minRatingFilter);
         }
 
         filtered.sort((a, b) => {
@@ -1399,6 +1486,12 @@ class GameLibrary {
                         hasB = true;
                     }
                     break;
+                case 'rating':
+                    valA = this.getGameRating(a.id);
+                    valB = this.getGameRating(b.id);
+                    hasA = valA > 0;
+                    hasB = valB > 0;
+                    break;
                 default:
                     valA = a.name.toLowerCase();
                     valB = b.name.toLowerCase();
@@ -1424,9 +1517,6 @@ class GameLibrary {
         this.filteredGames = filtered;
         document.getElementById('filteredCount').textContent = filtered.length;
 
-        // Reset to first page on filter/search change
-        this.currentPage = 1;
-
         this.renderGames();
     }
 
@@ -1437,27 +1527,11 @@ class GameLibrary {
         if (this.filteredGames.length === 0) {
             grid.innerHTML = '';
             noResults.style.display = 'block';
-            this.renderPaginationControls();
             return;
         }
 
         noResults.style.display = 'none';
-
-        // Page-based pagination
-        const totalPages = Math.max(1, Math.ceil(this.filteredGames.length / this.gamesPerPage));
-        if (this.currentPage > totalPages) this.currentPage = totalPages;
-        if (this.currentPage < 1) this.currentPage = 1;
-
-        const startIndex = (this.currentPage - 1) * this.gamesPerPage;
-        const endIndex = Math.min(startIndex + this.gamesPerPage, this.filteredGames.length);
-        const pageGames = this.filteredGames.slice(startIndex, endIndex);
-
-        grid.innerHTML = pageGames.map(game => this.createGameCard(game)).join('');
-
-        this.renderPaginationControls();
-
-        // Scroll to top when page changes
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        grid.innerHTML = this.filteredGames.map(game => this.createGameCard(game)).join('');
 
         // Add click handlers for info button
         grid.querySelectorAll('.game-card').forEach(card => {
@@ -1487,9 +1561,38 @@ class GameLibrary {
                 this.toggleGameSelection(gameId, e.target.checked);
             });
 
+            // Card tag chip — click to filter by that tag
+            card.querySelectorAll('.card-tag-chip').forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.setActiveTagFilter(chip.dataset.tag);
+                });
+            });
+
+            // Wishlist button toggles wishlist
+            const wishlistBtn = card.querySelector('.wishlist-btn');
+            if (wishlistBtn) {
+                wishlistBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const gameId = card.dataset.id;
+                    this.toggleWishlist(gameId);
+                });
+            }
+
+            // Star rating clicks
+            card.querySelectorAll('.star-btn').forEach(star => {
+                star.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const gameId = card.dataset.id;
+                    const newRating = parseInt(e.target.dataset.star);
+                    const cur = this.getGameRating(gameId);
+                    this.setRating(gameId, cur === newRating ? 0 : newRating);
+                });
+            });
+
             // Card click toggles selection
             card.addEventListener('click', (e) => {
-                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn')) {
+                if (e.target !== checkbox && !e.target.closest('.info-btn') && !e.target.closest('.install-btn') && !e.target.closest('.card-tag-chip') && !e.target.closest('.wishlist-btn') && !e.target.closest('.rating-stars')) {
                     const gameId = card.dataset.id;
                     checkbox.checked = !checkbox.checked;
                     this.toggleGameSelection(gameId, checkbox.checked);
@@ -1500,49 +1603,21 @@ class GameLibrary {
         this.lazyLoadImages();
     }
 
-    // Render prev/next pagination controls
-    renderPaginationControls() {
-        const totalPages = Math.max(1, Math.ceil(this.filteredGames.length / this.gamesPerPage));
-        const hasMultiplePages = totalPages > 1;
-
-        // Remove existing controls
-        document.querySelectorAll('.pagination-controls').forEach(el => el.remove());
-
-        if (!hasMultiplePages) return;
-
-        const createControls = () => {
-            const container = document.createElement('div');
-            container.className = 'pagination-controls';
-            container.innerHTML = `
-                <button class="page-btn prev-btn" ${this.currentPage <= 1 ? 'disabled' : ''}>&#8592; Prev</button>
-                <span class="page-indicator">Page ${this.currentPage} of ${totalPages}</span>
-                <button class="page-btn next-btn" ${this.currentPage >= totalPages ? 'disabled' : ''}>Next &#8594;</button>
-            `;
-            container.querySelector('.prev-btn').addEventListener('click', () => {
-                if (this.currentPage > 1) { this.currentPage--; this.renderGames(); }
-            });
-            container.querySelector('.next-btn').addEventListener('click', () => {
-                if (this.currentPage < totalPages) { this.currentPage++; this.renderGames(); }
-            });
-            return container;
-        };
-
-        const grid = document.getElementById('gamesGrid');
-        if (grid) {
-            grid.parentNode.insertBefore(createControls(), grid);
-            grid.parentNode.insertBefore(createControls(), grid.nextSibling);
-        }
-    }
-
     createGameCard(game) {
-        const time = this.times[game.id];
+        // Use time from game entry (games.json) first, fall back to times.json lookup
+        const time = (game.time != null) ? game.time : this.times[game.id];
         const timeStr = time ? `${time}h` : 'N/A';
         const size = this.imageSizes[game.id];
         const sizeStr = size ? `${size} GB` : 'N/A';
-        const imageName = game.id.toLowerCase();
+        // Use image path from game entry (games.json) first, fall back to derived path
+        const imageSrc = game.image || `images/${game.id.toLowerCase()}.png`;
+        const dockerImageUrl = game.dockerImage || null;
         const isSelected = this.selectedGames.has(game.id);
         const isInstalled = this.installedGames.has(game.id);
         const isNew = game.category === 'new';
+        const isWishlisted = this.wishlist.has(game.id);
+        const gameRating = this.getGameRating(game.id);
+        const ratingStars = [1,2,3,4,5].map(s => `<span class="star-btn ${s <= gameRating ? 'star-filled' : ''}" data-star="${s}" title="Rate ${s} star${s>1?'s':''}">&#9733;</span>`).join('');
 
         return `
             <div class="game-card ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''} ${isNew ? 'new-game' : ''}" data-id="${game.id}" role="article" aria-label="${game.name}">
@@ -1550,12 +1625,15 @@ class GameLibrary {
                 ${isSelected ? '<span class="checkmark-icon">✓</span>' : ''}
                 <button class="info-btn" title="View details" aria-label="View details for ${game.name}">ℹ️</button>
                 <button class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}" aria-label="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}">${isInstalled ? '✅' : '📥'}</button>
+                <button class="youtube-btn" title="Watch trailer on YouTube" aria-label="Watch ${game.name} trailer on YouTube" onclick="window.open('https://www.youtube.com/results?search_query=${encodeURIComponent(game.name + ' trailer')}', '_blank', 'noopener')">▶</button>
                 ${isNew ? '<div class="new-badge">🆕 NEW</div>' : ''}
                 ${isInstalled ? '<div class="installed-badge">✓ Installed</div>' : ''}
+                ${isWishlisted ? '<div class="wishlist-badge">&#9829;</div>' : ''}
+                <button class="wishlist-btn ${isWishlisted ? 'wishlisted' : ''}" title="${isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}" aria-label="Toggle wishlist">&#9829;</button>
                 <p class="image-container">
                     <img
-                        data-src="images/${imageName}.png"
-                        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E"
+                        data-src="${imageSrc}"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
                         alt="${game.name}"
                         loading="lazy"
                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22%3E%3Crect fill=%22%231f2937%22 width=%22300%22 height=%22400%22/%3E%3Ctext x=%22150%22 y=%22200%22 text-anchor=%22middle%22 fill=%22%236366f1%22 font-size=%2240%22%3E🎮%3C/text%3E%3C/svg%3E'"
@@ -1565,9 +1643,12 @@ class GameLibrary {
                     <div class="title" title="${game.name}">${game.name}</div>
                     <div class="meta">
                         ${this.settings.showCategories ? `<span class="category-badge">${game.category || 'uncategorized'}</span>` : ''}
-                        ${this.settings.showTimes ? `<span class="time-badge">⏱️ ${timeStr}</span>` : ''}
+                        ${this.settings.showTimes ? `<span class="time-badge" title="${time ? `~${time} hours to complete` : 'No time data'}">⏱️ ${timeStr}</span>` : ''}
                         <span class="size-badge">💾 ${sizeStr}</span>
+                        ${dockerImageUrl ? `<a class="docker-badge" href="${dockerImageUrl}" target="_blank" title="View on Docker Hub" rel="noopener">🐳</a>` : ''}
                     </div>
+                    ${this._renderCardTags(game.id)}
+                    <div class="rating-stars" data-gameid="${game.id}" title="Rate this game">${ratingStars}</div>
                 </div>
             </div>
         `;
@@ -1616,6 +1697,36 @@ class GameLibrary {
         }
     }
 
+
+    updateStatsDashboard() {
+        const total = this.games.length;
+        const installed = this.installedGames.size;
+        const pct = total > 0 ? Math.round((installed / total) * 100) : 0;
+
+        // Average HLTB time from times data
+        const timeValues = Object.values(this.times).filter(function(v) {
+            return v !== null && v !== undefined && !isNaN(Number(v));
+        });
+        let avgTimeStr = '\u2014';
+        if (timeValues.length > 0) {
+            const avg = timeValues.reduce(function(s, v) { return s + Number(v); }, 0) / timeValues.length;
+            avgTimeStr = avg >= 1 ? ('~' + avg.toFixed(1) + 'h') : ('~' + Math.round(avg * 60) + 'm');
+        }
+
+        // Games with cover images: games present in imageSizes
+        const imgKeys = Object.keys(this.imageSizes).map(function(k) { return k.toLowerCase(); });
+        const gamesWithImages = this.games.filter(function(g) {
+            return imgKeys.indexOf(g.id.toLowerCase()) !== -1;
+        }).length;
+
+        const elById = function(id) { return document.getElementById(id); };
+        if (elById('statsTotalGames')) elById('statsTotalGames').textContent = total;
+        if (elById('statsInstalled')) {
+            elById('statsInstalled').innerHTML = installed + ' <span class="stats-pct">(' + pct + '%)</span>';
+        }
+        if (elById('statsAvgTime')) elById('statsAvgTime').textContent = avgTimeStr;
+        if (elById('statsWithImages')) elById('statsWithImages').textContent = gamesWithImages;
+    }
     selectAllVisible() {
         this.filteredGames.forEach(game => {
             this.selectedGames.add(game.id);
@@ -1623,20 +1734,6 @@ class GameLibrary {
         this.filterAndRender();
         this.updateSelectedCount();
         this.showToast(`Selected ${this.filteredGames.length} games`, 'success');
-    }
-
-    selectCurrentCategory() {
-        if (this.currentTab === 'all') {
-            this.selectAllVisible();
-            return;
-        }
-        const categoryGames = this.games.filter(g => g.category === this.currentTab);
-        categoryGames.forEach(game => {
-            this.selectedGames.add(game.id);
-        });
-        this.filterAndRender();
-        this.updateSelectedCount();
-        this.showToast(`Selected ${categoryGames.length} games in "${this.currentTab}"`, 'success');
     }
 
     deselectAll() {
@@ -1689,8 +1786,46 @@ class GameLibrary {
         const dockerCmd = this.getDockerCommand(game.id);
         document.getElementById('dockerCommand').textContent = dockerCmd;
 
+        // Render tag section in modal
+        this._renderModalTagSection(game);
+
         this.currentGame = game;
         modal.classList.add('active');
+    }
+
+    _renderModalTagSection(game) {
+        let tagSection = document.getElementById('modalTagSection');
+        if (!tagSection) {
+            const modalInfo = document.querySelector('.modal-info');
+            if (!modalInfo) return;
+            tagSection = document.createElement('div');
+            tagSection.id = 'modalTagSection';
+            tagSection.className = 'modal-tag-section';
+            modalInfo.appendChild(tagSection);
+        }
+        const currentTags = this.getGameTags(game.id);
+        tagSection.innerHTML = `
+            <div class="modal-tag-header">
+                <span class="modal-tag-label">\uD83C\uDFF7\uFE0F Tags</span>
+                <button class="modal-tag-edit-btn" id="modalTagEditBtn">Edit Tags</button>
+            </div>
+            <div class="modal-tag-chips" id="modalTagChips">
+                ${currentTags.length
+                    ? currentTags.map(t => `<span class="modal-tag-chip" data-tag="${t}">${t}</span>`).join('')
+                    : '<span class="modal-tag-none">No tags assigned</span>'
+                }
+            </div>
+        `;
+        document.getElementById('modalTagEditBtn').addEventListener('click', () => {
+            this.closeModal('gameModal');
+            this.openTagEditor(game.id);
+        });
+        tagSection.querySelectorAll('.modal-tag-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                this.closeModal('gameModal');
+                this.setActiveTagFilter(chip.dataset.tag);
+            });
+        });
     }
 
     closeModal(modalId) {
@@ -1722,21 +1857,6 @@ class GameLibrary {
             return;
         }
         this.downloadRunScript([...this.selectedGames]);
-    }
-
-    saveRecentGame(game) {
-        try {
-            let recent = JSON.parse(localStorage.getItem('recentGames') || '[]');
-            // Remove existing entry for same game (deduplicate by id)
-            recent = recent.filter(r => r.id !== game.id);
-            // Prepend new entry
-            recent.unshift({ id: game.id, name: game.name, timestamp: Date.now() });
-            // Trim to max 20
-            if (recent.length > 20) recent = recent.slice(0, 20);
-            localStorage.setItem('recentGames', JSON.stringify(recent));
-        } catch (e) {
-            console.warn('saveRecentGame error:', e);
-        }
     }
 
     downloadRunScript(gameIds, format = 'bat') {
@@ -2384,14 +2504,6 @@ echo ""
                 : `run_${gameCount}_games_${timestamp}.sh`;
         }
 
-        // Save recently played games to localStorage
-        gameIds.forEach(id => {
-            const game = this.games.find(g => g.id === id);
-            if (game) this.saveRecentGame(game);
-        });
-        // Re-render tabs to update Recent count
-        this.renderTabs();
-
         // Download the file
         const blob = new Blob([script], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
@@ -2617,20 +2729,57 @@ echo "Done!"
             'size-asc': '↓ Size',
             'size-desc': '↑ Size',
             'date-desc': '↓ Date',  // Newest-Oldest (descending = highest date first)
-            'date-asc': '↑ Date'    // Oldest-Newest (ascending = lowest date first)
+            'date-asc': '↑ Date',   // Oldest-Newest (ascending = lowest date first)
+            'rating-desc': '⭐ Rating',
+            'rating-asc': '⭐ Rating↑'
         };
         document.getElementById('sortIndicator').textContent = indicators[`${sortBy}-${order}`] || '↓ Name';
+        // Persist sort preference to localStorage
+        try { localStorage.setItem('gameLibrarySortPref', JSON.stringify({by: sortBy, order: order})); } catch(e) {}
 
         document.getElementById('sortMenu').style.display = 'none';
         this.filterAndRender();
     }
 
+
+    setRating(gameId, rating) {
+        // Update in-memory ratings object and persist to localStorage
+        if (rating === 0) {
+            delete this.ratings[gameId];
+        } else {
+            this.ratings[gameId] = rating;
+        }
+        try { localStorage.setItem('gameLibraryRatings', JSON.stringify(this.ratings)); } catch(e) {}
+        this.setGameRating(gameId, rating); // also keep individual keys for compatibility
+        // Re-render the card's stars in-place
+        const card = document.querySelector(`.game-card[data-id="${gameId}"]`);
+        if (card) {
+            const starsEl = card.querySelector('.rating-stars');
+            if (starsEl) {
+                const r = this.getGameRating(gameId);
+                starsEl.innerHTML = [1,2,3,4,5].map(s => {
+                    const filled = s <= r ? 'star-filled' : '';
+                    return `<span class="star-btn ${filled}" data-star="${s}" title="Rate ${s} star${s>1?'s':''}">&#9733;</span>`;
+                }).join('');
+                starsEl.querySelectorAll('.star-btn').forEach(star => {
+                    star.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const nr = parseInt(e.target.dataset.star);
+                        const cur = this.getGameRating(gameId);
+                        this.setRating(gameId, cur === nr ? 0 : nr);
+                    });
+                });
+            }
+        }
+        if (this.sortBy === 'rating') this.filterAndRender();
+    }
     toggleTheme() {
         const currentTheme = document.body.dataset.theme || 'dark';
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         document.body.dataset.theme = newTheme;
         document.getElementById('themeBtn').textContent = newTheme === 'dark' ? '🌙' : '☀️';
         this.settings.theme = newTheme;
+        localStorage.setItem('theme', newTheme);
         this.saveSettings();
     }
 
@@ -2658,6 +2807,11 @@ echo "Done!"
         try {
             const saved = localStorage.getItem('gameLibrarySettings');
             const settings = saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+            // 'theme' standalone key takes priority for persistence compatibility
+            const standaloneTheme = localStorage.getItem('theme');
+            if (standaloneTheme === 'light' || standaloneTheme === 'dark') {
+                settings.theme = standaloneTheme;
+            }
 
             // Sync global mount path input
             setTimeout(() => {
@@ -2966,6 +3120,18 @@ echo "Done!"
         console.log(`Tab "${tabId}" ${wasHidden ? 'unlocked' : 'hidden'} - changes applied instantly`);
     }
 
+    getGameRating(gameId) {
+        return parseInt(localStorage.getItem('gameRating_' + gameId) || '0', 10);
+    }
+
+    setGameRating(gameId, rating) {
+        if (rating === 0) {
+            localStorage.removeItem('gameRating_' + gameId);
+        } else {
+            localStorage.setItem('gameRating_' + gameId, String(rating));
+        }
+    }
+
     toggleInstalled(gameId) {
         if (this.installedGames.has(gameId)) {
             this.installedGames.delete(gameId);
@@ -2975,6 +3141,20 @@ echo "Done!"
             this.showToast(`${gameId} marked as installed`, 'success');
         }
         this.saveInstalledGames();
+        this.filterAndRender();
+        this.updateStatsDashboard();
+    }
+
+    toggleWishlist(gameId) {
+        if (this.wishlist.has(gameId)) {
+            this.wishlist.delete(gameId);
+            this.showToast('Removed from wishlist', 'info');
+        } else {
+            this.wishlist.add(gameId);
+            this.showToast('Added to wishlist ♥', 'success');
+        }
+        localStorage.setItem('gameWishlist', JSON.stringify([...this.wishlist]));
+        this.renderTabs();
         this.filterAndRender();
     }
 
@@ -2997,6 +3177,16 @@ echo "Done!"
         document.body.dataset.theme = this.settings.theme;
         document.body.dataset.grid = this.settings.gridSize;
         document.getElementById('themeBtn').textContent = this.settings.theme === 'dark' ? '🌙' : '☀️';
+
+        // Restore sort indicator from persisted preference
+        const _sortIndEl = document.getElementById('sortIndicator');
+        if (_sortIndEl) {
+            const _ind = {'name-asc':'\u2193 Name','name-desc':'\u2191 Name','time-asc':'\u2193 Time','time-desc':'\u2191 Time','category-asc':'\u2193 Cat','size-asc':'\u2193 Size','size-desc':'\u2191 Size','date-desc':'\u2193 Date','date-asc':'\u2191 Date','rating-desc':'\u2B50 Rating','rating-asc':'\u2B50 Rating\u2191'};
+            _sortIndEl.textContent = _ind[this.sortBy + '-' + this.sortOrder] || '\u2193 Name';
+            document.querySelectorAll('.sort-option').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.sort === this.sortBy && btn.dataset.order === this.sortOrder);
+            }.bind(this));
+        }
     }
 
     exportData() {
@@ -3903,6 +4093,43 @@ echo "Done!"
     }
 
     // Split concatenated game names into words for better search
+    // Smart name normalization for concatenated game names before HLTB lookup
+    normalizeGameName(name) {
+        if (!name) return name;
+
+        let result = name;
+
+        // Handle ALL_CAPS_WITH_UNDERSCORES: "STAR_WARS_GAME" → "Star Wars Game"
+        if (/^[A-Z0-9_]+$/.test(result)) {
+            result = result
+                .replace(/_/g, ' ')
+                .toLowerCase()
+                .replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        // Replace underscores/hyphens with spaces
+        result = result.replace(/[_-]/g, ' ');
+
+        // Convert camelCase to spaces: "StarWars" → "Star Wars"
+        result = result.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+        // Handle consecutive capitals followed by lowercase: "HLTBGame" → "HLTB Game"
+        result = result.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
+
+        // Strip extra punctuation (keep apostrophes, colons, ampersands)
+        result = result.replace(/[^\w\s':&!?-]/g, ' ');
+
+        // Clean up extra whitespace
+        result = result.replace(/\s+/g, ' ').trim();
+
+        // If result is single word and looks concatenated, delegate to splitGameName
+        if (!result.includes(' ')) {
+            result = this.splitGameName(result);
+        }
+
+        return result;
+    }
+
     splitGameName(name) {
         // Common game-related words to help split concatenated names
         const commonWords = [
@@ -3933,63 +4160,7 @@ echo "Done!"
             'expedition', 'schedule', 'obscur', 'clair',
             'lego', 'sonic', 'mario', 'zelda', 'pokemon',
             'assassin', 'creed', 'fantasy', 'resident', 'evil',
-            'metal', 'gear', 'solid', 'monster', 'hunter',
-            // Game title proper nouns and common game words
-            'redemption', 'horizon', 'forbidden', 'west', 'east', 'north', 'south',
-            'cyber', 'punk', 'witcher', 'elden', 'ring', 'halo', 'infinite',
-            'god', 'ragnarok', 'spider', 'man', 'miles', 'morales', 'venom',
-            'grand', 'theft', 'auto', 'call', 'duty', 'modern', 'warfare',
-            'field', 'counter', 'strike', 'over', 'watch', 'apex',
-            'destiny', 'diablo', 'immortal', 'starcraft', 'warcraft',
-            'mine', 'terra', 'terraria', 'valley', 'stardew', 'hollow',
-            'ori', 'blind', 'forest', 'wisps', 'cuphead', 'hades',
-            'disco', 'elysium', 'outer', 'wilds', 'worlds', 'fallout',
-            'bioshock', 'shock', 'system', 'prey', 'control', 'alan', 'wake',
-            'mass', 'effect', 'andromeda', 'dragon', 'inquisition', 'origins',
-            'sky', 'rim', 'scroll', 'scrolls', 'elder', 'oblivion', 'morrowind',
-            'under', 'tale', 'delta', 'rune', 'celeste', 'inside', 'limbo',
-            'portal', 'half', 'life', 'alyx', 'left', 'counter',
-            'total', 'civilization', 'crusader', 'kings', 'europa', 'universalis',
-            'space', 'no', 'among', 'us', 'rust', 'ark', 'survival', 'evolved',
-            'sea', 'thieves', 'state', 'decay', 'back', 'blood',
-            'cyber', 'shadow', 'ninja', 'gaiden', 'tekken', 'mortal', 'kombat',
-            'street', 'fighter', 'smash', 'bros', 'brothers', 'kart',
-            'racing', 'speed', 'need', 'most', 'wanted', 'underground',
-            'saints', 'row', 'just', 'cause', 'far', 'cry', 'watch', 'dogs',
-            'ghost', 'recon', 'splinter', 'cell', 'rainbow', 'siege',
-            'tomb', 'raider', 'uncharted', 'jak', 'daxter', 'ratchet', 'clank',
-            'sly', 'cooper', 'crash', 'bandicoot', 'spyro',
-            'kingdom', 'hearts', 'persona', 'shin', 'megami', 'tensei',
-            'dark', 'arisen', 'dogma', 'capcom', 'devil', 'may',
-            'power', 'rangers', 'mighty', 'force', 'unleashed',
-            'plague', 'innocence', 'requiem', 'amnesia', 'rebirth',
-            'little', 'big', 'planet', 'sack', 'boy', 'adventure',
-            'return', 'monkey', 'escape', 'secret', 'grim', 'fandango',
-            'psychonauts', 'broken', 'sword', 'longest', 'journey',
-            'walking', 'wolf', 'among', 'batman', 'arkham', 'asylum', 'knight',
-            'sleeping', 'true', 'crime', 'mafia', 'like', 'yakuza', 'judgment',
-            'saints', 'dead', 'rising', 'dying', 'prototype', 'infamous',
-            'second', 'son', 'sucker', 'punch', 'ghosts', 'tsushima',
-            'forbidden', 'siren', 'tribe', 'machines', 'frozen',
-            'breath', 'tears', 'link', 'past', 'between',
-            'sand', 'sands', 'time', 'warrior', 'warriors', 'within',
-            'beyond', 'good', 'great', 'mighty', 'brave', 'seven',
-            'eight', 'nine', 'ten', 'hundred', 'thousand',
-            'point', 'click', 'paper', 'please', 'papers',
-            'shovel', 'enter', 'gungeon', 'binding', 'isaac',
-            'dead', 'cells', 'slay', 'spire', 'into', 'breach',
-            'faster', 'than', 'ftl', 'rim', 'oxygen', 'included',
-            'factory', 'satisfactory', 'subnautica', 'below',
-            'raft', 'green', 'project', 'zomboid', 'kenshi',
-            'mount', 'bannerlord', 'warband', 'chivalry', 'medieval',
-            'honor', 'glory', 'titan', 'titanfall', 'anthem',
-            'division', 'border', 'borderlands', 'tiny', 'tina', 'wonderlands',
-            'saints', 'payday', 'heist', 'thief', 'hitman', 'absolution',
-            'sniper', 'elite', 'ghost', 'warrior', 'contracts',
-            'metro', 'exodus', 'stalker', 'anomaly', 'clear',
-            'atomic', 'heart', 'bio', 'mutant', 'year',
-            'plague', 'tale', 'pentiment', 'norco', 'tunic',
-            'sifu', 'trek', 'yonder', 'cloud', 'catcher', 'chronicles'
+            'metal', 'gear', 'solid', 'monster', 'hunter'
         ];
 
         let result = name
@@ -4065,12 +4236,6 @@ echo "Done!"
         // Clean up the game name for better search results
         // Handle concatenated names like "doomthedarkages" -> "doom the dark ages"
         const searchName = this.splitGameName(gameName);
-        // Also try with just camelCase split (spaces before capitals) as alternate
-        const camelSplit = gameName.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/(\d+)/g, ' $1 ').replace(/\s+/g, ' ').trim();
-        const searchNames = [searchName];
-        if (camelSplit !== searchName && camelSplit.includes(' ')) searchNames.push(camelSplit);
-        // Also try original name if different
-        if (gameName !== searchName && gameName !== camelSplit) searchNames.push(gameName);
 
         const corsProxies = [
             'https://corsproxy.io/?',
@@ -4078,39 +4243,34 @@ echo "Done!"
             'https://api.codetabs.com/v1/proxy?quest='
         ];
 
-        // Try each search name variant with each proxy
-        for (const tryName of searchNames) {
-            for (const proxy of corsProxies) {
-                try {
-                    const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(tryName)}&l=english&cc=US`;
-                    const response = await fetch(proxy + encodeURIComponent(searchUrl), {
-                        signal: AbortSignal.timeout(8000)
-                    });
-                    const data = await response.json();
+        for (const proxy of corsProxies) {
+            try {
+                const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(searchName)}&l=english&cc=US`;
+                const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                    signal: AbortSignal.timeout(8000)
+                });
+                const data = await response.json();
 
-                    if (data && data.items && data.items.length > 0) {
-                        const appId = data.items[0].id;
-                        const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
-                        cache[cacheKey] = coverUrl;
-                        this.saveSteamCoverCache();
-                        return coverUrl;
-                    }
-                } catch (e) {
-                    continue;
+                if (data && data.items && data.items.length > 0) {
+                    const appId = data.items[0].id;
+                    // Use portrait cover directly - Steam CDN is reliable
+                    const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
+                    cache[cacheKey] = coverUrl;
+                    this.saveSteamCoverCache();
+                    return coverUrl;
                 }
+            } catch (e) {
+                continue;
             }
         }
 
-        // Fallback: Try RAWG API with each name variant
-        for (const tryName of searchNames) {
-            const rawgUrl = await this.fetchRawgCoverUrl(tryName, corsProxies);
-            if (rawgUrl) {
-                cache[cacheKey] = rawgUrl;
-                this.saveSteamCoverCache();
-                return rawgUrl;
-            }
+        // Fallback: Try RAWG API for games not found on Steam
+        const rawgUrl = await this.fetchRawgCoverUrl(searchName, corsProxies);
+        if (rawgUrl) {
+            cache[cacheKey] = rawgUrl;
+            this.saveSteamCoverCache();
+            return rawgUrl;
         }
-        // All RAWG attempts failed above
 
         // Fallback: Try with simplified name (remove common suffixes)
         const simplifiedName = searchName
@@ -4136,44 +4296,100 @@ echo "Done!"
             }
         }
 
-        // Fallback: Partial match — try progressively shorter word prefixes
-        const searchWords = searchName.split(/\s+/).filter(w => w.length > 1);
-        if (searchWords.length >= 2) {
-            // Try first N words (from all down to just first 2), then first word alone if 4+ chars
-            for (let wordCount = searchWords.length - 1; wordCount >= 1; wordCount--) {
-                const partial = searchWords.slice(0, wordCount).join(' ');
-                if (partial === searchName || partial === simplifiedName || partial.length < 3) continue;
-                for (const proxy of corsProxies) {
-                    try {
-                        const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(partial)}&l=english&cc=US`;
-                        const response = await fetch(proxy + encodeURIComponent(searchUrl), {
-                            signal: AbortSignal.timeout(8000)
-                        });
-                        const data = await response.json();
-                        if (data && data.items && data.items.length > 0) {
-                            // Verify partial match relevance: result name must contain our partial term
-                            const resultName = (data.items[0].name || '').toLowerCase();
-                            if (resultName.includes(partial.toLowerCase()) || partial.toLowerCase().includes(resultName.split(/[:\-–]/)[0].trim().toLowerCase())) {
-                                const appId = data.items[0].id;
-                                const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
-                                cache[cacheKey] = coverUrl;
-                                this.saveSteamCoverCache();
-                                return coverUrl;
-                            }
-                        }
-                    } catch (e) { continue; }
-                }
+        // Fallback Strategy 1: Try original game name as-is (no splitting)
+        if (gameName !== searchName) {
+            for (const proxy of corsProxies) {
+                try {
+                    const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(gameName)}&l=english&cc=US`;
+                    const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                        signal: AbortSignal.timeout(8000)
+                    });
+                    const data = await response.json();
+                    if (data && data.items && data.items.length > 0) {
+                        const appId = data.items[0].id;
+                        const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
+                        cache[cacheKey] = coverUrl;
+                        this.saveSteamCoverCache();
+                        return coverUrl;
+                    }
+                } catch (e) { continue; }
             }
         }
 
-        // Fallback: Try RAWG with simplified name
-        if (simplifiedName !== searchName && simplifiedName.length > 3) {
-            const rawgUrl = await this.fetchRawgCoverUrl(simplifiedName, corsProxies);
-            if (rawgUrl) {
-                cache[cacheKey] = rawgUrl;
-                this.saveSteamCoverCache();
-                return rawgUrl;
+        // Fallback Strategy 2: Split camelCase (e.g. "StarWars" -> "Star Wars")
+        const camelCaseSplit = gameName.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim();
+        if (camelCaseSplit !== gameName && camelCaseSplit !== searchName) {
+            for (const proxy of corsProxies) {
+                try {
+                    const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(camelCaseSplit)}&l=english&cc=US`;
+                    const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                        signal: AbortSignal.timeout(8000)
+                    });
+                    const data = await response.json();
+                    if (data && data.items && data.items.length > 0) {
+                        const appId = data.items[0].id;
+                        const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
+                        cache[cacheKey] = coverUrl;
+                        this.saveSteamCoverCache();
+                        return coverUrl;
+                    }
+                } catch (e) { continue; }
             }
+            // Also try RAWG with camelCase split name
+            const rawgCamel = await this.fetchRawgCoverUrl(camelCaseSplit, corsProxies);
+            if (rawgCamel) {
+                cache[cacheKey] = rawgCamel;
+                this.saveSteamCoverCache();
+                return rawgCamel;
+            }
+        }
+
+        // Fallback Strategy 3: Add spaces before capital letters (e.g. "StarWarsBattlefront" -> "Star Wars Battlefront")
+        const spacedCapitals = gameName.replace(/([A-Z])/g, ' $1').replace(/\s+/g, ' ').trim();
+        if (spacedCapitals !== gameName && spacedCapitals !== camelCaseSplit && spacedCapitals !== searchName) {
+            for (const proxy of corsProxies) {
+                try {
+                    const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(spacedCapitals)}&l=english&cc=US`;
+                    const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                        signal: AbortSignal.timeout(8000)
+                    });
+                    const data = await response.json();
+                    if (data && data.items && data.items.length > 0) {
+                        const appId = data.items[0].id;
+                        const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
+                        cache[cacheKey] = coverUrl;
+                        this.saveSteamCoverCache();
+                        return coverUrl;
+                    }
+                } catch (e) { continue; }
+            }
+        }
+
+        // Fallback Strategy 4: Try partial matches (first 2-3 words of the processed name)
+        const nameWords = searchName.split(' ').filter(w => w.length > 1);
+        const partialVariants = [];
+        if (nameWords.length > 3) partialVariants.push(nameWords.slice(0, 3).join(' '));
+        if (nameWords.length > 2) partialVariants.push(nameWords.slice(0, 2).join(' '));
+        for (const partial of partialVariants) {
+            if (partial.length < 4) continue;
+            let found = false;
+            for (const proxy of corsProxies) {
+                try {
+                    const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(partial)}&l=english&cc=US`;
+                    const response = await fetch(proxy + encodeURIComponent(searchUrl), {
+                        signal: AbortSignal.timeout(8000)
+                    });
+                    const data = await response.json();
+                    if (data && data.items && data.items.length > 0) {
+                        const appId = data.items[0].id;
+                        const coverUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
+                        cache[cacheKey] = coverUrl;
+                        this.saveSteamCoverCache();
+                        return coverUrl;
+                    }
+                } catch (e) { continue; }
+            }
+            if (found) break;
         }
 
         // Mark as not found so we don't search again
@@ -4201,6 +4417,16 @@ echo "Done!"
 
     lazyLoadImages() {
         const images = document.querySelectorAll('img[data-src]');
+
+        // Fallback for browsers that don't support IntersectionObserver
+        if (!('IntersectionObserver' in window)) {
+            images.forEach(img => {
+                img.src = img.dataset.src;
+                img.classList.add('loaded');
+            });
+            return;
+        }
+
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -4278,6 +4504,138 @@ echo "Done!"
         });
 
         images.forEach(img => observer.observe(img));
+    }
+
+    // ============================================================
+    // TAG SYSTEM
+    // ============================================================
+
+    // Predefined tag palette
+    get TAG_PALETTE() {
+        return [
+            'RPG', 'Action', 'Adventure', 'Puzzle', 'Strategy',
+            'Shooter', 'Platformer', 'Horror', 'Sports', 'Racing',
+            'Simulation', 'Fighting', 'Indie', 'Retro', 'Multiplayer',
+            'Story-Rich', 'Open World', 'Stealth', 'Survival', 'Casual'
+        ];
+    }
+
+    loadGameTags() {
+        try {
+            const saved = localStorage.getItem('gameLibraryTags');
+            if (!saved) return {};
+            const raw = JSON.parse(saved);
+            // raw is { gameId: ['tag1','tag2'] }
+            return raw;
+        } catch {
+            return {};
+        }
+    }
+
+    saveGameTags() {
+        localStorage.setItem('gameLibraryTags', JSON.stringify(this.gameTags));
+    }
+
+    getGameTags(gameId) {
+        return this.gameTags[gameId] || [];
+    }
+
+    toggleGameTag(gameId, tag) {
+        if (!this.gameTags[gameId]) {
+            this.gameTags[gameId] = [];
+        }
+        const idx = this.gameTags[gameId].indexOf(tag);
+        if (idx === -1) {
+            this.gameTags[gameId].push(tag);
+        } else {
+            this.gameTags[gameId].splice(idx, 1);
+        }
+        this.saveGameTags();
+    }
+
+    setActiveTagFilter(tag) {
+        this.activeTagFilter = (this.activeTagFilter === tag) ? null : tag;
+        this.updateTagFilterBar();
+        this.filterAndRender();
+    }
+
+    clearTagFilter() {
+        this.activeTagFilter = null;
+        this.updateTagFilterBar();
+        this.filterAndRender();
+    }
+
+    updateTagFilterBar() {
+        const bar = document.getElementById('tagFilterBar');
+        if (!bar) return;
+        bar.querySelectorAll('.tag-filter-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tag === this.activeTagFilter);
+        });
+        const clearBtn = document.getElementById('tagFilterClear');
+        if (clearBtn) {
+            clearBtn.style.display = this.activeTagFilter ? 'inline-flex' : 'none';
+        }
+    }
+
+    renderTagFilterBar() {
+        const bar = document.getElementById('tagFilterBar');
+        if (!bar) return;
+        bar.innerHTML = this.TAG_PALETTE.map(tag =>
+            `<button class="tag-filter-chip${this.activeTagFilter === tag ? ' active' : ''}" data-tag="${tag}" title="Filter by ${tag}">${tag}</button>`
+        ).join('') +
+        `<button id="tagFilterClear" class="tag-filter-clear" style="display:${this.activeTagFilter ? 'inline-flex' : 'none'}" title="Clear tag filter">✕ Clear</button>`;
+
+        bar.querySelectorAll('.tag-filter-chip').forEach(btn => {
+            btn.addEventListener('click', () => this.setActiveTagFilter(btn.dataset.tag));
+        });
+        const clearBtn = document.getElementById('tagFilterClear');
+        if (clearBtn) clearBtn.addEventListener('click', () => this.clearTagFilter());
+    }
+
+    _renderCardTags(gameId) {
+        const tags = this.getGameTags(gameId);
+        if (!tags.length) return '';
+        return `<div class="card-tags">${tags.map(t =>
+            `<span class="card-tag-chip${this.activeTagFilter === t ? ' active' : ''}" data-tag="${t}">${t}</span>`
+        ).join('')}</div>`;
+    }
+
+    openTagEditor(gameId) {
+        const game = this.games.find(g => g.id === gameId);
+        if (!game) return;
+        const currentTags = this.getGameTags(gameId);
+
+        // Build modal HTML
+        const overlay = document.createElement('div');
+        overlay.id = 'tagEditorOverlay';
+        overlay.className = 'tag-editor-overlay';
+        overlay.innerHTML = `
+            <div class="tag-editor-panel">
+                <button class="tag-editor-close" id="tagEditorClose">&times;</button>
+                <h3>🏷️ Tags for <em>${game.name}</em></h3>
+                <div class="tag-editor-chips">
+                    ${this.TAG_PALETTE.map(tag =>
+                        `<button class="tag-editor-chip${currentTags.includes(tag) ? ' selected' : ''}" data-tag="${tag}">${tag}</button>`
+                    ).join('')}
+                </div>
+                <p class="tag-editor-hint">Click tags to toggle. Changes save instantly.</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.querySelectorAll('.tag-editor-chip').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.toggleGameTag(gameId, btn.dataset.tag);
+                btn.classList.toggle('selected', this.getGameTags(gameId).includes(btn.dataset.tag));
+                this.filterAndRender();
+            });
+        });
+
+        const close = () => {
+            overlay.remove();
+        };
+        document.getElementById('tagEditorClose').addEventListener('click', close);
+        overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     }
 }
 
