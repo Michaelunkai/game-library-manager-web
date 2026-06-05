@@ -13,6 +13,14 @@
   status = 200
   force = true
 
+# Route /api/docker-tags to a first-party Netlify Function.
+# Browser CORS proxies are not reliable enough for complete startup sync.
+[[redirects]]
+  from = "/api/docker-tags"
+  to = "/.netlify/functions/docker-tags"
+  status = 200
+  force = true
+
 # All other routes serve the SPA
 [[redirects]]
   from = "/*"

@@ -85,7 +85,7 @@ class GameLibrary {
             this.updateSelectedCount();
             this.updateStatsDashboard();
 
-            // Start automatic Docker Hub sync (every 30 seconds)
+            // Start automatic Docker Hub sync (every 60 seconds)
             this.startAutoSync();
             
             // Start polling for admin config changes (every 5 seconds)
@@ -148,7 +148,7 @@ class GameLibrary {
     }
 
     startAutoSync() {
-        // Poll every 60 seconds for new tags - Reduced rate limiting on CORS proxies
+        // Poll every 60 seconds for new Docker Hub tags through the first-party Netlify API.
         this.syncInterval = setInterval(() => {
             this.autoSyncDockerHub();
         }, 60000);
@@ -164,43 +164,9 @@ class GameLibrary {
 
     async autoSyncDockerHub() {
         try {
-            const dockerUser = this.settings.dockerUsername || 'michadockermisha';
-            const repoName = this.settings.repoName || 'backup';
-
-            const allTags = await this.fetchAllDockerTags(dockerUser, repoName);
-            if (allTags.length === 0) return;
-
-            const existingIds = new Set(this.games.map(g => g.id.toLowerCase()));
-            const newTags = allTags.filter(tag => !existingIds.has(tag.name.toLowerCase()));
-
-            if (newTags.length > 0) {
-                console.log(`🆕 Auto-sync found ${newTags.length} new tags!`);
-
-                for (const tag of newTags) {
-                    this.games.push({
-                        id: tag.name,
-                        name: this.formatGameName(tag.name),
-                        category: 'new'
-                    });
-
-                    if (tag.full_size) {
-                        this.imageSizes[tag.name] = Math.round(tag.full_size / 1073741824 * 100) / 100;
-                    }
-                    this.datesAdded[tag.name] = new Date().toISOString().split('T')[0];
-                }
-
-                // Add 'new' tab if needed
-                if (!this.tabs.find(t => t.id === 'new')) {
-                    this.tabs.push({ id: 'new', name: 'New', icon: '🆕' });
-                    this.renderTabs();
-                }
-
-                this.saveNewGames(newTags.map(t => t.name));
-                document.getElementById('gameCount').textContent = this.games.length;
-                this.filterAndRender();
-
-                // Show notification
-                this.showToast(`🆕 ${newTags.length} new game(s) synced from Docker Hub!`, 'success');
+            const result = await this.syncDockerHubTags({ silent: true });
+            if (result.added > 0) {
+                this.showToast(`🆕 ${result.added} new Docker tag(s) added!`, 'success');
             }
         } catch (error) {
             console.error('Auto-sync error:', error);
@@ -246,11 +212,13 @@ class GameLibrary {
         document.getElementById('gameCount').textContent = this.games.length;
         document.getElementById('tabCount').textContent = `${this.tabs.length} tabs`;
 
-        // Do not block initial rendering on Docker Hub or third-party CORS proxies.
-        // The bundled Netlify data is the startup source of truth; sync stays optional.
+        // Merge every current Docker Hub tag before rendering so new images become
+        // downloadable immediately after they are pushed to michadockermisha/backup.
+        await this.syncDockerHubTags({ silent: true });
     }
 
-    async syncDockerHubTags() {
+    async syncDockerHubTags(options = {}) {
+        const silent = !!options.silent;
         try {
             const dockerUser = this.settings.dockerUsername || 'michadockermisha';
             const repoName = this.settings.repoName || 'backup';
@@ -260,279 +228,111 @@ class GameLibrary {
 
             if (allTags.length === 0) {
                 console.log('No tags fetched from Docker Hub');
-                return;
+                return { added: 0, updated: 0, fetched: 0 };
             }
 
             console.log(`Fetched ${allTags.length} tags from Docker Hub`);
+            const result = this.mergeDockerHubTags(allTags, dockerUser, repoName);
 
-            // Get existing game IDs
-            const existingIds = new Set(this.games.map(g => g.id.toLowerCase()));
-
-            // Update dates and sizes for ALL tags (including existing ones)
-            let datesUpdated = 0;
-            for (const tag of allTags) {
-                if (tag.last_updated) {
-                    const date = tag.last_updated.split('T')[0];
-                    if (this.datesAdded[tag.name] !== date) {
-                        this.datesAdded[tag.name] = date;
-                        datesUpdated++;
-                    }
-                }
-                if (tag.full_size) {
-                    this.imageSizes[tag.name] = Math.round(tag.full_size / 1073741824 * 100) / 100;
-                }
-            }
-
-            // Find new tags
-            const newTags = allTags.filter(tag => !existingIds.has(tag.name.toLowerCase()));
-
-            if (newTags.length > 0) {
-                console.log(`Found ${newTags.length} new tags from Docker Hub`);
-
-                // Add new games
-                for (const tag of newTags) {
-                    const newGame = {
-                        id: tag.name,
-                        name: this.formatGameName(tag.name),
-                        category: 'new'
-                    };
-
-                    this.games.push(newGame);
-
-                    // Use actual Docker Hub date if available
-                    if (tag.last_updated) {
-                        this.datesAdded[tag.name] = tag.last_updated.split('T')[0];
-                    } else {
-                        this.datesAdded[tag.name] = new Date().toISOString().split('T')[0];
-                    }
-                }
-
-                // Add 'new' tab if it doesn't exist
-                if (!this.tabs.find(t => t.id === 'new')) {
-                    this.tabs.push({ id: 'new', name: 'New', icon: '🆕' });
-                }
-
-                // Save new games to localStorage
-                this.saveNewGames(newTags.map(t => t.name));
-
-                // Update UI
+            if (result.added > 0 || result.updated > 0) {
                 document.getElementById('gameCount').textContent = this.games.length;
                 this.renderTabs();
                 this.filterAndRender();
-
-                this.showToast(`Found ${newTags.length} new games from Docker Hub!`, 'success');
-            } else if (datesUpdated > 0) {
-                // Re-render if dates were updated for proper sorting
-                this.filterAndRender();
+                this.updateStatsDashboard();
             }
+
+            if (result.added > 0 && !silent) {
+                this.showToast(`Found ${result.added} new Docker Hub tag(s)!`, 'success');
+            }
+
+            return { ...result, fetched: allTags.length };
         } catch (error) {
             console.error('Failed to sync Docker Hub tags:', error);
+            if (!silent) {
+                this.showToast('Docker Hub sync failed: ' + error.message, 'error');
+            }
+            return { added: 0, updated: 0, fetched: 0, error };
         }
     }
 
+    mergeDockerHubTags(allTags, dockerUser, repoName) {
+        const gamesById = new Map(this.games.map(game => [game.id.toLowerCase(), game]));
+        let added = 0;
+        let updated = 0;
+        const addedIds = [];
+
+        for (const tag of allTags) {
+            if (!tag || !tag.name) continue;
+
+            const id = tag.name;
+            const key = id.toLowerCase();
+            const dockerImage = `${dockerUser}/${repoName}:${id}`;
+            const dockerImageUrl = `https://hub.docker.com/r/${dockerUser}/${repoName}/tags?name=${encodeURIComponent(id)}`;
+            const date = tag.last_updated ? tag.last_updated.split('T')[0] : new Date().toISOString().split('T')[0];
+            const sizeGb = tag.full_size ? Math.round(tag.full_size / 1073741824 * 100) / 100 : null;
+            let game = gamesById.get(key);
+
+            if (!game) {
+                game = {
+                    id,
+                    name: this.formatGameName(id),
+                    category: 'new',
+                    dockerImage,
+                    dockerImageUrl,
+                    image: this.createGeneratedCoverDataUrl(id),
+                    time: this.getGenreEstimate({ id, name: this.formatGameName(id), category: 'new' })
+                };
+                this.games.push(game);
+                gamesById.set(key, game);
+                added++;
+                addedIds.push(id);
+            } else {
+                if (!game.dockerImage) game.dockerImage = dockerImage;
+                if (!game.dockerImageUrl) game.dockerImageUrl = dockerImageUrl;
+                if (game.time == null && this.times[id] == null) {
+                    this.times[id] = this.getGenreEstimate(game);
+                }
+                updated++;
+            }
+
+            if (sizeGb !== null) this.imageSizes[id] = sizeGb;
+            this.datesAdded[id] = date;
+        }
+
+        if (added > 0 && !this.tabs.find(t => t.id === 'new')) {
+            this.tabs.push({ id: 'new', name: 'New', icon: '🆕' });
+        }
+
+        if (addedIds.length > 0) {
+            this.saveNewGames(addedIds);
+        }
+
+        return { added, updated };
+    }
+
     async fetchAllDockerTags(dockerUser, repoName) {
-        const pageSize = 100;
-        const cacheBuster = Date.now();
-
-        // ROBUST CORS proxy list - multiple fallbacks for reliability
-        // Prioritized by reliability and speed
-        const corsProxies = [
-            'https://corsproxy.io/?',
-            'https://api.allorigins.win/raw?url=',
-            'https://proxy.cors.sh/',
-            'https://api.codetabs.com/v1/proxy?quest=',
-            'https://corsproxy.org/?',
-            'https://thingproxy.freeboard.io/fetch/',
-            'https://cors-anywhere.herokuapp.com/'
-        ];
-
-        // Track which proxy works best (persisted in memory for this session)
-        if (!this._workingProxyIndex) this._workingProxyIndex = 0;
-
-        // Show sync status
         const syncBtn = document.getElementById('syncDockerBtn');
-        const updateSyncStatus = (msg) => {
-            if (syncBtn) {
-                syncBtn.classList.add('syncing');
-                syncBtn.textContent = msg;
-            }
-        };
-        updateSyncStatus('🔄 Syncing...');
-
-        // Helper to fetch with timeout
-        const fetchWithTimeout = async (url, timeout = 5000) => {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-            try {
-                const response = await fetch(url, {
-                    headers: { 'Accept': 'application/json' },
-                    signal: controller.signal,
-                    cache: 'no-store'
-                });
-                clearTimeout(timeoutId);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-                if (!data || typeof data !== 'object') throw new Error('Invalid JSON');
-                return data;
-            } catch (e) {
-                clearTimeout(timeoutId);
-                throw e;
-            }
-        };
-
-        // Try a single proxy for a URL
-        const tryProxy = async (proxy, url) => {
-            const fullUrl = proxy + encodeURIComponent(url);
-            return await fetchWithTimeout(fullUrl);
-        };
-
-        // Fetch a page with bounded retry logic so sync failures never wedge the UI.
-        const fetchPageWithRetry = async (page, maxRetries = 1) => {
-            const dockerUrl = `https://hub.docker.com/v2/repositories/${dockerUser}/${repoName}/tags?page=${page}&page_size=${pageSize}&_=${cacheBuster}_${page}`;
-            
-            // Try 1: Race all proxies (fastest wins)
-            try {
-                const racePromises = corsProxies.map((proxy, idx) => 
-                    tryProxy(proxy, dockerUrl).then(data => ({ data, proxyIdx: idx }))
-                );
-                const result = await Promise.any(racePromises);
-                if (result.data && result.data.results) {
-                    this._workingProxyIndex = result.proxyIdx; // Remember working proxy
-                    return result.data;
-                }
-            } catch (e) {
-                console.log(`Page ${page}: Race failed, trying sequential...`);
-            }
-
-            // Try 2: Sequential fallback with retries - start with last working proxy
-            for (let retry = 0; retry < maxRetries; retry++) {
-                const startIdx = this._workingProxyIndex || 0;
-                for (let i = 0; i < corsProxies.length; i++) {
-                    const proxyIdx = (startIdx + i) % corsProxies.length;
-                    const proxy = corsProxies[proxyIdx];
-                    try {
-                        const data = await tryProxy(proxy, dockerUrl);
-                        if (data && data.results) {
-                            this._workingProxyIndex = proxyIdx;
-                            console.log(`Page ${page}: Success with proxy ${proxyIdx} on retry ${retry}`);
-                            return data;
-                        }
-                    } catch (e) {
-                        // Continue to next proxy
-                    }
-                }
-                // Wait before retry with exponential backoff
-                if (retry < maxRetries - 1) {
-                    const delay = Math.min(1000 * Math.pow(2, retry), 8000);
-                    await new Promise(r => setTimeout(r, delay));
-                }
-            }
-
-            console.error(`Page ${page}: ALL retries exhausted!`);
-            return null;
-        };
+        if (syncBtn) {
+            syncBtn.classList.add('syncing');
+            syncBtn.textContent = '🔄 Syncing...';
+        }
 
         try {
-            // Step 1: Fetch first page to get total count.
-            updateSyncStatus('🔄 Connecting...');
-            let firstPage = null;
-            for (let attempt = 0; attempt < 1; attempt++) {
-                firstPage = await fetchPageWithRetry(1, 1);
-                if (firstPage && firstPage.results) break;
-                console.log(`First page attempt ${attempt + 1} failed, retrying...`);
+            const url = `/api/docker-tags?user=${encodeURIComponent(dockerUser)}&repo=${encodeURIComponent(repoName)}&_=${Date.now()}`;
+            const response = await fetch(url, {
+                headers: { Accept: 'application/json' },
+                cache: 'no-store'
+            });
+            if (!response.ok) {
+                throw new Error(`Docker tag API HTTP ${response.status}`);
+            }
+            const data = await response.json();
+            if (!data.success || !Array.isArray(data.tags)) {
+                throw new Error(data.error || 'Docker tag API returned incomplete data');
             }
 
-            if (!firstPage || !firstPage.results) {
-                console.error('❌ Failed to fetch first page from Docker Hub after all retries');
-                this.showToast('Failed to connect to Docker Hub. Try again later.', 'error');
-                return [];
-            }
-
-            const totalCount = firstPage.count || 0;
-            const totalPages = Math.ceil(totalCount / pageSize);
-            console.log(`📦 Docker Hub: ${totalCount} total tags across ${totalPages} pages`);
-            updateSyncStatus(`🔄 0/${totalPages}`);
-
-            // Step 2: Collect all tags, tracking which pages we got
-            const tagsByPage = new Map();
-            tagsByPage.set(1, firstPage.results);
-
-            // Fetch remaining pages in small batches with retry
-            if (totalPages > 1) {
-                const remainingPages = [];
-                for (let p = 2; p <= totalPages; p++) {
-                    remainingPages.push(p);
-                }
-
-                // Process in batches of 3 (conservative to avoid rate limits)
-                const batchSize = 3;
-                for (let i = 0; i < remainingPages.length; i += batchSize) {
-                    const batch = remainingPages.slice(i, i + batchSize);
-                    updateSyncStatus(`🔄 ${tagsByPage.size}/${totalPages}`);
-                    
-                    const batchResults = await Promise.all(
-                        batch.map(p => fetchPageWithRetry(p, 5).then(data => ({ page: p, data })))
-                    );
-
-                    for (const { page, data } of batchResults) {
-                        if (data && data.results && data.results.length > 0) {
-                            tagsByPage.set(page, data.results);
-                        }
-                    }
-
-                    // Small delay between batches to be nice to proxies
-                    if (i + batchSize < remainingPages.length) {
-                        await new Promise(r => setTimeout(r, 500));
-                    }
-                }
-            }
-
-            // Step 3: Check for missing pages and retry them
-            const missingPages = [];
-            for (let p = 1; p <= totalPages; p++) {
-                if (!tagsByPage.has(p)) {
-                    missingPages.push(p);
-                }
-            }
-
-            if (missingPages.length > 0) {
-                console.log(`⚠️ Missing ${missingPages.length} pages: ${missingPages.join(', ')}. Retrying...`);
-                updateSyncStatus(`🔄 Retrying ${missingPages.length} pages...`);
-                
-                for (const page of missingPages) {
-                    // Extra aggressive retry for missing pages
-                    const data = await fetchPageWithRetry(page, 10);
-                    if (data && data.results) {
-                        tagsByPage.set(page, data.results);
-                        console.log(`✅ Recovered page ${page}`);
-                    } else {
-                        console.error(`❌ Could not recover page ${page}`);
-                    }
-                    await new Promise(r => setTimeout(r, 1000));
-                }
-            }
-
-            // Step 4: Combine all tags in page order
-            const allTags = [];
-            for (let p = 1; p <= totalPages; p++) {
-                const pageTags = tagsByPage.get(p);
-                if (pageTags) {
-                    allTags.push(...pageTags);
-                }
-            }
-
-            // Final verification
-            const expectedCount = totalCount;
-            const actualCount = allTags.length;
-            const missingCount = expectedCount - actualCount;
-
-            if (missingCount > 0) {
-                console.warn(`⚠️ Fetched ${actualCount}/${expectedCount} tags (${missingCount} missing)`);
-            } else {
-                console.log(`✅ Successfully fetched ALL ${actualCount} tags from Docker Hub!`);
-            }
-
-            return allTags;
+            console.log(`✅ Docker Hub API returned ${data.fetched}/${data.count} tags`);
+            return data.tags;
         } catch (error) {
             console.error('Error fetching Docker tags:', error);
             return [];
@@ -564,6 +364,18 @@ class GameLibrary {
         name = name.replace(/\s+/g, ' ').trim();
 
         return name;
+    }
+
+    createGeneratedCoverDataUrl(gameId) {
+        const title = this.formatGameName(gameId);
+        const safeTitle = title
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        const hue = Array.from(gameId).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hue},70%,28%)"/><stop offset="1" stop-color="hsl(${(hue + 70) % 360},80%,16%)"/></linearGradient></defs><rect width="300" height="400" fill="url(#g)"/><circle cx="245" cy="65" r="70" fill="rgba(255,255,255,.09)"/><text x="150" y="145" text-anchor="middle" font-size="54">🎮</text><text x="150" y="235" text-anchor="middle" fill="#fff" font-family="Verdana,Arial,sans-serif" font-size="24" font-weight="700">${safeTitle}</text><text x="150" y="350" text-anchor="middle" fill="rgba(255,255,255,.72)" font-family="Verdana,Arial,sans-serif" font-size="14">Docker Hub Ready</text></svg>`;
+        return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     }
 
     saveNewGames(newGameIds) {
