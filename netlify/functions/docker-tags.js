@@ -66,11 +66,32 @@ exports.handler = async (event) => {
   const dockerUser = event.queryStringParameters?.user || 'michadockermisha';
   const repoName = event.queryStringParameters?.repo || 'backup';
   const pageSize = Math.min(parseInt(event.queryStringParameters?.page_size || '100', 10), 100);
+  const summaryOnly = ['1', 'true', 'yes'].includes(String(event.queryStringParameters?.summary || '').toLowerCase());
   const baseUrl = `https://hub.docker.com/v2/repositories/${encodeURIComponent(dockerUser)}/${encodeURIComponent(repoName)}/tags`;
 
   try {
     const firstPage = await fetchJson(`${baseUrl}?page=1&page_size=${pageSize}`);
     const totalCount = firstPage.count || 0;
+    const latestTag = firstPage.results?.[0] ? normalizeTag(firstPage.results[0]) : null;
+
+    if (summaryOnly) {
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          success: true,
+          source: 'docker-hub',
+          dockerUser,
+          repoName,
+          count: totalCount,
+          fetched: latestTag ? 1 : 0,
+          totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+          latestTag,
+          fetchedAt: new Date().toISOString()
+        })
+      };
+    }
+
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const pageResults = new Map([[1, firstPage.results || []]]);
 

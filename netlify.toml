@@ -6,6 +6,24 @@
 [build.environment]
   NODE_VERSION = "18"
 
+[[headers]]
+  for = "/app.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+
+[[headers]]
+  for = "/api/docker-tags"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+
 # Route /api/admin-config to the Netlify Function (permanent GitHub persistence)
 [[redirects]]
   from = "/api/admin-config"

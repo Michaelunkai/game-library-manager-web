@@ -55,6 +55,9 @@ class GameLibrary {
         ]);
 
         this.settings = this.loadSettings();
+        this.dockerSyncIntervalMs = 5000;
+        this.lastDockerTagCount = null;
+        this.lastDockerLatestTag = null;
 
         this.init();
     }
@@ -85,7 +88,7 @@ class GameLibrary {
             this.updateSelectedCount();
             this.updateStatsDashboard();
 
-            // Start automatic Docker Hub sync (every 60 seconds)
+            // Start automatic Docker Hub sync for already-open tabs.
             this.startAutoSync();
             
             // Start polling for admin config changes (every 5 seconds)
@@ -148,22 +151,28 @@ class GameLibrary {
     }
 
     startAutoSync() {
-        // Poll every 60 seconds for new Docker Hub tags through the first-party Netlify API.
+        // Poll a lightweight first-page summary, then run the complete sync only
+        // when Docker Hub exposes a changed count or latest tag.
         this.syncInterval = setInterval(() => {
             this.autoSyncDockerHub();
-        }, 60000);
+        }, this.dockerSyncIntervalMs);
 
         // Also update sync button to show auto-sync is active
         const syncBtn = document.getElementById('syncDockerBtn');
         if (syncBtn) {
-            syncBtn.title = 'Auto-syncing every 60s (click to sync now)';
+            syncBtn.title = 'Auto-syncing every 5s (click to sync now)';
         }
 
-        console.log('🔄 Auto-sync started: checking Docker Hub every 60 seconds');
+        console.log('🔄 Auto-sync started: checking Docker Hub every 5 seconds');
     }
 
     async autoSyncDockerHub() {
         try {
+            const dockerUser = this.settings.dockerUsername || 'michadockermisha';
+            const repoName = this.settings.repoName || 'backup';
+            const changed = await this.hasDockerHubChanged(dockerUser, repoName);
+            if (!changed) return;
+
             const result = await this.syncDockerHubTags({ silent: true });
             if (result.added > 0) {
                 this.showToast(`🆕 ${result.added} new Docker tag(s) added!`, 'success');
@@ -390,6 +399,8 @@ class GameLibrary {
             }
 
             console.log(`✅ Docker Hub API returned ${data.fetched}/${data.count} tags`);
+            this.lastDockerTagCount = data.count;
+            this.lastDockerLatestTag = data.tags[0]?.name || null;
             return data.tags;
         } catch (error) {
             console.error('Error fetching Docker tags:', error);
@@ -401,6 +412,48 @@ class GameLibrary {
                 syncBtn.textContent = '🔄 Sync';
             }
         }
+    }
+
+    async hasDockerHubChanged(dockerUser, repoName) {
+        try {
+            const summary = await this.fetchDockerTagSummary(dockerUser, repoName);
+            if (!summary) return true;
+
+            const latestName = summary.latestTag?.name || null;
+            const latestMissing = latestName && !this.games.some(game => game.id === latestName);
+            const countChanged = this.lastDockerTagCount !== null && summary.count !== this.lastDockerTagCount;
+
+            if (this.lastDockerTagCount === null) this.lastDockerTagCount = summary.count;
+            if (this.lastDockerLatestTag === null) this.lastDockerLatestTag = latestName;
+
+            return !!(countChanged || latestMissing || (latestName && latestName !== this.lastDockerLatestTag));
+        } catch (error) {
+            console.error('Docker Hub summary check failed:', error);
+            return true;
+        }
+    }
+
+    async fetchDockerTagSummary(dockerUser, repoName) {
+        const url = `/api/docker-tags?user=${encodeURIComponent(dockerUser)}&repo=${encodeURIComponent(repoName)}&summary=1&page_size=1&_=${Date.now()}`;
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                Pragma: 'no-cache'
+            },
+            cache: 'no-store'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Docker tag summary API HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.success || typeof data.count !== 'number') {
+            throw new Error(data.error || 'Docker tag summary API returned incomplete data');
+        }
+
+        return data;
     }
 
     formatGameName(tagName) {
