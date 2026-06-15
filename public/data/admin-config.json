@@ -1200,7 +1200,7 @@
     "redis": "mybackup",
     "nginx": "mybackup",
     "wordpress": "mybackup",
-    "avatarfrontiersofpandora": "new",
+    "avatarfrontiersofpandora": "not_for_me",
     "mafiatheoldcountry": "new"
   },
   "tabs": [
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-15T19:28:34.907Z"
+  "lastUpdated": "2026-06-15T19:28:43.295Z"
 }
