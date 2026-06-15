@@ -441,7 +441,7 @@
     "NINJAGAIDENMasterCollection": "action",
     "Cyberpunk2077": "finished",
     "ELDENRINGNIGHTREIGN": "action",
-    "60SecondsReatomized": "new",
+    "60SecondsReatomized": "not_for_me",
     "MindsEye": "not_for_me",
     "DuneImperium": "action",
     "Darksouls3": "finished",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-15T19:28:43.295Z"
+  "lastUpdated": "2026-06-15T19:29:17.218Z"
 }
