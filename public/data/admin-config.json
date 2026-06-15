@@ -335,7 +335,7 @@
     "whitehadows": "action",
     "oguandthesecretforest": "action",
     "crowcountry": "action",
-    "9thdawn3": "action",
+    "9thdawn3": "not_for_me",
     "systemmechanic245150": "win11maintaince",
     "syspin": "win11maintaince",
     "shexview": "win11maintaince",
@@ -921,7 +921,7 @@
     "winservprox": "oporationsystems",
     "win11prox": "mybackup",
     "won11prox": "oporationsystems",
-    "codblackops3": "shooters",
+    "codblackops3": "not_for_me",
     "codblackops2": "shooters",
     "prox7": "oporationsystems",
     "prox6": "oporationsystems",
@@ -1061,7 +1061,7 @@
     "sniperghostwarriorcontracts": "shooters",
     "prodeus": "action",
     "pacmanworldrepac": "platformers",
-    "saintsrow3": "action",
+    "saintsrow3": "not_for_me",
     "motogp21": "simulators",
     "dirtrally2": "not_for_me",
     "skaterxl": "not_for_me",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-15T19:29:17.218Z"
+  "lastUpdated": "2026-06-15T19:29:37.944Z"
 }
