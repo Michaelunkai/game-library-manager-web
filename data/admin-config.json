@@ -517,7 +517,7 @@
     "LuigisMansion2HD": "nintendo/switch",
     "Nioh": "soulslike",
     "Nioh2": "soulslike",
-    "BluePrince": "new",
+    "BluePrince": "not_for_me",
     "SouthofMidnight": "action",
     "DevilMayCryHDCollection": "not_for_me",
     "DeusExInvisibleWar": "action",
@@ -1199,7 +1199,9 @@
     "whisper": "mybackup",
     "redis": "mybackup",
     "nginx": "mybackup",
-    "wordpress": "mybackup"
+    "wordpress": "mybackup",
+    "avatarfrontiersofpandora": "new",
+    "mafiatheoldcountry": "new"
   },
   "tabs": [
     {
@@ -1327,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-05T19:48:04.966Z"
+  "lastUpdated": "2026-06-15T19:28:21.595Z"
 }
