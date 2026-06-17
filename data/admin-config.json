@@ -711,7 +711,7 @@
     "BugFablesTheEverlastingSapling": "finished",
     "JourneytotheSavagePlanet": "shooters",
     "TheWildatHeart": "action",
-    "MyFriendlyNeighborhood": "shooters",
+    "MyFriendlyNeighborhood": "not_for_me",
     "Indivisible": "hacknslash",
     "YsIXMonstrumNox": "hacknslash",
     "EndlingExtinctionisForever": "storydriven",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:24:41.704Z"
+  "lastUpdated": "2026-06-17T16:26:03.165Z"
 }
