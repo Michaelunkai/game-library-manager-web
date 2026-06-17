@@ -1080,7 +1080,7 @@
     "forgottencity": "not_for_me",
     "drift21": "simulators",
     "cafeownersimulation": "simulators",
-    "solarash": "platformers",
+    "solarash": "finished",
     "bumsimulator": "simulators",
     "cloudpunk": "storydriven",
     "redout2": "simulators",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:28:49.286Z"
+  "lastUpdated": "2026-06-17T16:29:03.081Z"
 }
