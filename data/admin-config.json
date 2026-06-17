@@ -1032,7 +1032,7 @@
     "metroredux": "not_for_me",
     "windows11vhdx": "oporationsystems",
     "yakuza0": "action",
-    "sunsetoverdive": "action",
+    "sunsetoverdive": "not_for_me",
     "yakuza6thesongodlife": "action",
     "yakuzakiwami": "action",
     "callofduty2": "not_for_me",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:28:31.279Z"
+  "lastUpdated": "2026-06-17T16:28:38.935Z"
 }
