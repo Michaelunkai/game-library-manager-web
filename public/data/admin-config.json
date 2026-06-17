@@ -810,9 +810,9 @@
     "twinmirrors": "storydriven",
     "binarydomain": "not_for_me",
     "anothercrabstreasure": "not_for_me",
-    "yakuza4": "storydriven",
+    "yakuza4": "action",
     "wildlands": "shooters",
-    "yakuza3": "storydriven",
+    "yakuza3": "action",
     "banishers": "storydriven",
     "repellafella": "hacknslash",
     "childrenofthesun": "action",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:16:40.446Z"
+  "lastUpdated": "2026-06-17T16:16:51.279Z"
 }
