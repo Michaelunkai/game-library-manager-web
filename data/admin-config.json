@@ -1126,7 +1126,7 @@
     "systemshock": "not_for_me",
     "vampiresurvivors": "not_for_me",
     "highonlife": "finished",
-    "thegodfather": "action",
+    "thegodfather": "not_for_me",
     "scarface": "not_for_me",
     "unpacking": "chill",
     "scarletnexus": "storydriven",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:30:16.069Z"
+  "lastUpdated": "2026-06-17T16:30:22.143Z"
 }
