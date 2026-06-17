@@ -1108,7 +1108,7 @@
     "opensuse": "oporationsystems",
     "oddworldsoulstorm": "soulslike",
     "eternalcylinder": "action",
-    "beyond2souls": "storydriven",
+    "beyond2souls": "replay",
     "returntomonkeyisland": "not_for_me",
     "sims4": "simulators",
     "sackboy": "action",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:17:22.809Z"
+  "lastUpdated": "2026-06-17T16:17:30.284Z"
 }
