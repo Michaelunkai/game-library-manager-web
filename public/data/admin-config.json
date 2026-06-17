@@ -299,7 +299,7 @@
     "warhammer40000roguetrader": "action",
     "vigilthelongestnight": "action",
     "afterimage": "mybackup",
-    "sammaxsavetheworldremastered": "action",
+    "sammaxsavetheworldremastered": "storydriven",
     "thewanderingvillage": "action",
     "underthewitch": "action",
     "ajugglerstale": "finished",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:22:17.910Z"
+  "lastUpdated": "2026-06-17T16:23:16.713Z"
 }
