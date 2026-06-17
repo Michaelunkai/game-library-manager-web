@@ -433,7 +433,7 @@
     "deadrising4": "action",
     "taintedGrailTheFallofAvalon": "action",
     "TheMidnightWalk": "action",
-    "MafiaDefinitiveEdition": "storydriven",
+    "MafiaDefinitiveEdition": "action",
     "GoingUnder": "action",
     "Kenshi": "new",
     "SIFU": "action",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:18:13.671Z"
+  "lastUpdated": "2026-06-17T16:18:46.481Z"
 }
