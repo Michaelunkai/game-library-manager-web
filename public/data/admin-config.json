@@ -323,7 +323,7 @@
     "morkredd": "action",
     "theexit8": "action",
     "ninesols": "finished",
-    "valiantheartscominghome": "action",
+    "valiantheartscominghome": "storydriven",
     "sable": "not_for_me",
     "childrenofsilentown": "action",
     "railbound": "action",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:23:16.713Z"
+  "lastUpdated": "2026-06-17T16:24:01.135Z"
 }
