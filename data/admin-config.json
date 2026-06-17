@@ -1083,7 +1083,7 @@
     "bumsimulator": "simulators",
     "cloudpunk": "storydriven",
     "redout2": "simulators",
-    "yakuza3remasterd": "storydriven",
+    "yakuza3remasterd": "action",
     "megamanxdive": "platformers",
     "neonabyss": "action",
     "gerda": "storydriven",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:17:15.289Z"
+  "lastUpdated": "2026-06-17T16:17:22.809Z"
 }
