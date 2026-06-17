@@ -728,13 +728,13 @@
     "FlintlockTheSiegeofDawn": "shooters",
     "TinyTinasAssaultonDragonKeep": "not_for_me",
     "Melatonin": "action",
-    "Yakuza6": "storydriven",
-    "YakuzaKiwami2": "storydriven",
-    "YakuzaKiwami": "storydriven",
-    "Yakuza5": "storydriven",
-    "Yakuza0": "storydriven",
+    "Yakuza6": "action",
+    "YakuzaKiwami2": "action",
+    "YakuzaKiwami": "action",
+    "Yakuza5": "action",
+    "Yakuza0": "action",
     "NoStraightRoads": "action",
-    "YakuzaLikeaDragon": "storydriven",
+    "YakuzaLikeaDragon": "action",
     "MetalHellsinger": "not_for_me",
     "AlanWake2": "not_for_me",
     "Onirism": "platformers",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:16:16.848Z"
+  "lastUpdated": "2026-06-17T16:16:40.446Z"
 }
