@@ -1053,7 +1053,7 @@
     "windowserver12": "oporationsystems",
     "windowserver19": "oporationsystems",
     "houseflipper": "simulators",
-    "seriousam4": "shooters",
+    "seriousam4": "not_for_me",
     "detroitbecomehuman": "replay",
     "wreckfest": "new",
     "trine3": "action",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:28:38.935Z"
+  "lastUpdated": "2026-06-17T16:28:49.286Z"
 }
