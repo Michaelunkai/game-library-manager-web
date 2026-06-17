@@ -1113,7 +1113,7 @@
     "returntomonkeyisland": "not_for_me",
     "sims4": "simulators",
     "sackboy": "platformers",
-    "plagtalerequirm": "openworld",
+    "plagtalerequirm": "not_for_me",
     "escapefromtarkov": "shooters",
     "alanwake": "not_for_me",
     "hotwheels": "action",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:29:54.686Z"
+  "lastUpdated": "2026-06-17T16:30:10.177Z"
 }
