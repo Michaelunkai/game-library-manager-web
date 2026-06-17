@@ -890,7 +890,7 @@
     "tinykin": "action",
     "thedarkness": "new",
     "thepunisher": "hacknslash",
-    "road96": "new",
+    "road96": "storydriven",
     "legendoftianding": "hacknslash",
     "tloh": "action",
     "nier": "replay",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:26:39.650Z"
+  "lastUpdated": "2026-06-17T16:27:17.683Z"
 }
