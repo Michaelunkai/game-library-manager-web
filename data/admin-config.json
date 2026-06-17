@@ -1120,7 +1120,7 @@
     "cosmicshake": "platformers",
     "grounded": "new",
     "moderwarfare2": "shooters",
-    "ghostrunner2": "platformers",
+    "ghostrunner2": "not_for_me",
     "riftapart": "finished",
     "subnautica": "not_for_me",
     "systemshock": "not_for_me",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:30:10.177Z"
+  "lastUpdated": "2026-06-17T16:30:16.069Z"
 }
