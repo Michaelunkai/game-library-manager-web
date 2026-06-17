@@ -75,7 +75,7 @@
     "amongtrees": "new",
     "REPLACED": "new",
     "black-myth-wukong": "finished",
-    "life-is-strange-reunion": "storydriven",
+    "life-is-strange-reunion": "finished",
     "credentials": "mybackup",
     "profile": "mybackup",
     "installed": "mybackup",
@@ -1070,7 +1070,7 @@
     "deadlink": "nintendo/switch",
     "bloodsrainedritualofthenight": "not_for_me",
     "eiyudenchroniclerising": "action",
-    "lifeistrangeremasterd": "storydriven",
+    "lifeistrangeremasterd": "finished",
     "fistforgedinshadowtorch": "hacknslash",
     "cuphead": "new",
     "curseofthedeadgods": "hacknslash",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:14:21.659Z"
+  "lastUpdated": "2026-06-17T16:15:27.888Z"
 }
