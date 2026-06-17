@@ -91,7 +91,7 @@
     "mmenu_ignore_test": "not_for_me",
     "crimson-desert": "hyperv",
     "stellar-blade": "not_for_me",
-    "like-a-dragon-pirate-yakuza-in-hawaii": "hyperv",
+    "like-a-dragon-pirate-yakuza-in-hawaii": "finished",
     "edge-of-eternity": "not_for_me",
     "pragmata": "finished",
     "creds": "mybackup",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-15T21:09:27.505Z"
+  "lastUpdated": "2026-06-17T16:14:21.659Z"
 }
