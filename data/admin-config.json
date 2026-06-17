@@ -785,7 +785,7 @@
     "kingdomclassic": "nintendo/switch",
     "Danganronpa": "storydriven",
     "chantsofsennaar": "platformers",
-    "Webinars": "new",
+    "Webinars": "mybackup",
     "hellblade2": "storydriven",
     "indika": "storydriven",
     "thedarkness2": "new",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:26:12.439Z"
+  "lastUpdated": "2026-06-17T16:26:39.650Z"
 }
