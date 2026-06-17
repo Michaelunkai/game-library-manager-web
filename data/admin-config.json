@@ -1159,9 +1159,9 @@
     "moonstoneisland": "action",
     "tellinglies": "finished",
     "harvestmoon": "not_for_me",
-    "ghostrunner": "platformers",
+    "ghostrunner": "action",
     "vidtrans": "mybackup",
-    "yakuzalikeadragon": "new",
+    "yakuzalikeadragon": "action",
     "battlefieldv": "shooters",
     "masseffect2": "not_for_me",
     "mafia": "action",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:30:22.143Z"
+  "lastUpdated": "2026-06-17T16:31:03.444Z"
 }
