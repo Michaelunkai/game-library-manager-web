@@ -428,7 +428,7 @@
     "compressedinstalled": "mybackup",
     "playnite": "3th_party_tools",
     "stremio": "3th_party_tools",
-    "MacriumReflect": "new",
+    "MacriumReflect": "mybackup",
     "Backuppers": "mybackup",
     "deadrising4": "action",
     "taintedGrailTheFallofAvalon": "action",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:24:01.135Z"
+  "lastUpdated": "2026-06-17T16:24:07.316Z"
 }
