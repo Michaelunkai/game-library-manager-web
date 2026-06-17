@@ -179,7 +179,7 @@
     "dawnoftheashenqueen": "action",
     "oriandthewillofthewisps": "not_for_me",
     "lostepic": "action",
-    "hadesii": "action",
+    "hadesii": "replay",
     "hollowknight": "not_for_me",
     "childrenofmorta": "not_for_me",
     "speedtest": "mybackup",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:20:47.611Z"
+  "lastUpdated": "2026-06-17T16:21:22.540Z"
 }
