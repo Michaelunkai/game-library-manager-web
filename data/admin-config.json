@@ -893,7 +893,7 @@
     "road96": "new",
     "legendoftianding": "hacknslash",
     "tloh": "action",
-    "nier": "storydriven",
+    "nier": "replay",
     "soulstice": "soulslike",
     "priceofpersia": "platformers",
     "bugsnax": "not_for_me",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:18:55.095Z"
+  "lastUpdated": "2026-06-17T16:19:29.113Z"
 }
