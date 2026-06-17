@@ -1026,12 +1026,12 @@
     "mountandblade2bannerlord": "action",
     "robocoproguecity": "shooters",
     "windowserver22vhdx": "oporationsystems",
-    "yakuzakiwami2": "new",
+    "yakuzakiwami2": "action",
     "thecaseofthegoldenidol": "action",
     "shadowgambit": "not_for_me",
     "metroredux": "not_for_me",
     "windows11vhdx": "oporationsystems",
-    "yakuza0": "new",
+    "yakuza0": "action",
     "sunsetoverdive": "action",
     "yakuza6thesongodlife": "action",
     "yakuzakiwami": "new",
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:27:31.554Z"
+  "lastUpdated": "2026-06-17T16:28:12.140Z"
 }
