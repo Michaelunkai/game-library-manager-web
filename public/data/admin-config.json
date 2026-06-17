@@ -1156,7 +1156,7 @@
     "planetcoaster": "action",
     "residentevilvillage": "not_for_me",
     "moonstoneisland": "action",
-    "tellinglies": "storydriven",
+    "tellinglies": "finished",
     "harvestmoon": "not_for_me",
     "ghostrunner": "platformers",
     "vidtrans": "mybackup",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:17:03.723Z"
+  "lastUpdated": "2026-06-17T16:17:15.289Z"
 }
