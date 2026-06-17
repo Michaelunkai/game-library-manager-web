@@ -1163,13 +1163,13 @@
     "yakuzalikeadragon": "new",
     "battlefieldv": "shooters",
     "masseffect2": "not_for_me",
-    "mafia": "storydriven",
+    "mafia": "action",
     "rimword": "simulators",
     "outerworld": "not_for_me",
     "sniperelite3": "shooters",
     "batmantts": "not_for_me",
     "doom": "not_for_me",
-    "judgment": "storydriven",
+    "judgment": "action",
     "brothers": "finished",
     "madmax": "not_for_me",
     "batmantew": "not_for_me",
@@ -1329,5 +1329,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:16:51.279Z"
+  "lastUpdated": "2026-06-17T16:17:03.723Z"
 }
