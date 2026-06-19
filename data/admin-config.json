@@ -1202,7 +1202,7 @@
     "nginx": "mybackup",
     "wordpress": "mybackup",
     "avatarfrontiersofpandora": "not_for_me",
-    "mafiatheoldcountry": "new"
+    "mafiatheoldcountry": "finished"
   },
   "tabs": [
     {
@@ -1330,5 +1330,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-17T16:31:03.444Z"
+  "lastUpdated": "2026-06-19T16:56:33.361Z"
 }
