@@ -1674,7 +1674,10 @@ class GameLibrary {
 
     getTabCount(tabId) {
         if (tabId === 'all') {
-            return this.games.length;
+            return this.games.filter(g =>
+                !this.ADMIN_ONLY_TABS.has(g.category) &&
+                !this.hiddenTabs.has(g.category)
+            ).length;
         }
         return this.games.filter(g => g.category === tabId).length;
     }
@@ -1695,18 +1698,21 @@ class GameLibrary {
         let filtered = searchQuery
             ? [...this.games]
             : this.currentTab === 'all'
-            ? [...this.games]
+            ? this.games.filter(g =>
+                !this.ADMIN_ONLY_TABS.has(g.category) &&
+                !this.hiddenTabs.has(g.category)
+              )
             : this.currentTab === 'wishlist'
             ? this.games.filter(g => this.wishlist.has(g.id))
             : this.games.filter(g => g.category === this.currentTab);
 
-        // Keep specific admin-only categories protected for non-admins, but never hide Docker tags from "All".
-        if (!searchQuery && this.currentTab !== 'all' && !this.isAdmin) {
+        // Keep specific admin-only categories protected for non-admins.
+        if (!searchQuery && !this.isAdmin) {
             filtered = filtered.filter(g => !this.ADMIN_ONLY_TABS.has(g.category));
         }
 
-        // Hidden categories stay hidden as categories, but "All" remains a complete Docker Hub inventory.
-        if (!searchQuery && this.currentTab !== 'all' && !this.isAdmin && this.hiddenTabs.size > 0) {
+        // Hidden categories stay hidden from normal browsing; exact search still covers every Docker tag.
+        if (!searchQuery && !this.isAdmin && this.hiddenTabs.size > 0) {
             filtered = filtered.filter(g => !this.hiddenTabs.has(g.category));
         }
 
