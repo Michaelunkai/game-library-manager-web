@@ -26,11 +26,11 @@ class GameLibrary {
         this.installedGames = new Set();
         this.hiddenTabs = new Set();
         this.wishlist = new Set(JSON.parse(localStorage.getItem('gameWishlist') || '[]'));
-        this.currentTab = 'dockerhub';
+        this.currentTab = 'all';
         this.searchQuery = '';
         const _savedSort = (() => { try { return JSON.parse(localStorage.getItem('gameLibrarySortPref') || 'null'); } catch(e) { return null; } })();
-        this.sortBy = (_savedSort && _savedSort.by) || 'date';
-        this.sortOrder = (_savedSort && _savedSort.order) || 'desc';
+        this.sortBy = (_savedSort && _savedSort.by) || 'name';
+        this.sortOrder = (_savedSort && _savedSort.order) || 'asc';
         this.ratings = (() => { try { return JSON.parse(localStorage.getItem('gameLibraryRatings') || '{}'); } catch(e) { return {}; } })();
         this.showInstalledOnly = false;
         this.isAdmin = false;
@@ -111,6 +111,9 @@ class GameLibrary {
         if (!params.has('sort') && this.currentTab === 'dockerhub') {
             this.sortBy = 'date';
             this.sortOrder = 'desc';
+        } else if (!params.has('sort') && this.currentTab === 'all') {
+            this.sortBy = 'name';
+            this.sortOrder = 'asc';
         }
     }
     
