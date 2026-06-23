@@ -282,7 +282,7 @@ class GameLibrary {
             const id = tag.name;
             const dockerImage = `${dockerUser}/${repoName}:${id}`;
             const dockerImageUrl = `https://hub.docker.com/r/${dockerUser}/${repoName}/tags?name=${encodeURIComponent(id)}`;
-            const date = tag.last_updated ? tag.last_updated.split('T')[0] : new Date().toISOString().split('T')[0];
+            const date = this.normalizeDockerTimestamp(tag.last_updated);
             const sizeGb = tag.full_size ? Math.round(tag.full_size / 1073741824 * 100) / 100 : null;
             let game = gamesById.get(id);
 
@@ -372,7 +372,7 @@ class GameLibrary {
         }
 
         if (!this.datesAdded[game.id]) {
-            this.datesAdded[game.id] = new Date().toISOString().split('T')[0];
+            this.datesAdded[game.id] = new Date().toISOString();
         }
 
         this.ensureGameDetails(game);
@@ -398,6 +398,22 @@ class GameLibrary {
 
     getDockerHubTagUrl(id, dockerUser = 'michadockermisha', repoName = 'backup') {
         return `https://hub.docker.com/r/${dockerUser}/${repoName}/tags?name=${encodeURIComponent(id)}`;
+    }
+
+    normalizeDockerTimestamp(value) {
+        if (typeof value === 'string') {
+            const timestamp = Date.parse(value);
+            if (!Number.isNaN(timestamp)) return new Date(timestamp).toISOString();
+        }
+        return new Date().toISOString();
+    }
+
+    getAddedTimestamp(game) {
+        const rawDate = game && game.id ? this.datesAdded[game.id] : null;
+        if (!rawDate) return null;
+
+        const timestamp = Date.parse(rawDate);
+        return Number.isNaN(timestamp) ? null : timestamp;
     }
 
     getGameTime(game) {
@@ -1658,11 +1674,7 @@ class GameLibrary {
 
     getTabCount(tabId) {
         if (tabId === 'all') {
-            // CRITICAL: "all" tab count excludes admin-only tabs AND hidden tabs for EVERYONE
-            return this.games.filter(g => 
-                !this.ADMIN_ONLY_TABS.has(g.category) &&
-                !this.hiddenTabs.has(g.category)
-            ).length;
+            return this.games.length;
         }
         return this.games.filter(g => g.category === tabId).length;
     }
@@ -1683,21 +1695,18 @@ class GameLibrary {
         let filtered = searchQuery
             ? [...this.games]
             : this.currentTab === 'all'
-            ? this.games.filter(g =>
-                !this.ADMIN_ONLY_TABS.has(g.category) &&  // Exclude admin-only tabs from "All" view for everyone
-                !this.hiddenTabs.has(g.category)           // CRITICAL: Exclude hidden tabs from "All" view for EVERYONE (including admin)
-              )
+            ? [...this.games]
             : this.currentTab === 'wishlist'
             ? this.games.filter(g => this.wishlist.has(g.id))
             : this.games.filter(g => g.category === this.currentTab);
 
-        // CRITICAL: Hide games from admin-only tabs for non-admins when viewing specific tabs
-        if (!searchQuery && !this.isAdmin) {
+        // Keep specific admin-only categories protected for non-admins, but never hide Docker tags from "All".
+        if (!searchQuery && this.currentTab !== 'all' && !this.isAdmin) {
             filtered = filtered.filter(g => !this.ADMIN_ONLY_TABS.has(g.category));
         }
 
-        // Hide games from other hidden tabs for non-admins
-        if (!searchQuery && !this.isAdmin && this.hiddenTabs.size > 0) {
+        // Hidden categories stay hidden as categories, but "All" remains a complete Docker Hub inventory.
+        if (!searchQuery && this.currentTab !== 'all' && !this.isAdmin && this.hiddenTabs.size > 0) {
             filtered = filtered.filter(g => !this.hiddenTabs.has(g.category));
         }
 
@@ -1760,10 +1769,10 @@ class GameLibrary {
                     // Use current timestamp for comparison so "new" category games appear first when sorting newest-to-oldest
                     const nowTimestamp = Date.now();
                     
-                    hasA = !!this.datesAdded[a.id];
-                    hasB = !!this.datesAdded[b.id];
-                    valA = hasA ? new Date(this.datesAdded[a.id]).getTime() : null;
-                    valB = hasB ? new Date(this.datesAdded[b.id]).getTime() : null;
+                    valA = this.getAddedTimestamp(a);
+                    valB = this.getAddedTimestamp(b);
+                    hasA = valA !== null;
+                    hasB = valB !== null;
                     
                     // Games with "new" category but no date should be treated as newest (Date.now())
                     if (a.category === 'new' && !hasA) {
