@@ -1710,9 +1710,14 @@ class GameLibrary {
 
     getTabCount(tabId) {
         if (tabId === 'all') {
-            return this.games.length;
+            return this.games.filter(g => this.isVisibleInAll(g)).length;
         }
         return this.games.filter(g => g.category === tabId).length;
+    }
+
+    isVisibleInAll(game) {
+        if (!game) return false;
+        return !this.ADMIN_ONLY_TABS.has(game.category) && !this.hiddenTabs.has(game.category);
     }
 
     selectTab(tabId) {
@@ -1731,18 +1736,18 @@ class GameLibrary {
         let filtered = searchQuery
             ? [...this.games]
             : this.currentTab === 'all'
-            ? [...this.games]
+            ? this.games.filter(g => this.isVisibleInAll(g))
             : this.currentTab === 'wishlist'
             ? this.games.filter(g => this.wishlist.has(g.id))
             : this.games.filter(g => g.category === this.currentTab);
 
         // Keep specific admin-only categories protected for non-admins.
-        if (!searchQuery && this.currentTab !== 'all' && !this.isAdmin) {
+        if (!searchQuery && !this.isAdmin) {
             filtered = filtered.filter(g => !this.ADMIN_ONLY_TABS.has(g.category));
         }
 
-        // Category-specific browsing respects hidden tabs; All is the full Docker-backed inventory.
-        if (!searchQuery && this.currentTab !== 'all' && !this.isAdmin && this.hiddenTabs.size > 0) {
+        // Hidden categories never leak into normal browsing or All.
+        if (!searchQuery && !this.isAdmin && this.hiddenTabs.size > 0) {
             filtered = filtered.filter(g => !this.hiddenTabs.has(g.category));
         }
 
