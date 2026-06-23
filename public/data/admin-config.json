@@ -35,11 +35,11 @@
     "thevagrant": "new",
     "gamesaves": "mybackup",
     "kaku": "new",
-    "hermes-speed-20mb-under5": "3th_party_tools",
-    "hermes-speed-20mb-final2": "3th_party_tools",
-    "hermes-speed-20mb-buildxloadpush": "3th_party_tools",
-    "hermes-speed-20mb-localpush": "3th_party_tools",
-    "hermes-speed-20mb-final": "3th_party_tools",
+    "hermes-speed-20mb-under5": "mybackup",
+    "hermes-speed-20mb-final2": "mybackup",
+    "hermes-speed-20mb-buildxloadpush": "mybackup",
+    "hermes-speed-20mb-localpush": "mybackup",
+    "hermes-speed-20mb-final": "mybackup",
     "linux": "mybackup",
     "RuffyandtheRiverside": "new",
     "erebanshadowlegacy": "new",
@@ -1201,6 +1201,11 @@
     "redis": "mybackup",
     "nginx": "mybackup",
     "wordpress": "mybackup",
+    "the-first-berserker-khazan": "soulslike",
+    "007-first-light": "adventure",
+    "dragonquest1n2hd2dremake": "rpg",
+    "ofashnsteel": "action",
+    "Oceanhorn2": "adventure",
     "avatarfrontiersofpandora": "not_for_me",
     "mafiatheoldcountry": "finished"
   },
@@ -1330,5 +1335,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-19T16:56:33.361Z"
+  "lastUpdated": "2026-06-23T13:49:40.673Z"
 }
