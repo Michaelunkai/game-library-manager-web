@@ -26,11 +26,11 @@ class GameLibrary {
         this.installedGames = new Set();
         this.hiddenTabs = new Set();
         this.wishlist = new Set(JSON.parse(localStorage.getItem('gameWishlist') || '[]'));
-        this.currentTab = 'all';
+        this.currentTab = 'dockerhub';
         this.searchQuery = '';
         const _savedSort = (() => { try { return JSON.parse(localStorage.getItem('gameLibrarySortPref') || 'null'); } catch(e) { return null; } })();
-        this.sortBy = (_savedSort && _savedSort.by) || 'name';
-        this.sortOrder = (_savedSort && _savedSort.order) || 'asc';
+        this.sortBy = (_savedSort && _savedSort.by) || 'date';
+        this.sortOrder = (_savedSort && _savedSort.order) || 'desc';
         this.ratings = (() => { try { return JSON.parse(localStorage.getItem('gameLibraryRatings') || '{}'); } catch(e) { return {}; } })();
         this.showInstalledOnly = false;
         this.isAdmin = false;
@@ -103,8 +103,12 @@ class GameLibrary {
 
     applyUrlState() {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('tab') === 'dockerhub') {
-            this.currentTab = 'dockerhub';
+        const tab = params.get('tab');
+        if (tab === 'all' || tab === 'wishlist' || tab === 'dockerhub' || this.tabs.some(t => t.id === tab)) {
+            this.currentTab = tab;
+        }
+
+        if (!params.has('sort') && this.currentTab === 'dockerhub') {
             this.sortBy = 'date';
             this.sortOrder = 'desc';
         }
