@@ -282,14 +282,16 @@ class GameLibrary {
             let game = gamesById.get(id);
 
             if (!game) {
+                const name = this.formatGameName(id);
+                const category = this.detectBestCategory({ id, name });
                 game = {
                     id,
-                    name: this.formatGameName(id),
-                    category: 'new',
+                    name,
+                    category,
                     dockerImage,
                     dockerImageUrl,
                     image: this.createGeneratedCoverDataUrl(id),
-                    time: this.getGenreEstimate({ id, name: this.formatGameName(id), category: 'new' })
+                    time: this.getGenreEstimate({ id, name, category })
                 };
                 this.ensureGameDetails(game);
                 this.games.push(game);
@@ -299,19 +301,32 @@ class GameLibrary {
             } else {
                 game.dockerImage = this.isRunnableDockerImage(game.dockerImage) ? game.dockerImage : dockerImage;
                 game.dockerImageUrl = dockerImageUrl;
+                if (!game.category || game.category === 'new') {
+                    game.category = this.detectBestCategory(game);
+                }
                 if (!game.image) game.image = this.createGeneratedCoverDataUrl(id);
                 if (game.time == null && this.times[id] == null) {
                     this.times[id] = this.getGenreEstimate(game);
                 }
-                this.ensureGameDetails(game);
+                this.ensureGameDetails(game, true);
                 updated++;
             }
 
             if (sizeGb !== null) this.imageSizes[id] = sizeGb;
             this.datesAdded[id] = date;
+            this.ensureGameDetails(game, true);
         }
 
-        if (added > 0 && !this.tabs.find(t => t.id === 'new')) {
+        const tabIds = new Set(this.tabs.map(tab => tab.id));
+        for (const id of addedIds) {
+            const game = gamesById.get(id);
+            if (game?.category && !tabIds.has(game.category)) {
+                this.tabs.push({ id: game.category, name: this.formatCategoryLabel(game.category) });
+                tabIds.add(game.category);
+            }
+        }
+
+        if (added > 0 && !tabIds.has('new')) {
             this.tabs.push({ id: 'new', name: 'New', icon: '🆕' });
         }
 
@@ -352,8 +367,8 @@ class GameLibrary {
         return game;
     }
 
-    ensureGameDetails(game) {
-        if (game.description && game.details) return;
+    ensureGameDetails(game, refresh = false) {
+        if (!refresh && game.description && game.details) return;
 
         const time = this.getGameTime(game);
         const size = this.imageSizes[game.id];
@@ -361,8 +376,8 @@ class GameLibrary {
         const sizeText = (size != null && size !== '') ? `${size} GB Docker image` : 'Docker image size pending from Docker Hub';
         const details = `${game.name} is available from Docker tag ${game.id}. Category: ${game.category || 'uncategorized'}. Time to beat: ${timeText}. Size: ${sizeText}.`;
 
-        game.description = game.description || details;
-        game.details = game.details || details;
+        game.description = refresh ? details : (game.description || details);
+        game.details = refresh ? details : (game.details || details);
     }
 
     isRunnableDockerImage(value) {
@@ -375,6 +390,43 @@ class GameLibrary {
 
     getGameTime(game) {
         return (game && game.time != null) ? game.time : this.times[game.id];
+    }
+
+    detectBestCategory(game) {
+        const combined = ((game.name || '') + ' ' + (game.id || '') + ' ' + (game.genre || '')).toLowerCase();
+        const compact = combined.replace(/[^a-z0-9]/g, '');
+        const rules = [
+            ['oporationsystems', ['windows', 'win11', 'ubuntu', 'linux', 'debian', 'fedora', 'operation', 'system']],
+            ['3th_party_tools', ['tool', 'utility', 'driver', 'launcher', 'installer', 'browser', 'office', 'editor', 'server']],
+            ['gamedownloaders', ['downloader', 'download', 'torrent']],
+            ['soulslike', ['souls', 'elden', 'sekiro', 'nioh', 'liesofp', 'khazan', 'lordsofthefallen']],
+            ['localcoop', ['coop', 'co-op', 'party', 'overcooked', 'movingout', 'ittakestwo', 'unravel', 'lego']],
+            ['nintendo/switch', ['nintendo', 'switch', 'zelda', 'mario', 'kirby', 'pokemon', 'metroid', 'bayonetta', 'xenoblade']],
+            ['shooters', ['shooter', 'fps', 'tps', 'doom', 'quake', 'wolfenstein', 'borderlands', 'callofduty', 'battlefield', 'sniper', 'halo']],
+            ['openworld', ['openworld', 'open world', 'farcry', 'assassin', 'gta', 'cyberpunk', 'watchdogs', 'reddead', 'justcause', 'avatar', 'mafia']],
+            ['hacknslash', ['hacknslash', 'hack and slash', 'warriors', 'devilmaycry', 'ninjagaiden', 'bayonetta', 'darksiders', 'hades']],
+            ['storydriven', ['story', 'lifeisstrange', 'telltale', 'walkingdead', 'detroit', 'quantic', 'plague', 'edith', 'firewatch']],
+            ['platformers', ['platform', 'metroidvania', 'ori', 'hollowknight', 'celeste', 'rayman', 'sonic', 'crash', 'spyro']],
+            ['rpg', ['rpg', 'jrpg', 'persona', 'finalfantasy', 'dragonquest', 'starfield', 'baldurs', 'witcher', 'fallout', 'skyrim', 'yakuza']],
+            ['adventure', ['adventure', 'quest', 'journey', 'tomb', 'uncharted', 'indiana', 'sherlock', 'oceanhorn', 'firstlight']],
+            ['racing', ['racing', 'race', 'forza', 'needforspeed', 'dirt', 'wrc', 'motogp', 'rally']],
+            ['puzzle', ['puzzle', 'portal', 'witness', 'talos', 'myst', 'escape room']],
+            ['strategy', ['strategy', 'tactics', 'tactical', 'rts', 'civilization', 'xcom', 'anno', 'totalwar', 'warhammer', 'frostpunk']],
+            ['sports', ['sport', 'sports', 'fifa', 'fc24', 'nba', 'nfl', 'football', 'soccer', 'tennis', 'golf', 'wwe']],
+            ['fighting', ['fighting', 'fighter', 'tekken', 'streetfighter', 'mortalkombat', 'guiltygear', 'brawler']],
+            ['simulators', ['simulator', 'simulation', 'tycoon', 'manager', 'farming', 'truck', 'flight', 'train', 'cities', 'planet']],
+            ['music', ['music', 'rhythm', 'guitar', 'dance', 'beat']],
+            ['chill', ['chill', 'cozy', 'cosy', 'stardew', 'farm', 'garden', 'unpacking', 'wanderstop']],
+            ['action', ['action', 'combat', 'war', 'dead', 'dark', 'shadow', 'ghost', 'hunter', 'revenge', 'steel', 'berserker']]
+        ];
+
+        for (const [category, terms] of rules) {
+            if (terms.some(term => combined.includes(term) || compact.includes(term.replace(/[^a-z0-9]/g, '')))) {
+                return category;
+            }
+        }
+
+        return 'new';
     }
 
     async fetchAllDockerTags(dockerUser, repoName) {
@@ -394,12 +446,15 @@ class GameLibrary {
                 throw new Error(`Docker tag API HTTP ${response.status}`);
             }
             const data = await response.json();
-            if (!data.success || !Array.isArray(data.tags)) {
+            if (!Array.isArray(data.tags) || data.tags.length === 0) {
                 throw new Error(data.error || 'Docker tag API returned incomplete data');
             }
 
+            if (!data.success) {
+                console.warn(`Docker Hub API returned usable tags with a transient completeness warning: ${data.fetched}/${data.count}`);
+            }
             console.log(`✅ Docker Hub API returned ${data.fetched}/${data.count} tags`);
-            this.lastDockerTagCount = data.count;
+            this.lastDockerTagCount = data.fetched || data.count || data.tags.length;
             this.lastDockerLatestTag = data.tags[0]?.name || null;
             return data.tags;
         } catch (error) {
@@ -429,7 +484,7 @@ class GameLibrary {
             return !!(countChanged || latestMissing || (latestName && latestName !== this.lastDockerLatestTag));
         } catch (error) {
             console.error('Docker Hub summary check failed:', error);
-            return true;
+            return false;
         }
     }
 
@@ -1997,6 +2052,19 @@ class GameLibrary {
         this.downloadRunScript([...this.selectedGames]);
     }
 
+    escapeBatchText(value) {
+        return String(value ?? '')
+            .replace(/\^/g, '^^')
+            .replace(/%/g, '%%')
+            .replace(/!/g, '^^!')
+            .replace(/&/g, '^&')
+            .replace(/\|/g, '^|')
+            .replace(/</g, '^<')
+            .replace(/>/g, '^>')
+            .replace(/\(/g, '^(')
+            .replace(/\)/g, '^)');
+    }
+
     downloadRunScript(gameIds, format = 'bat') {
         const dockerUser = this.settings.dockerUsername || 'michadockermisha';
         const repoName = this.settings.repoName || 'backup';
@@ -2017,107 +2085,12 @@ class GameLibrary {
 
         if (this.os === 'windows' && format === 'bat') {
             // Windows Batch script (.bat) - double-click to run!
-            // Build combined pull+extract commands for each game (single-phase approach)
             const gameCommands = gameIds.map((id, idx) => {
                 const game = this.games.find(g => g.id === id);
                 const gameName = game ? game.name : id;
-                return `
-echo.
-echo ############################################################
-echo  GAME ${idx + 1}/${gameCount}: ${gameName}
-echo ############################################################
-echo [%date% %time%] Starting...
-echo.
-
-REM ============================================================
-REM STEP 1: Pull the Docker image
-REM ============================================================
-echo [STEP 1/2] Pulling Docker image for ${gameName}...
-set "PULL_SUCCESS=0"
-set "RETRY_DELAY=5"
-for /L %%i in (1,1,5) do (
-    if !PULL_SUCCESS! EQU 0 (
-        docker info >nul 2>&1
-        if !ERRORLEVEL! NEQ 0 (
-            echo [WARNING] Docker not responding, attempting recovery...
-            call :recover_docker
-        )
-
-        docker pull ${dockerUser}/${repoName}:${id}
-        if !ERRORLEVEL! EQU 0 (
-            set "PULL_SUCCESS=1"
-            echo [OK] Image pulled successfully!
-        ) else (
-            echo [RETRY %%i/5] Pull failed, retrying...
-            ipconfig /flushdns >nul 2>&1
-            call :recover_docker
-            echo [INFO] Waiting !RETRY_DELAY! seconds...
-            call :glm_wait !RETRY_DELAY!
-            set /a "RETRY_DELAY=RETRY_DELAY*2"
-            if !RETRY_DELAY! GTR 60 set "RETRY_DELAY=60"
-        )
-    )
-)
-
-if !PULL_SUCCESS! EQU 0 (
-    echo [ERROR] Failed to pull ${gameName} after 5 attempts. Skipping...
-    goto :next_game_${idx}
-)
-
-REM ============================================================
-REM STEP 2: Extract game files to destination
-REM ============================================================
-echo.
-echo [STEP 2/2] Extracting files to: ${normalizedPath}\\${id}
-echo.
-
-REM Clean up any existing container with same name
-docker stop ${id} >nul 2>&1
-docker rm -f ${id} >nul 2>&1
-
-set "RUN_SUCCESS=0"
-for /L %%a in (1,1,3) do (
-    if !RUN_SUCCESS! EQU 0 (
-        echo [ATTEMPT %%a/3] Running extraction container...
-        echo.
-
-        REM Run container: mount user's folder to /output, copy game files there
-        REM Using cp instead of rsync for simplicity and reliability
-        docker run -v ${dockerVolume} --rm --name ${id} ${dockerUser}/${repoName}:${id} sh -c "echo '=== CONTAINER STARTED ===' && echo 'Copying game files to /output/${id}...' && mkdir -p /output/${id} && cp -rv /home/* /output/${id}/ 2>&1 && echo '' && echo '=== COPY COMPLETE ===' && ls -la /output/${id}/ && echo '' && echo 'Total size:' && du -sh /output/${id}/"
-
-        if !ERRORLEVEL! EQU 0 (
-            set "RUN_SUCCESS=1"
-            echo.
-            echo ============================================================
-            echo [SUCCESS] ${gameName} extracted successfully!
-            echo [SAVED TO] ${normalizedPath}\\${id}
-            echo ============================================================
-        ) else (
-            echo.
-            echo [WARNING] Attempt %%a/3 failed with error code !ERRORLEVEL!
-            docker stop ${id} >nul 2>&1
-            docker rm -f ${id} >nul 2>&1
-            if %%a LSS 3 (
-                echo [INFO] Waiting 10 seconds before retry...
-                call :glm_wait 10
-                call :recover_docker
-            )
-        )
-    )
-)
-
-if !RUN_SUCCESS! EQU 0 (
-    echo.
-    echo [ERROR] ${gameName} extraction FAILED after 3 attempts!
-    echo [ERROR] Check Docker status and try again.
-)
-
-:next_game_${idx}
-if ${idx + 1} LSS ${gameCount} (
-    echo.
-    echo [NEXT] Moving to next game in 3 seconds...
-    call :glm_wait 3
-)`;
+                const safeGameName = this.escapeBatchText(gameName);
+                const safeId = this.escapeBatchText(id);
+                return `call :process_game "${safeId}" "${safeGameName}" "${idx + 1}" "${gameCount}"`;
             }).join('\n');
 
             script = `@echo off
@@ -2167,33 +2140,164 @@ REM Test network connectivity first
 echo Testing network connectivity...
 ping -n 1 registry-1.docker.io >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [WARNING] Cannot reach Docker Hub, resetting network...
+    echo [WARNING] Ping cannot reach Docker Hub. This can be normal when ICMP is blocked.
+    echo [WARNING] Continuing immediately; Docker pull will verify real connectivity.
     ipconfig /flushdns >nul 2>&1
-    netsh winsock reset >nul 2>&1
-    call :glm_wait 5
-
-    ping -n 1 registry-1.docker.io >nul 2>&1
-    if !ERRORLEVEL! NEQ 0 (
-        echo [WARNING] Still cannot reach Docker Hub, will retry during processing...
-    )
 )
 
 echo.
 echo ============================================================
 echo Starting game processing...
 echo Each game: Pull image -^> Extract files -^> Next game
+echo This script exits with an error if any selected game fails.
 echo ============================================================
+
+set /a SUCCESS_COUNT=0
+set /a FAIL_COUNT=0
+set "FAILED_GAMES="
 
 ${gameCommands}
 
 echo.
 echo ############################################################
-echo  ALL DONE!
-echo  ${gameCount} game(s) processed.
-echo  Check ${mountPath} for your games.
+echo  FINAL SUMMARY
+echo  Successful: !SUCCESS_COUNT! / ${gameCount}
+echo  Failed: !FAIL_COUNT! / ${gameCount}
+if !FAIL_COUNT! GTR 0 echo  Failed games: !FAILED_GAMES!
+if !FAIL_COUNT! EQU 0 echo  All selected games extracted and verified in ${mountPath}.
 echo ############################################################
 echo.
+if !FAIL_COUNT! GTR 0 (
+    echo [FAILED] One or more selected games did not extract successfully.
+    pause
+    exit /b 1
+)
 goto :end
+
+REM ============================================================
+REM Per-game processor
+REM ============================================================
+:process_game
+set "GAME_ID=%~1"
+set "GAME_NAME=%~2"
+set "GAME_INDEX=%~3"
+set "GAME_TOTAL=%~4"
+
+echo.
+echo ############################################################
+echo  GAME !GAME_INDEX!/!GAME_TOTAL!: !GAME_NAME!
+echo ############################################################
+echo [%date% %time%] Starting...
+echo.
+
+REM ============================================================
+REM STEP 1: Pull the Docker image
+REM ============================================================
+echo [STEP 1/2] Pulling Docker image for !GAME_NAME!...
+set "PULL_SUCCESS=0"
+for /L %%i in (1,1,5) do (
+    if !PULL_SUCCESS! EQU 0 (
+        docker info >nul 2>&1
+        if !ERRORLEVEL! NEQ 0 (
+            echo [WARNING] Docker not responding, attempting recovery...
+            call :recover_docker
+        )
+
+        docker pull ${dockerUser}/${repoName}:!GAME_ID!
+        if !ERRORLEVEL! EQU 0 (
+            set "PULL_SUCCESS=1"
+            echo [OK] Image pulled successfully!
+        ) else (
+            docker image inspect ${dockerUser}/${repoName}:!GAME_ID! >nul 2>&1
+            if !ERRORLEVEL! EQU 0 (
+                set "PULL_SUCCESS=1"
+                echo [OK] Pull failed, but image already exists locally. Continuing with local image.
+            )
+        )
+
+        if !PULL_SUCCESS! EQU 0 (
+            echo [RETRY %%i/5] Pull failed, retrying immediately...
+            ipconfig /flushdns >nul 2>&1
+        )
+    )
+)
+
+if !PULL_SUCCESS! EQU 0 (
+    echo [ERROR] Failed to pull !GAME_NAME! after 5 attempts.
+    call :mark_failed "!GAME_NAME!" "pull failed"
+    goto :eof
+)
+
+REM ============================================================
+REM STEP 2: Extract game files to destination
+REM ============================================================
+echo.
+echo [STEP 2/2] Extracting files to: ${normalizedPath}\\!GAME_ID!
+echo.
+
+REM Clean up any existing container with same name
+docker stop !GAME_ID! >nul 2>&1
+docker rm -f !GAME_ID! >nul 2>&1
+
+set "RUN_SUCCESS=0"
+for /L %%a in (1,1,3) do (
+    if !RUN_SUCCESS! EQU 0 (
+        echo [ATTEMPT %%a/3] Running extraction container...
+        echo.
+
+        REM Extract from a stopped container with docker cp. This does not require sh/bash inside the game image.
+        set "IMAGE_REF=${dockerUser}/${repoName}:!GAME_ID!"
+        set "GLM_DEST_ROOT=${normalizedPath}"
+        powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; if (Get-Variable PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) { $PSNativeCommandUseErrorActionPreference=$false }; $id=$env:GAME_ID; $name=$env:GAME_NAME; $image=$env:IMAGE_REF; $root=$env:GLM_DEST_ROOT; $container=('glm_extract_' + ($id -replace '[^A-Za-z0-9_.-]','_')); $tmp=Join-Path $root ('.glm-extracting-' + $id); $dst=Join-Path $root $id; Write-Host '=== CONTAINER CREATED FOR COPY ==='; cmd.exe /c ('docker rm -f \"' + $container + '\" >nul 2>nul'); try { if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }; New-Item -ItemType Directory -Force -Path $tmp | Out-Null; docker create --name $container $image /__glm_copy_only__ | Out-Null; if ($LASTEXITCODE -ne 0) { throw ('docker create failed for ' + $image) }; Write-Host ('Copying /home from image to temporary folder: ' + $tmp); $copy = Start-Process -FilePath 'docker' -ArgumentList @('cp', ($container + ':/home/.'), $tmp) -PassThru -WindowStyle Hidden; while (-not $copy.HasExited) { Start-Sleep -Seconds 2; $m = Get-ChildItem -LiteralPath $tmp -Force -Recurse -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum; Write-Host ('[PROGRESS] Extracting ' + $name + ': ' + $m.Count + ' files, ' + ([math]::Round(($m.Sum / 1GB), 2)) + ' GB copied'); }; $copy.WaitForExit(); if ($copy.ExitCode -ne 0) { throw ('docker cp failed with exit ' + $copy.ExitCode) }; $m = Get-ChildItem -LiteralPath $tmp -Force -Recurse -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum; if ($m.Count -lt 1 -or $m.Sum -lt 1) { throw 'Extracted folder is empty' }; if (Test-Path -LiteralPath $dst) { Remove-Item -LiteralPath $dst -Recurse -Force }; Move-Item -LiteralPath $tmp -Destination $dst; Write-Host '=== COPY COMPLETE ==='; Write-Host ('[PROGRESS] Final extracted size: ' + $m.Count + ' files, ' + ([math]::Round(($m.Sum / 1GB), 2)) + ' GB') } finally { cmd.exe /c ('docker rm -f \"' + $container + '\" >nul 2>nul') }"
+
+        if !ERRORLEVEL! EQU 0 (
+            dir /a /b "${normalizedPath}\\!GAME_ID!" >nul 2>&1
+            if !ERRORLEVEL! EQU 0 (
+                >"${normalizedPath}\\!GAME_ID!\\.glm-extract-ok" echo !GAME_NAME! extracted by Game Library Manager on %date% %time%
+                set "RUN_SUCCESS=1"
+                set /a SUCCESS_COUNT+=1
+                echo.
+                echo ============================================================
+                echo [SUCCESS] !GAME_NAME! extracted and verified successfully!
+                echo [SAVED TO] ${normalizedPath}\\!GAME_ID!
+                echo ============================================================
+            ) else (
+                echo.
+                echo [WARNING] Docker exited successfully but destination folder is missing or empty.
+            )
+        ) else (
+            echo.
+            echo [WARNING] Attempt %%a/3 failed with error code !ERRORLEVEL!
+            docker stop !GAME_ID! >nul 2>&1
+            docker rm -f !GAME_ID! >nul 2>&1
+            if %%a LSS 3 (
+                echo [INFO] Retrying extraction immediately...
+                docker info >nul 2>&1
+                if !ERRORLEVEL! NEQ 0 call :recover_docker
+            )
+        )
+    )
+)
+
+if !RUN_SUCCESS! EQU 0 (
+    echo.
+    echo [ERROR] !GAME_NAME! extraction FAILED after 3 attempts!
+    call :mark_failed "!GAME_NAME!" "extract failed"
+) else (
+    if !GAME_INDEX! LSS !GAME_TOTAL! (
+        echo.
+        echo [NEXT] Moving to next game immediately...
+    )
+)
+goto :eof
+
+REM ============================================================
+REM Failure tracking
+REM ============================================================
+:mark_failed
+set /a FAIL_COUNT+=1
+set "FAILED_GAMES=!FAILED_GAMES! %~1 (%~2);"
+goto :eof
 
 REM ============================================================
 REM Docker Recovery Function
@@ -2205,9 +2309,7 @@ echo [RECOVERY] Attempting Docker Desktop recovery...
 REM First, try to restart the Docker service
 echo [RECOVERY] Restarting Docker service...
 net stop com.docker.service >nul 2>&1
-call :glm_wait 3
 net start com.docker.service >nul 2>&1
-call :glm_wait 5
 
 REM Check if Docker is responding now
 docker info >nul 2>&1
@@ -2221,7 +2323,6 @@ echo [RECOVERY] Restarting Docker Desktop application...
 taskkill /f /im "Docker Desktop.exe" >nul 2>&1
 taskkill /f /im "com.docker.backend.exe" >nul 2>&1
 taskkill /f /im "com.docker.proxy.exe" >nul 2>&1
-call :glm_wait 5
 
 REM Try to start Docker Desktop
 start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe" >nul 2>&1
@@ -2229,17 +2330,16 @@ if !ERRORLEVEL! NEQ 0 (
     start "" "%PROGRAMFILES%\\Docker\\Docker\\Docker Desktop.exe" >nul 2>&1
 )
 
-echo [RECOVERY] Waiting for Docker to initialize (up to 60 seconds)...
+echo [RECOVERY] Checking Docker readiness without delay...
 set "DOCKER_READY=0"
 for /L %%w in (1,1,12) do (
     if !DOCKER_READY! EQU 0 (
-        call :glm_wait 5
         docker info >nul 2>&1
         if !ERRORLEVEL! EQU 0 (
             set "DOCKER_READY=1"
             echo [RECOVERY] Docker Desktop is ready!
         ) else (
-            echo [RECOVERY] Waiting... %%w/12
+            echo [RECOVERY] Not ready yet... %%w/12
         )
     )
 )
