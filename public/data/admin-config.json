@@ -14,7 +14,6 @@
     "simulators",
     "bulkgames",
     "fighting",
-    "soulslike",
     "storydriven",
     "puzzle",
     "strategy",
@@ -1335,5 +1334,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-23T14:58:45.006Z"
+  "lastUpdated": "2026-06-23T15:13:34.425Z"
 }
