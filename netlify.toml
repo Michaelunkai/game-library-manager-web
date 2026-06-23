@@ -24,6 +24,12 @@
     Cache-Control = "no-cache, no-store, must-revalidate"
     Pragma = "no-cache"
 
+[[headers]]
+  for = "/api/game-metadata"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+
 # Route /api/admin-config to the Netlify Function (permanent GitHub persistence)
 [[redirects]]
   from = "/api/admin-config"
@@ -36,6 +42,14 @@
 [[redirects]]
   from = "/api/docker-tags"
   to = "/.netlify/functions/docker-tags"
+  status = 200
+  force = true
+
+# Route /api/game-metadata to first-party metadata lookup.
+# This avoids browser CORS proxy dependence for newly synced Docker tags.
+[[redirects]]
+  from = "/api/game-metadata"
+  to = "/.netlify/functions/game-metadata"
   status = 200
   force = true
 

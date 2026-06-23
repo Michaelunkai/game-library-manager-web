@@ -243,6 +243,9 @@ class GameLibrary {
 
             console.log(`Fetched ${allTags.length} tags from Docker Hub`);
             const result = this.mergeDockerHubTags(allTags, dockerUser, repoName);
+            if (result.addedIds && result.addedIds.length > 0) {
+                await this.enrichDockerOnlyGames(result.addedIds, { silent });
+            }
 
             if (result.added > 0 || result.updated > 0) {
                 document.getElementById('gameCount').textContent = this.games.length;
@@ -334,7 +337,7 @@ class GameLibrary {
             this.saveNewGames(addedIds);
         }
 
-        return { added, updated };
+        return { added, updated, addedIds };
     }
 
     normalizeAllGameMetadata() {
@@ -515,6 +518,9 @@ class GameLibrary {
         // Convert tag name to readable game name
         let name = tagName;
 
+        // Docker tags often use hyphen/underscore separators.
+        name = name.replace(/[-_]+/g, ' ');
+
         // Add spaces before numbers
         name = name.replace(/(\d+)/g, ' $1');
 
@@ -530,6 +536,115 @@ class GameLibrary {
         name = name.replace(/\s+/g, ' ').trim();
 
         return name;
+    }
+
+    async enrichDockerOnlyGames(gameIds, options = {}) {
+        const silent = !!options.silent;
+        const targets = gameIds
+            .map(id => this.games.find(game => game.id === id))
+            .filter(Boolean);
+
+        if (targets.length === 0) return { enriched: 0, failed: 0 };
+
+        let enriched = 0;
+        let failed = 0;
+        const batchSize = 3;
+
+        for (let index = 0; index < targets.length; index += batchSize) {
+            const batch = targets.slice(index, index + batchSize);
+            const results = await Promise.allSettled(batch.map(game => this.fetchGameMetadata(game)));
+
+            results.forEach((result, resultIndex) => {
+                const game = batch[resultIndex];
+                if (result.status !== 'fulfilled' || !result.value) {
+                    failed++;
+                    return;
+                }
+
+                if (this.applyGameMetadata(game, result.value)) {
+                    enriched++;
+                }
+            });
+        }
+
+        if (enriched > 0) {
+            this.filterAndRender();
+            this.updateStatsDashboard();
+        }
+
+        if (!silent && enriched > 0) {
+            this.showToast(`Enriched ${enriched} new Docker game(s) with real metadata`, 'success');
+        }
+
+        if (failed > 0) {
+            console.warn(`Metadata enrichment failed for ${failed} Docker game(s)`);
+        }
+
+        return { enriched, failed };
+    }
+
+    async fetchGameMetadata(game) {
+        const url = `/api/game-metadata?id=${encodeURIComponent(game.id)}&name=${encodeURIComponent(game.name || game.id)}&category=${encodeURIComponent(game.category || '')}&_=${Date.now()}`;
+        const response = await fetch(url, {
+            headers: { Accept: 'application/json' },
+            cache: 'no-store'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Game metadata API HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Game metadata API returned incomplete data');
+        }
+
+        return data;
+    }
+
+    applyGameMetadata(game, metadata) {
+        let changed = false;
+
+        if (metadata.name && metadata.name !== game.name) {
+            game.name = metadata.name;
+            changed = true;
+        }
+
+        if (metadata.category && game.category !== metadata.category) {
+            game.category = metadata.category;
+            changed = true;
+        }
+
+        if (metadata.image && (!game.image || this.isGeneratedCover(game.image))) {
+            game.image = metadata.image;
+            changed = true;
+        }
+
+        if (metadata.time != null && metadata.time !== '') {
+            const nextTime = Number(metadata.time);
+            if (!Number.isNaN(nextTime) && this.times[game.id] !== nextTime && game.time !== nextTime) {
+                game.time = nextTime;
+                this.times[game.id] = nextTime;
+                changed = true;
+            }
+        }
+
+        if (metadata.steamAppId && metadata.image) {
+            const cache = this.getSteamCoverCache();
+            const cacheKey = game.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            cache[cacheKey] = metadata.image;
+            this.saveSteamCoverCache();
+        }
+
+        if (changed) {
+            this.ensureGameDetails(game, true);
+        }
+
+        return changed;
+    }
+
+    isGeneratedCover(image) {
+        return typeof image === 'string' && image.startsWith('data:image/svg+xml');
     }
 
     createGeneratedCoverDataUrl(gameId) {
