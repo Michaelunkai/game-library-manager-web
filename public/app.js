@@ -29,8 +29,8 @@ class GameLibrary {
         this.currentTab = 'all';
         this.searchQuery = '';
         const _savedSort = (() => { try { return JSON.parse(localStorage.getItem('gameLibrarySortPref') || 'null'); } catch(e) { return null; } })();
-        this.sortBy = (_savedSort && _savedSort.by) || 'name';
-        this.sortOrder = (_savedSort && _savedSort.order) || 'asc';
+        this.sortBy = (_savedSort && _savedSort.by) || 'date';
+        this.sortOrder = (_savedSort && _savedSort.order) || 'desc';
         this.ratings = (() => { try { return JSON.parse(localStorage.getItem('gameLibraryRatings') || '{}'); } catch(e) { return {}; } })();
         this.showInstalledOnly = false;
         this.isAdmin = false;
@@ -104,16 +104,13 @@ class GameLibrary {
     applyUrlState() {
         const params = new URLSearchParams(window.location.search);
         const tab = params.get('tab');
-        if (tab === 'all' || tab === 'wishlist' || tab === 'dockerhub' || this.tabs.some(t => t.id === tab)) {
+        if (tab === 'all' || tab === 'wishlist' || this.tabs.some(t => t.id === tab)) {
             this.currentTab = tab;
         }
 
-        if (!params.has('sort') && this.currentTab === 'dockerhub') {
+        if (!params.has('sort') && this.currentTab === 'all') {
             this.sortBy = 'date';
             this.sortOrder = 'desc';
-        } else if (!params.has('sort') && this.currentTab === 'all') {
-            this.sortBy = 'name';
-            this.sortOrder = 'asc';
         }
     }
     
@@ -1552,13 +1549,6 @@ class GameLibrary {
         wishlistBtn.addEventListener('click', () => this.selectTab('wishlist'));
         container.appendChild(wishlistBtn);
 
-        const dockerHubBtn = document.createElement('button');
-        dockerHubBtn.className = `tab-btn dockerhub-tab-btn ${this.currentTab === 'dockerhub' ? 'active' : ''}`;
-        dockerHubBtn.innerHTML = `<span>🐳 Docker Hub</span><span class="count">${this.games.length}</span>`;
-        dockerHubBtn.title = 'Every synced Docker Hub tag, including hidden categories';
-        dockerHubBtn.addEventListener('click', () => this.selectTab('dockerhub'));
-        container.appendChild(dockerHubBtn);
-
         this.tabs.forEach(tab => {
             const isAdminOnly = this.isTabAdminOnly(tab.id);
             const isHidden = this.hiddenTabs.has(tab.id);
@@ -1719,14 +1709,8 @@ class GameLibrary {
     }
 
     getTabCount(tabId) {
-        if (tabId === 'dockerhub') {
-            return this.games.length;
-        }
         if (tabId === 'all') {
-            return this.games.filter(g =>
-                !this.ADMIN_ONLY_TABS.has(g.category) &&
-                !this.hiddenTabs.has(g.category)
-            ).length;
+            return this.games.length;
         }
         return this.games.filter(g => g.category === tabId).length;
     }
@@ -1746,24 +1730,19 @@ class GameLibrary {
         const searchQuery = this.searchQuery;
         let filtered = searchQuery
             ? [...this.games]
-            : this.currentTab === 'dockerhub'
-            ? [...this.games]
             : this.currentTab === 'all'
-            ? this.games.filter(g =>
-                !this.ADMIN_ONLY_TABS.has(g.category) &&
-                !this.hiddenTabs.has(g.category)
-              )
+            ? [...this.games]
             : this.currentTab === 'wishlist'
             ? this.games.filter(g => this.wishlist.has(g.id))
             : this.games.filter(g => g.category === this.currentTab);
 
         // Keep specific admin-only categories protected for non-admins.
-        if (!searchQuery && this.currentTab !== 'dockerhub' && !this.isAdmin) {
+        if (!searchQuery && this.currentTab !== 'all' && !this.isAdmin) {
             filtered = filtered.filter(g => !this.ADMIN_ONLY_TABS.has(g.category));
         }
 
-        // Hidden categories stay hidden from normal browsing; exact search still covers every Docker tag.
-        if (!searchQuery && this.currentTab !== 'dockerhub' && !this.isAdmin && this.hiddenTabs.size > 0) {
+        // Category-specific browsing respects hidden tabs; All is the full Docker-backed inventory.
+        if (!searchQuery && this.currentTab !== 'all' && !this.isAdmin && this.hiddenTabs.size > 0) {
             filtered = filtered.filter(g => !this.hiddenTabs.has(g.category));
         }
 
