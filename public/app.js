@@ -243,12 +243,14 @@ class GameLibrary {
 
             console.log(`Fetched ${allTags.length} tags from Docker Hub`);
             const result = this.mergeDockerHubTags(allTags, dockerUser, repoName);
+            this.updateGameCountDisplay();
             if (result.addedIds && result.addedIds.length > 0) {
                 await this.enrichDockerOnlyGames(result.addedIds, { silent });
+                this.updateGameCountDisplay();
             }
 
             if (result.added > 0 || result.updated > 0) {
-                document.getElementById('gameCount').textContent = this.games.length;
+                this.updateGameCountDisplay();
                 this.renderTabs();
                 this.filterAndRender();
                 this.updateStatsDashboard();
@@ -338,6 +340,13 @@ class GameLibrary {
         }
 
         return { added, updated, addedIds };
+    }
+
+    updateGameCountDisplay() {
+        const gameCount = document.getElementById('gameCount');
+        if (gameCount) {
+            gameCount.textContent = this.games.length;
+        }
     }
 
     normalizeAllGameMetadata() {
@@ -1670,7 +1679,10 @@ class GameLibrary {
     }
 
     filterAndRender() {
-        let filtered = this.currentTab === 'all'
+        const searchQuery = this.searchQuery;
+        let filtered = searchQuery
+            ? [...this.games]
+            : this.currentTab === 'all'
             ? this.games.filter(g =>
                 !this.ADMIN_ONLY_TABS.has(g.category) &&  // Exclude admin-only tabs from "All" view for everyone
                 !this.hiddenTabs.has(g.category)           // CRITICAL: Exclude hidden tabs from "All" view for EVERYONE (including admin)
@@ -1680,20 +1692,22 @@ class GameLibrary {
             : this.games.filter(g => g.category === this.currentTab);
 
         // CRITICAL: Hide games from admin-only tabs for non-admins when viewing specific tabs
-        if (!this.isAdmin) {
+        if (!searchQuery && !this.isAdmin) {
             filtered = filtered.filter(g => !this.ADMIN_ONLY_TABS.has(g.category));
         }
 
         // Hide games from other hidden tabs for non-admins
-        if (!this.isAdmin && this.hiddenTabs.size > 0) {
+        if (!searchQuery && !this.isAdmin && this.hiddenTabs.size > 0) {
             filtered = filtered.filter(g => !this.hiddenTabs.has(g.category));
         }
 
-        if (this.searchQuery) {
+        if (searchQuery) {
             filtered = filtered.filter(g =>
-                g.name.toLowerCase().includes(this.searchQuery) ||
-                g.id.toLowerCase().includes(this.searchQuery) ||
-                (g.category && g.category.toLowerCase().includes(this.searchQuery))
+                g.name.toLowerCase().includes(searchQuery) ||
+                g.id.toLowerCase().includes(searchQuery) ||
+                (g.category && g.category.toLowerCase().includes(searchQuery)) ||
+                (g.dockerImage && g.dockerImage.toLowerCase().includes(searchQuery)) ||
+                (g.dockerImageUrl && g.dockerImageUrl.toLowerCase().includes(searchQuery))
             );
         }
 
