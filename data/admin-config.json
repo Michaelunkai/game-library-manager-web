@@ -19,7 +19,8 @@
     "puzzle",
     "strategy",
     "sports",
-    "replay"
+    "replay",
+    "rpg"
   ],
   "gameCategories": {
     "1113": "not_for_me",
@@ -1335,5 +1336,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-23T13:49:40.673Z"
+  "lastUpdated": "2026-06-23T14:58:43.044Z"
 }
