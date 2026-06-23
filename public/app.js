@@ -80,6 +80,7 @@ class GameLibrary {
             // CRITICAL: Load admin config from server AFTER games are loaded
             // so game category overrides can be applied to actual game objects
             await this.loadAdminConfigFromServer();
+            this.applyUrlState();
 
             this.renderTabs();
             this.renderTagFilterBar();
@@ -97,6 +98,15 @@ class GameLibrary {
             console.error('Failed to load data:', error);
             this.showToast('Failed to load game data', 'error');
             this.showLoading(false);
+        }
+    }
+
+    applyUrlState() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('tab') === 'dockerhub') {
+            this.currentTab = 'dockerhub';
+            this.sortBy = 'date';
+            this.sortOrder = 'desc';
         }
     }
     
@@ -359,6 +369,10 @@ class GameLibrary {
     normalizeGameMetadata(game, dockerUser = 'michadockermisha', repoName = 'backup') {
         game.name = game.name || this.formatGameName(game.id);
         game.category = game.category || 'new';
+        const imageOverride = this.getKnownImageOverride(game.id);
+        if (imageOverride) {
+            game.image = imageOverride;
+        }
         game.image = game.image || this.createGeneratedCoverDataUrl(game.id);
 
         const dockerImage = `${dockerUser}/${repoName}:${game.id}`;
@@ -398,6 +412,24 @@ class GameLibrary {
 
     getDockerHubTagUrl(id, dockerUser = 'michadockermisha', repoName = 'backup') {
         return `https://hub.docker.com/r/${dockerUser}/${repoName}/tags?name=${encodeURIComponent(id)}`;
+    }
+
+    getDisplayImageUrl(value) {
+        if (!value || typeof value !== 'string') return value;
+        if (!/^https?:\/\//i.test(value)) return value;
+        return `/api/image-proxy?url=${encodeURIComponent(value)}`;
+    }
+
+    normalizeLookupKey(value) {
+        return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    getKnownImageOverride(id) {
+        const key = this.normalizeLookupKey(id);
+        const overrides = {
+            '007firstlight': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3768760/93f5c0de8db2d42413f8c1eb4bdb1ccb80f7de65/capsule_616x353.jpg'
+        };
+        return overrides[key] || null;
     }
 
     normalizeDockerTimestamp(value) {
@@ -1513,6 +1545,13 @@ class GameLibrary {
         wishlistBtn.addEventListener('click', () => this.selectTab('wishlist'));
         container.appendChild(wishlistBtn);
 
+        const dockerHubBtn = document.createElement('button');
+        dockerHubBtn.className = `tab-btn dockerhub-tab-btn ${this.currentTab === 'dockerhub' ? 'active' : ''}`;
+        dockerHubBtn.innerHTML = `<span>🐳 Docker Hub</span><span class="count">${this.games.length}</span>`;
+        dockerHubBtn.title = 'Every synced Docker Hub tag, including hidden categories';
+        dockerHubBtn.addEventListener('click', () => this.selectTab('dockerhub'));
+        container.appendChild(dockerHubBtn);
+
         this.tabs.forEach(tab => {
             const isAdminOnly = this.isTabAdminOnly(tab.id);
             const isHidden = this.hiddenTabs.has(tab.id);
@@ -1673,6 +1712,9 @@ class GameLibrary {
     }
 
     getTabCount(tabId) {
+        if (tabId === 'dockerhub') {
+            return this.games.length;
+        }
         if (tabId === 'all') {
             return this.games.filter(g =>
                 !this.ADMIN_ONLY_TABS.has(g.category) &&
@@ -1697,6 +1739,8 @@ class GameLibrary {
         const searchQuery = this.searchQuery;
         let filtered = searchQuery
             ? [...this.games]
+            : this.currentTab === 'dockerhub'
+            ? [...this.games]
             : this.currentTab === 'all'
             ? this.games.filter(g =>
                 !this.ADMIN_ONLY_TABS.has(g.category) &&
@@ -1707,12 +1751,12 @@ class GameLibrary {
             : this.games.filter(g => g.category === this.currentTab);
 
         // Keep specific admin-only categories protected for non-admins.
-        if (!searchQuery && !this.isAdmin) {
+        if (!searchQuery && this.currentTab !== 'dockerhub' && !this.isAdmin) {
             filtered = filtered.filter(g => !this.ADMIN_ONLY_TABS.has(g.category));
         }
 
         // Hidden categories stay hidden from normal browsing; exact search still covers every Docker tag.
-        if (!searchQuery && !this.isAdmin && this.hiddenTabs.size > 0) {
+        if (!searchQuery && this.currentTab !== 'dockerhub' && !this.isAdmin && this.hiddenTabs.size > 0) {
             filtered = filtered.filter(g => !this.hiddenTabs.has(g.category));
         }
 
@@ -1934,7 +1978,8 @@ class GameLibrary {
         const hasSize = size != null && size !== '';
         const sizeStr = hasSize ? `${size} GB` : 'N/A';
         // Use image path from game entry (games.json) first, fall back to derived path
-        const imageSrc = game.image || `images/${game.id.toLowerCase()}.png`;
+        const imageSrc = this.getDisplayImageUrl(game.image || `images/${game.id.toLowerCase()}.png`);
+        const fallbackImageSrc = this.createGeneratedCoverDataUrl(game.id);
         const dockerImageUrl = game.dockerImageUrl || this.getDockerHubTagUrl(game.id, this.settings.dockerUsername, this.settings.repoName);
         const isSelected = this.selectedGames.has(game.id);
         const isInstalled = this.installedGames.has(game.id);
@@ -1957,10 +2002,10 @@ class GameLibrary {
                 <p class="image-container">
                     <img
                         data-src="${imageSrc}"
-                        src="data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
+                        src="${imageSrc}"
                         alt="${game.name}"
                         loading="lazy"
-                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 400%22%3E%3Crect fill=%22%231f2937%22 width=%22300%22 height=%22400%22/%3E%3Ctext x=%22150%22 y=%22200%22 text-anchor=%22middle%22 fill=%22%236366f1%22 font-size=%2240%22%3E🎮%3C/text%3E%3C/svg%3E'"
+                        onerror="this.onerror=null;this.src='${fallbackImageSrc}'"
                     >
                 </p>
                 <div class="card-info">
@@ -2097,13 +2142,13 @@ class GameLibrary {
         }
         const modalImg = document.getElementById('modalImage');
         const gameName = game.name;
-        modalImg.src = game.image || this.createGeneratedCoverDataUrl(game.id);
+        modalImg.src = this.getDisplayImageUrl(game.image || this.createGeneratedCoverDataUrl(game.id));
         modalImg.onerror = async function() {
             // Try Steam cover fallback
             try {
                 const steamUrl = await window.gameLibrary.fetchSteamCoverUrl(gameName);
                 if (steamUrl) {
-                    modalImg.src = steamUrl;
+                    modalImg.src = window.gameLibrary.getDisplayImageUrl(steamUrl);
                     modalImg.onerror = function() {
                         this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%231f2937' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='%236366f1' font-size='40'%3E🎮%3C/text%3E%3C/svg%3E";
                     };
@@ -4970,7 +5015,7 @@ echo "Done!"
                             if (coverUrl) {
                                 const coverImg = new Image();
                                 coverImg.onload = () => {
-                                    img.src = coverUrl;
+                                    img.src = window.gameLibrary.getDisplayImageUrl(coverUrl);
                                     img.classList.add('loaded');
                                     const container = img.closest('.image-container');
                                     if (container) {
@@ -4983,7 +5028,7 @@ echo "Done!"
                                         const headerUrl = coverUrl.replace('library_600x900_2x.jpg', 'header.jpg');
                                         const headerImg = new Image();
                                         headerImg.onload = () => {
-                                            img.src = headerUrl;
+                                            img.src = window.gameLibrary.getDisplayImageUrl(headerUrl);
                                             img.classList.add('loaded');
                                             const container = img.closest('.image-container');
                                             if (container) {

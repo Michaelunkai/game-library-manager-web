@@ -13,7 +13,7 @@ const RAWG_KEY = 'c542e67aec3a4340908f9de9e86038af';
 
 const KNOWN_METADATA = {
   'thefirstberserkerkhazan': { searchName: 'The First Berserker Khazan', steamAppId: '2680010', hours: 35, category: 'soulslike' },
-  '007firstlight': { searchName: '007 First Light', steamAppId: '3768760', hours: 15, category: 'adventure' },
+  '007firstlight': { searchName: '007 First Light', steamAppId: '3768760', hours: 15, category: 'adventure', imageUrl: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3768760/93f5c0de8db2d42413f8c1eb4bdb1ccb80f7de65/capsule_616x353.jpg' },
   'dragonquest1n2hd2dremake': { searchName: 'Dragon Quest I & II HD-2D Remake', steamAppId: '2893570', hours: 75, category: 'rpg' },
   'ofashnsteel': { searchName: 'Of Ash and Steel', steamAppId: '2893820', hours: 35, category: 'action' },
   'oceanhorn2': { searchName: 'Oceanhorn 2: Knights of the Lost Realm', steamAppId: '1622710', hours: 20, category: 'adventure' },
@@ -134,7 +134,7 @@ exports.handler = async (event) => {
       steam = {
         appId: known.steamAppId,
         name: known.searchName,
-        image: steamCoverUrl(known.steamAppId),
+        image: known.imageUrl || steamCoverUrl(known.steamAppId),
         source: 'steam-known'
       };
     } else {

@@ -30,6 +30,11 @@
     Cache-Control = "no-cache, no-store, must-revalidate"
     Pragma = "no-cache"
 
+[[headers]]
+  for = "/api/image-proxy"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
 # Route /api/admin-config to the Netlify Function (permanent GitHub persistence)
 [[redirects]]
   from = "/api/admin-config"
@@ -50,6 +55,14 @@
 [[redirects]]
   from = "/api/game-metadata"
   to = "/.netlify/functions/game-metadata"
+  status = 200
+  force = true
+
+# Route external cover art through same-origin proxy so browser hotlink/CORS
+# behavior cannot leave cards blank when Steam/RAWG images are valid.
+[[redirects]]
+  from = "/api/image-proxy"
+  to = "/.netlify/functions/image-proxy"
   status = 200
   force = true
 
