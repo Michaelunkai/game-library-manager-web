@@ -202,7 +202,7 @@
     "911operator": "simulators",
     "megabonk": "platformers",
     "peppergrinder": "platformers",
-    "highonlife2": "shooters",
+    "highonlife2": "finished",
     "ninjagaiden2black": "not_for_me",
     "thewitcher3wildhunt": "finished",
     "haroldhalibut": "storydriven",
@@ -1200,6 +1200,20 @@
     "redis": "mybackup",
     "nginx": "mybackup",
     "wordpress": "mybackup",
+    "of-ash-and-steel": "action",
+    "dragon-quest-i-ii-hd-2d-remake": "rpg",
+    "pascals-wager-definitive-edition": "new",
+    "luna-abyss": "new",
+    "like-a-dragon-infinite-wealth": "new",
+    "maseylia-echoes-of-the-past": "new",
+    "the-last-hero-of-nostalgaia": "new",
+    "fashion-police-squad": "new",
+    "doraemon-story-of-seasons": "storydriven",
+    "xuan-yuan-sword-vii": "new",
+    "whirlight-no-time-to-trip": "new",
+    "lumentale-memories-of-trey": "platformers",
+    "planet-of-lana-ii": "simulators",
+    "grime-ii": "new",
     "the-first-berserker-khazan": "soulslike",
     "007-first-light": "adventure",
     "dragonquest1n2hd2dremake": "rpg",
@@ -1334,5 +1348,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-06-23T15:13:34.425Z"
+  "lastUpdated": "2026-06-29T18:40:54.138Z"
 }
