@@ -25,6 +25,7 @@
     "1115": "not_for_me",
     "1116": "not_for_me",
     "1117": "not_for_me",
+    "1241": "new",
     "staroceanthedivineforce": "new",
     "redfactionguerrillaremarstered": "new",
     "onepieceodyssey": "new",
@@ -1199,6 +1200,24 @@
     "redis": "mybackup",
     "nginx": "mybackup",
     "wordpress": "mybackup",
+    "mika-and-the-witchs-mountain": "new",
+    "south-of-the-circle": "new",
+    "el-hijo---a-wild-west-tale": "new",
+    "el-hijo-a-wild-west-tale": "new",
+    "biomorph": "new",
+    "wavetale": "new",
+    "proof-direct": "new",
+    "proof-noskip": "mybackup",
+    "mouthwashing": "new",
+    "afterformat": "mybackup",
+    "killer-frequency": "new",
+    "proof-fixture": "new",
+    "tizen": "new",
+    "win11empty": "oporationsystems",
+    "parallel-fixture-20260706150838": "new",
+    "direct-registry-curl-fixture-20260706145111": "new",
+    "direct-registry-fixture": "new",
+    "mmenu-direct-test-1783337754": "new",
     "mmenu-direct-proof-20260706-122643": "mybackup",
     "mmenu-direct-proof-20260706-122451": "mybackup",
     "mmenu-direct-proof-20260706-122243": "mybackup",
@@ -1375,5 +1394,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-06T10:53:22.208Z"
+  "lastUpdated": "2026-07-07T17:19:45.242Z"
 }
