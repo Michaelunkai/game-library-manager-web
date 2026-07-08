@@ -820,7 +820,7 @@
     "readyornot": "shooters",
     "theinvincible": "storydriven",
     "lovetooeasily": "action",
-    "fistforgedinshadow": "hacknslash",
+    "fistforgedinshadow": "finished",
     "Immortalsofaveum": "shooters",
     "powerwashsimulator": "simulators",
     "artfulescape": "not_for_me",
@@ -1071,7 +1071,7 @@
     "bloodsrainedritualofthenight": "not_for_me",
     "eiyudenchroniclerising": "action",
     "lifeistrangeremasterd": "finished",
-    "fistforgedinshadowtorch": "hacknslash",
+    "fistforgedinshadowtorch": "finished",
     "cuphead": "new",
     "curseofthedeadgods": "hacknslash",
     "hackersimulator": "simulators",
@@ -1397,5 +1397,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-08T01:00:38.848Z"
+  "lastUpdated": "2026-07-08T01:01:31.564Z"
 }
