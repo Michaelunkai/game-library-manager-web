@@ -44,7 +44,7 @@
     "erebanshadowlegacy": "action",
     "TalesofGracesfRemastered": "racing",
     "SakunaOfRiceandRuin": "not_for_me",
-    "AgainsttheStorm": "new",
+    "AgainsttheStorm": "not_for_me",
     "SANDLAND": "new",
     "HARVESTELLA": "new",
     "thefirstberserkerkhazan": "soulslike",
@@ -173,7 +173,7 @@
     "grimdawn": "action",
     "castlevanialordsofshadow2": "not_for_me",
     "princeofpersiathelostcrown": "finished",
-    "againstthestorm": "strategy",
+    "againstthestorm": "not_for_me",
     "hifirush": "finished",
     "dawnoftheashenqueen": "action",
     "oriandthewillofthewisps": "not_for_me",
@@ -1397,5 +1397,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-08T00:59:42.632Z"
+  "lastUpdated": "2026-07-08T01:00:38.848Z"
 }
