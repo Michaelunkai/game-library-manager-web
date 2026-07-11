@@ -965,7 +965,7 @@
     "bramble": "finished",
     "evilwest": "finished",
     "themageseeker": "hacknslash",
-    "enderliles": "action",
+    "enderliles": "finished",
     "nocturnal": "action",
     "proxmoxiso": "oporationsystems",
     "prox": "mybackup",
@@ -1200,6 +1200,15 @@
     "redis": "mybackup",
     "nginx": "mybackup",
     "wordpress": "mybackup",
+    "saviorless": "new",
+    "koa-and-the-five-pirates-of-mara": "new",
+    "monster-hunter-stories-2---wings-of-ruin": "platformers",
+    "spark-the-electric-jester-3": "new",
+    "dusk-diver-2": "new",
+    "sonic-colors---ultimate": "platformers",
+    "asterix-obelix-slap-them-all-2": "new",
+    "freedom-planet-2": "simulators",
+    "hellboy---web-of-wyrd": "new",
     "tails-of-iron-2": "new",
     "yasha---legends-of-the-demon-blade": "new",
     "gunbrella": "new",
@@ -1397,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-08T01:01:31.564Z"
+  "lastUpdated": "2026-07-11T21:02:49.168Z"
 }
