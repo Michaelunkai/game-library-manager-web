@@ -412,7 +412,7 @@
     "bcuninstaller": "win11maintaince",
     "sandboxieplus": "3th_party_tools",
     "macriumreflect": "3th_party_tools",
-    "libraryofruina": "action",
+    "libraryofruina": "not_for_me",
     "myst": "action",
     "windowsrepairtoolbox": "win11maintaince",
     "win11hyperv": "oporationsystems",
@@ -1406,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-11T21:06:19.209Z"
+  "lastUpdated": "2026-07-11T21:08:22.580Z"
 }
