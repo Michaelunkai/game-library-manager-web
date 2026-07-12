@@ -1085,7 +1085,7 @@
     "redout2": "simulators",
     "yakuza3remasterd": "action",
     "megamanxdive": "platformers",
-    "neonabyss": "action",
+    "neonabyss": "not_for_me",
     "gerda": "storydriven",
     "slaytheprincess": "finished",
     "prisonsimulator": "finished",
@@ -1406,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-11T21:08:22.580Z"
+  "lastUpdated": "2026-07-12T20:15:21.049Z"
 }
