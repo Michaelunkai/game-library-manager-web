@@ -538,7 +538,7 @@
     "FahrenheitIndigoProphecyRemastered": "storydriven",
     "SyberiaTheWorldBefore": "storydriven",
     "Wanderstop": "action",
-    "ScheduleI": "action",
+    "ScheduleI": "not_for_me",
     "inZOI": "simulators",
     "Omensight": "storydriven",
     "BurnoutParadiseRemastered": "racing",
@@ -1406,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-12T20:15:21.049Z"
+  "lastUpdated": "2026-07-13T23:27:25.884Z"
 }
