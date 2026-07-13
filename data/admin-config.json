@@ -1254,7 +1254,7 @@
     "star-wars-outlaws": "action",
     "gothic-1-remake": "new",
     "death-stranding-2": "new",
-    "the-last-oricru": "platformers",
+    "the-last-oricru": "not_for_me",
     "postal-brain-damaged": "new",
     "gori-cuddly-carnage": "platformers",
     "turbo-overkill": "new",
@@ -1406,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-13T23:28:14.141Z"
+  "lastUpdated": "2026-07-13T23:29:12.063Z"
 }
