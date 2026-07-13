@@ -27,7 +27,7 @@
     "1117": "not_for_me",
     "1241": "not_for_me",
     "staroceanthedivineforce": "new",
-    "redfactionguerrillaremarstered": "action",
+    "redfactionguerrillaremarstered": "not_for_me",
     "onepieceodyssey": "new",
     "trinitytrigger": "new",
     "theknightling": "new",
@@ -528,7 +528,7 @@
     "Ashen": "new",
     "SunlessSkies": "action",
     "Steep": "mybackup",
-    "RedFactionGuerrillaReMarstered": "shooters",
+    "RedFactionGuerrillaReMarstered": "not_for_me",
     "Skullgirls2ndEncore": "action",
     "YokusIslandExpress": "platformers",
     "CrimeBossRockayCity": "not_for_me",
@@ -767,7 +767,7 @@
     "GunfireReborn": "action",
     "PainttheTownRed": "action",
     "TheLegendofZeldaTheWindWaker": "nintendo/switch",
-    "RedFactionguerrillaReMarstered": "action",
+    "RedFactionguerrillaReMarstered": "not_for_me",
     "MetalGearSolid3": "action",
     "MetalGearSolid2": "action",
     "TheLegendofHeroes": "action",
@@ -1406,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-13T23:27:25.884Z"
+  "lastUpdated": "2026-07-13T23:28:14.141Z"
 }
