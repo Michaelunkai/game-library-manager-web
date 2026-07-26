@@ -812,7 +812,7 @@
     "anothercrabstreasure": "not_for_me",
     "yakuza4": "action",
     "wildlands": "shooters",
-    "yakuza3": "action",
+    "yakuza3": "not_for_me",
     "banishers": "storydriven",
     "repellafella": "hacknslash",
     "childrenofthesun": "action",
@@ -1406,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-13T23:29:56.028Z"
+  "lastUpdated": "2026-07-26T10:14:49.683Z"
 }
