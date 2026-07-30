@@ -242,7 +242,7 @@
     "untilthen": "storydriven",
     "tailsofiron": "soulslike",
     "spiritfall": "action",
-    "therogueprinceofpersia": "platformers",
+    "therogueprinceofpersia": "finished",
     "windowsapps-cache": "mybackup",
     "wsl-cache": "mybackup",
     "talesoftheshire": "simulators",
@@ -1406,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-26T10:14:49.683Z"
+  "lastUpdated": "2026-07-30T12:12:09.585Z"
 }
