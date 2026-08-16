@@ -65,7 +65,7 @@
     "bladeofdarkness": "action",
     "whilewewaithere": "new",
     "strayedlights": "new",
-    "wanteddead": "action",
+    "wanteddead": "not_for_me",
     "thecouncil": "new",
     "batoralosthaven": "sports",
     "hermes-push-smoke-20260602": "mybackup",
@@ -1406,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-08-16T14:12:40.293Z"
+  "lastUpdated": "2026-08-16T14:13:03.893Z"
 }
