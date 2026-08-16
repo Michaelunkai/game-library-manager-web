@@ -152,7 +152,7 @@
     "placidplasticdeckaquietquest": "action",
     "towerborne": "not_for_me",
     "nioh3": "soulslike",
-    "strangerofparadisefinalfantasyorigin": "action",
+    "strangerofparadisefinalfantasyorigin": "not_for_me",
     "theouterworlds2": "rpg",
     "taintedgrailthefallofavalon": "finished",
     "dynastywarriorsorigins": "action",
@@ -1406,5 +1406,5 @@
       "name": "HyperV"
     }
   ],
-  "lastUpdated": "2026-07-30T12:12:09.585Z"
+  "lastUpdated": "2026-08-16T14:12:40.293Z"
 }
