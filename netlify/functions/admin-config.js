@@ -9,11 +9,21 @@ const path = require('path');
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const GITHUB_REPO = 'Michaelunkai/game-library-manager-web';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'glm-admin-2024';
+const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID || 'c8ccb88c-0b80-486f-940b-e89d9acefe99';
+const NETLIFY_BLOBS_TOKEN = process.env.NETLIFY_BLOBS_TOKEN || process.env.NETLIFY_AUTH_TOKEN || '';
 
 let blobStore = null;
 try {
   const { getStore } = require('@netlify/blobs');
-  blobStore = getStore({ name: 'game-library-admin-config', consistency: 'strong' });
+  const blobOptions = {
+    name: 'game-library-admin-config',
+    consistency: 'strong'
+  };
+  if (NETLIFY_SITE_ID && NETLIFY_BLOBS_TOKEN) {
+    blobOptions.siteID = NETLIFY_SITE_ID;
+    blobOptions.token = NETLIFY_BLOBS_TOKEN;
+  }
+  blobStore = getStore(blobOptions);
 } catch (error) {
   console.warn('Netlify Blobs unavailable; GitHub fallback only:', error.message);
 }
