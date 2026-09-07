@@ -3,6 +3,8 @@
 // Netlify Blobs is the primary store; GitHub remains an optional legacy fallback.
 
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const GITHUB_REPO = 'Michaelunkai/game-library-manager-web';
@@ -16,11 +18,32 @@ try {
   console.warn('Netlify Blobs unavailable; GitHub fallback only:', error.message);
 }
 
+function readBundledDefaultConfig() {
+  const candidates = [
+    path.resolve(__dirname, '../../data/admin-config.json'),
+    path.resolve(__dirname, '../../public/data/admin-config.json'),
+    path.resolve(process.cwd(), 'data/admin-config.json'),
+    path.resolve(process.cwd(), 'public/data/admin-config.json')
+  ];
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (error) {
+      // The function bundle may not contain every candidate path.
+    }
+  }
+  return null;
+}
+
+const BUNDLED_DEFAULT_CONFIG = readBundledDefaultConfig() || {};
 const DEFAULT_CONFIG = {
-  hiddenTabs: [],
-  gameCategories: {},
-  tabs: null,
-  lastUpdated: 'bootstrap-v1'
+  hiddenTabs: Array.isArray(BUNDLED_DEFAULT_CONFIG.hiddenTabs) ? BUNDLED_DEFAULT_CONFIG.hiddenTabs : [],
+  gameCategories: BUNDLED_DEFAULT_CONFIG.gameCategories && typeof BUNDLED_DEFAULT_CONFIG.gameCategories === 'object'
+    ? BUNDLED_DEFAULT_CONFIG.gameCategories
+    : {},
+  tabs: Array.isArray(BUNDLED_DEFAULT_CONFIG.tabs) ? BUNDLED_DEFAULT_CONFIG.tabs : null,
+  lastUpdated: BUNDLED_DEFAULT_CONFIG.lastUpdated || 'bootstrap-v1'
 };
 
 // Both paths get updated simultaneously for redundancy

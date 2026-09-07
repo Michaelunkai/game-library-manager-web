@@ -6,6 +6,9 @@
 [build.environment]
   NODE_VERSION = "18"
 
+[functions]
+  included_files = ["data/admin-config.json", "public/data/admin-config.json"]
+
 [[headers]]
   for = "/app.js"
   [headers.values]
