@@ -1357,6 +1357,57 @@ body {
     color: #ef4444 !important;
 }
 
+.installed-tab-btn {
+    color: #f87171 !important;
+    border-left: 3px solid #dc2626 !important;
+    background: rgba(127, 29, 29, 0.12);
+}
+
+.installed-tab-btn:hover,
+.installed-tab-btn.active {
+    color: #fecaca !important;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.28), rgba(127, 29, 29, 0.14)) !important;
+    border-left-color: #ef4444 !important;
+}
+
+.installed-tab-btn .count {
+    background: rgba(127, 29, 29, 0.45);
+    color: #fecaca;
+}
+
+.installed-scan-status {
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.installed-scan-status.connected {
+    color: #fca5a5;
+}
+
+.installed-scan-status.scanning {
+    color: var(--accent);
+}
+
+.installed-scan-status.stale,
+.installed-scan-status.unavailable {
+    color: var(--warning);
+}
+
+.local-install-path {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #fca5a5;
+    font-size: 0.7rem;
+    margin-top: 3px;
+}
+
 /* Star Rating */
 .rating-stars {
     display: flex;

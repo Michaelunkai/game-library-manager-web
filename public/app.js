@@ -24,6 +24,17 @@ class GameLibrary {
         this.filteredGames = [];
         this.selectedGames = new Set();
         this.installedGames = new Set();
+        this.manualInstalledGames = new Set();
+        this.scannedInstalledGames = null;
+        this.installedScanEntries = [];
+        this.installedScanMatches = new Map();
+        this.installedScannerState = 'starting';
+        this.installedScanIntervalMs = 5000;
+        this.installedScanInterval = null;
+        this.installedScanInFlight = false;
+        this.installedScanSignature = '';
+        this._adminSaveInFlight = null;
+        this._adminSaveDirty = false;
         this.hiddenTabs = new Set();
         this.wishlist = new Set(JSON.parse(localStorage.getItem('gameWishlist') || '[]'));
         this.currentTab = 'all';
@@ -55,7 +66,7 @@ class GameLibrary {
         ]);
 
         this.settings = this.loadSettings();
-        this.dockerSyncIntervalMs = 5000;
+        this.dockerSyncIntervalMs = 60000;
         this.lastDockerTagCount = null;
         this.lastDockerLatestTag = null;
 
@@ -94,6 +105,10 @@ class GameLibrary {
             
             // Start polling for admin config changes (every 5 seconds)
             this.startAdminConfigPolling();
+
+            // A browser cannot inspect local drives directly. The local companion
+            // endpoint, when available, keeps the Installed tab current.
+            this.startInstalledScanner();
         } catch (error) {
             console.error('Failed to load data:', error);
             this.showToast('Failed to load game data', 'error');
@@ -104,7 +119,7 @@ class GameLibrary {
     applyUrlState() {
         const params = new URLSearchParams(window.location.search);
         const tab = params.get('tab');
-        if (tab === 'all' || tab === 'wishlist' || this.tabs.some(t => t.id === tab)) {
+        if (tab === 'all' || tab === 'wishlist' || tab === 'installed' || this.tabs.some(t => t.id === tab)) {
             this.currentTab = tab;
         }
 
@@ -116,10 +131,11 @@ class GameLibrary {
     
     // Poll server for admin configuration changes
     startAdminConfigPolling() {
-        this._lastConfigVersion = null;
+        this._lastConfigVersion = this._lastConfigVersion || null;
+        this._lastAdminConfigSignature = this._lastAdminConfigSignature || null;
         this._vercelMode = false;
         this._pollFailCount = 0;
-        // Check for updates every 2 seconds for instant change detection
+        // Check for updates every 2 seconds without re-rendering unchanged config.
         this.configPollInterval = setInterval(async () => {
             // Skip polling if we're on Vercel (no API)
             if (this._vercelMode) return;
@@ -138,15 +154,17 @@ class GameLibrary {
                 if (response.ok) {
                     this._pollFailCount = 0; // Reset fail count on success
                     const data = await response.json();
-                    if (data.success && data.configVersion && data.configVersion !== this._lastConfigVersion) {
-                        if (this._lastConfigVersion !== null) {
+                    if (data.success && data.config) {
+                        const signature = this.getAdminConfigSignature(data.config);
+                        if (this._lastAdminConfigSignature !== null && signature !== this._lastAdminConfigSignature) {
                             // Config changed - reload everything from server
                             await this.loadAdminConfigFromServer();
                             this.renderTabs();
                             this.filterAndRender();
-                            console.log('Config updated from server:', data.configVersion);
+                            console.log('Config updated from server:', data.configVersion || signature);
                         }
-                        this._lastConfigVersion = data.configVersion;
+                        this._lastAdminConfigSignature = signature;
+                        this._lastConfigVersion = data.configVersion || signature;
                     }
                 } else if (response.status === 404) {
                     this._pollFailCount++;
@@ -164,6 +182,21 @@ class GameLibrary {
         console.log('⚡ Admin config polling started: checking every 2 seconds for instant updates');
     }
 
+    getAdminConfigSignature(config) {
+        const categories = config?.gameCategories && typeof config.gameCategories === 'object'
+            ? config.gameCategories
+            : {};
+        const stableCategories = Object.keys(categories).sort().reduce((result, key) => {
+            result[key] = categories[key];
+            return result;
+        }, {});
+        return JSON.stringify({
+            hiddenTabs: Array.isArray(config?.hiddenTabs) ? [...new Set(config.hiddenTabs)].sort() : [],
+            gameCategories: stableCategories,
+            tabs: Array.isArray(config?.tabs) ? config.tabs : null
+        });
+    }
+
     startAutoSync() {
         // Poll a lightweight first-page summary, then run the complete sync only
         // when Docker Hub exposes a changed count or latest tag.
@@ -174,10 +207,10 @@ class GameLibrary {
         // Also update sync button to show auto-sync is active
         const syncBtn = document.getElementById('syncDockerBtn');
         if (syncBtn) {
-            syncBtn.title = 'Auto-syncing every 5s (click to sync now)';
+            syncBtn.title = 'Auto-syncing every 60s (click to sync now)';
         }
 
-        console.log('🔄 Auto-sync started: checking Docker Hub every 5 seconds');
+        console.log('🔄 Auto-sync started: checking Docker Hub every 60 seconds');
     }
 
     async autoSyncDockerHub() {
@@ -274,7 +307,9 @@ class GameLibrary {
                 this.showToast(`Found ${result.added} new Docker Hub tag(s)!`, 'success');
             }
 
-            return { ...result, fetched: allTags.length };
+            this.lastDockerTagCount = allTags.length;
+            this.lastDockerLatestTag = allTags[0]?.name || this.lastDockerLatestTag;
+            return { ...result, fetched: allTags.length, latestTagName: allTags[0]?.name || null };
         } catch (error) {
             console.error('Failed to sync Docker Hub tags:', error);
             if (!silent) {
@@ -328,12 +363,30 @@ class GameLibrary {
                     this.times[id] = this.getGenreEstimate(game);
                 }
                 this.ensureGameDetails(game, true);
-                updated++;
             }
 
             if (sizeGb !== null) this.imageSizes[id] = sizeGb;
-            this.datesAdded[id] = date;
+            if (date) this.datesAdded[id] = date;
             this.ensureGameDetails(game, true);
+
+            if (gamesById.has(id) && !addedIds.includes(id)) {
+                const before = JSON.stringify({
+                    dockerImage: game.dockerImage,
+                    dockerImageUrl: game.dockerImageUrl,
+                    category: game.category,
+                    image: game.image,
+                    time: game.time,
+                    timeLookup: this.times[id],
+                    description: game.description,
+                    details: game.details,
+                    size: this.imageSizes[id],
+                    date: this.datesAdded[id]
+                });
+                const previousTagState = this._lastDockerMergeState?.[id];
+                if (previousTagState && previousTagState !== before) updated++;
+                if (!this._lastDockerMergeState) this._lastDockerMergeState = {};
+                this._lastDockerMergeState[id] = before;
+            }
         }
 
         const tabIds = new Set(this.tabs.map(tab => tab.id));
@@ -441,7 +494,7 @@ class GameLibrary {
             const timestamp = Date.parse(value);
             if (!Number.isNaN(timestamp)) return new Date(timestamp).toISOString();
         }
-        return new Date().toISOString();
+        return null;
     }
 
     getAddedTimestamp(game) {
@@ -1538,7 +1591,7 @@ class GameLibrary {
         container.innerHTML = '';
         const tabCount = document.getElementById('tabCount');
         if (tabCount) {
-            tabCount.textContent = `${this.tabs.length} tabs`;
+            tabCount.textContent = `${this.tabs.length + 1} tabs`;
         }
 
         // Add Wishlist tab at the top
@@ -1548,6 +1601,16 @@ class GameLibrary {
         wishlistBtn.innerHTML = `<span>♥ Wishlist</span><span class="count">${wishlistCount}</span>`;
         wishlistBtn.addEventListener('click', () => this.selectTab('wishlist'));
         container.appendChild(wishlistBtn);
+
+        // Installed is a live machine view, not a user-editable category.
+        const installedBtn = document.createElement('button');
+        const installedCount = this.getTabCount('installed');
+        installedBtn.type = 'button';
+        installedBtn.className = `tab-btn installed-tab-btn ${this.currentTab === 'installed' ? 'active' : ''}`;
+        installedBtn.innerHTML = `<span>🔴 Installed</span><span class="count">${installedCount}</span>`;
+        installedBtn.title = 'Games detected in C:\\Games, F:\\Games, or E:\\Games';
+        installedBtn.addEventListener('click', () => this.selectTab('installed'));
+        container.appendChild(installedBtn);
 
         this.tabs.forEach(tab => {
             const isAdminOnly = this.isTabAdminOnly(tab.id);
@@ -1712,6 +1775,9 @@ class GameLibrary {
         if (tabId === 'all') {
             return this.games.filter(g => this.isVisibleInAll(g)).length;
         }
+        if (tabId === 'installed') {
+            return this.getInstalledDisplayGames().length;
+        }
         return this.games.filter(g => g.category === tabId).length;
     }
 
@@ -1733,12 +1799,15 @@ class GameLibrary {
 
     filterAndRender() {
         const searchQuery = this.searchQuery;
+        const installedView = this.getInstalledDisplayGames();
         let filtered = searchQuery
-            ? [...this.games]
+            ? (this.currentTab === 'installed' ? installedView : [...this.games])
             : this.currentTab === 'all'
             ? this.games.filter(g => this.isVisibleInAll(g))
             : this.currentTab === 'wishlist'
             ? this.games.filter(g => this.wishlist.has(g.id))
+            : this.currentTab === 'installed'
+            ? installedView
             : this.games.filter(g => g.category === this.currentTab);
 
         // Hidden/admin categories must never leak into normal non-search browsing.
@@ -1756,7 +1825,8 @@ class GameLibrary {
                 g.id.toLowerCase().includes(searchQuery) ||
                 (g.category && g.category.toLowerCase().includes(searchQuery)) ||
                 (g.dockerImage && g.dockerImage.toLowerCase().includes(searchQuery)) ||
-                (g.dockerImageUrl && g.dockerImageUrl.toLowerCase().includes(searchQuery))
+                (g.dockerImageUrl && g.dockerImageUrl.toLowerCase().includes(searchQuery)) ||
+                (g.localPath && g.localPath.toLowerCase().includes(searchQuery))
             );
         }
 
@@ -1769,7 +1839,7 @@ class GameLibrary {
         }
 
         // Filter by installed status if enabled
-        if (this.showInstalledOnly) {
+        if (this.showInstalledOnly && this.currentTab !== 'installed') {
             filtered = filtered.filter(g => this.installedGames.has(g.id));
         }
 
@@ -1970,9 +2040,10 @@ class GameLibrary {
         // Use image path from game entry (games.json) first, fall back to derived path
         const imageSrc = this.getDisplayImageUrl(game.image || `images/${game.id.toLowerCase()}.png`);
         const fallbackImageSrc = this.createGeneratedCoverDataUrl(game.id);
-        const dockerImageUrl = game.dockerImageUrl || this.getDockerHubTagUrl(game.id, this.settings.dockerUsername, this.settings.repoName);
+        const dockerImageUrl = game.localPath ? null : (game.dockerImageUrl || this.getDockerHubTagUrl(game.id, this.settings.dockerUsername, this.settings.repoName));
         const isSelected = this.selectedGames.has(game.id);
-        const isInstalled = this.installedGames.has(game.id);
+        const isLocalInstalled = !!game.isLocalInstalled;
+        const isInstalled = isLocalInstalled || this.installedGames.has(game.id);
         const isNew = game.category === 'new';
         const isWishlisted = this.wishlist.has(game.id);
         const gameRating = this.getGameRating(game.id);
@@ -1983,7 +2054,7 @@ class GameLibrary {
                 <input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''} aria-label="Select ${game.name}">
                 ${isSelected ? '<span class="checkmark-icon">✓</span>' : ''}
                 <button type="button" class="info-btn" title="View details" aria-label="View details for ${game.name}">ℹ️</button>
-                <button type="button" class="install-btn ${isInstalled ? 'is-installed' : ''}" title="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}" aria-label="${isInstalled ? 'Mark as not installed' : 'Mark as installed'}" aria-pressed="${isInstalled}">${isInstalled ? '✅' : '📥'}</button>
+                <button type="button" class="install-btn ${isInstalled ? 'is-installed' : ''}" ${isLocalInstalled ? 'disabled' : ''} title="${isLocalInstalled ? 'Detected by the local installed-game scanner' : (isInstalled ? 'Mark as not installed' : 'Mark as installed')}" aria-label="${isLocalInstalled ? 'Detected by the local installed-game scanner' : (isInstalled ? 'Mark as not installed' : 'Mark as installed')}" aria-pressed="${isInstalled}">${isInstalled ? '✅' : '📥'}</button>
                 <button type="button" class="youtube-btn" title="Watch trailer on YouTube" aria-label="Watch ${game.name} trailer on YouTube" onclick="window.open('https://www.youtube.com/results?search_query=${encodeURIComponent(game.name + ' trailer')}', '_blank', 'noopener')">▶</button>
                 ${isNew ? '<div class="new-badge">🆕 NEW</div>' : ''}
                 ${isInstalled ? '<div class="installed-badge">✓ Installed</div>' : ''}
@@ -2000,6 +2071,7 @@ class GameLibrary {
                 </p>
                 <div class="card-info">
                     <div class="title" title="${game.name}">${game.name}</div>
+                    ${game.localPath ? `<div class="local-install-path" title="${this.escapeHtml(game.localPath)}">📍 ${this.escapeHtml(game.localPath)}</div>` : ''}
                     <div class="meta">
                         ${this.settings.showCategories ? `<span class="category-badge">${game.category || 'uncategorized'}</span>` : ''}
                         ${this.settings.showTimes ? `<span class="time-badge" title="${hasTime ? `~${time} hours to complete` : 'No time data'}">⏱️ ${timeStr}</span>` : ''}
@@ -2307,7 +2379,6 @@ if %ERRORLEVEL% NEQ 0 (
     docker info >nul 2>&1
     if !ERRORLEVEL! NEQ 0 (
         echo [ERROR] Docker is not running! Please start Docker Desktop manually.
-        pause
         exit /b 1
     )
 )
@@ -2348,7 +2419,6 @@ echo ############################################################
 echo.
 if !FAIL_COUNT! GTR 0 (
     echo [FAILED] One or more selected games did not extract successfully.
-    pause
     exit /b 1
 )
 goto :end
@@ -2543,7 +2613,6 @@ goto :eof
 
 :end
 endlocal
-pause
 `;
             filename = gameCount === 1
                 ? `run_${gameIds[0]}.bat`
@@ -2635,11 +2704,7 @@ if (-not \$runSuccess) {
     Write-Host ""
     Write-Host "[ERROR] ${gameName} extraction FAILED after 3 attempts!" -ForegroundColor Red
     Write-Host "[ERROR] Check Docker status and try again." -ForegroundColor Red
-}${!isLastGame ? `
-
-Write-Host ""
-Write-Host "[NEXT] Moving to next game in 3 seconds..." -ForegroundColor Gray
-Start-Sleep -Seconds 3` : ''}`;
+}`;
             }).join('\n');
 
             script = `# ============================================================
@@ -2674,7 +2739,6 @@ Write-Host "Checking Docker status..."
 docker info 2>\$null | Out-Null
 if (\$LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Docker is not running! Please start Docker Desktop and try again." -ForegroundColor Red
-    Read-Host "Press Enter to exit"
     exit 1
 }
 Write-Host "[OK] Docker is running" -ForegroundColor Green
@@ -2695,7 +2759,6 @@ Write-Host " Check ${mountPath} for your games."
 Write-Host "############################################################" -ForegroundColor Green
 Write-Host ""
 
-Read-Host "Press Enter to exit"
 `;
             filename = gameCount === 1
                 ? `run_${gameIds[0]}.ps1`
@@ -2745,8 +2808,6 @@ done
 
 if [ \$PULL_SUCCESS -eq 0 ]; then
     echo "[ERROR] Failed to pull ${gameName} after 5 attempts. Skipping..."
-    ${!isLastGame ? `echo "[NEXT] Moving to next game in 3 seconds..."
-    sleep 3` : ''}
     continue 2>/dev/null || true
 fi
 
@@ -2793,11 +2854,7 @@ if [ \$RUN_SUCCESS -eq 0 ]; then
     echo ""
     echo "[ERROR] ${gameName} extraction FAILED after 3 attempts!"
     echo "[ERROR] Check Docker status and try again."
-fi${!isLastGame ? `
-
-echo ""
-echo "[NEXT] Moving to next game in 3 seconds..."
-sleep 3` : ''}`;
+fi`;
             }).join('\n');
 
             // Determine filename early for instructions
@@ -2958,7 +3015,6 @@ REM Kill all Docker containers (Batch)
 echo Stopping and removing all Docker containers...
 for /f "tokens=*" %%i in ('docker ps -aq') do docker rm -f %%i 2>nul
 echo Done!
-pause
 `;
             filename = 'kill_all_containers.bat';
         } else if (this.os === 'windows') {
@@ -2966,7 +3022,6 @@ pause
 Write-Host "Stopping and removing all Docker containers..." -ForegroundColor Yellow
 docker rm -f $(docker ps -aq) 2>\$null
 Write-Host "Done!" -ForegroundColor Green
-Read-Host "Press Enter to exit"
 `;
             filename = 'kill_all_containers.ps1';
         } else {
@@ -3377,15 +3432,154 @@ echo "Done!"
         try {
             const saved = localStorage.getItem('installedGames');
             if (saved) {
-                this.installedGames = new Set(JSON.parse(saved));
+                this.manualInstalledGames = new Set(JSON.parse(saved));
             }
+            this.installedGames = new Set(this.manualInstalledGames);
         } catch {
+            this.manualInstalledGames = new Set();
             this.installedGames = new Set();
         }
     }
 
     saveInstalledGames() {
-        localStorage.setItem('installedGames', JSON.stringify([...this.installedGames]));
+        localStorage.setItem('installedGames', JSON.stringify([...this.manualInstalledGames]));
+    }
+
+    getInstalledScannerUrl() {
+        const localHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+        return localHost ? '/api/installed-games' : 'http://127.0.0.1:3000/api/installed-games';
+    }
+
+    startInstalledScanner() {
+        if (this.installedScanInterval) clearInterval(this.installedScanInterval);
+        this.scanInstalledGames();
+        this.installedScanInterval = setInterval(() => this.scanInstalledGames(), this.installedScanIntervalMs);
+        this.renderInstalledScanStatus();
+    }
+
+    async scanInstalledGames() {
+        if (this.installedScanInFlight) return;
+        this.installedScanInFlight = true;
+        this.installedScannerState = 'scanning';
+        this.renderInstalledScanStatus();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 120000);
+
+        try {
+            const response = await fetch(`${this.getInstalledScannerUrl()}?_=${Date.now()}`, {
+                headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
+                cache: 'no-store',
+                signal: controller.signal
+            });
+            if (!response.ok) throw new Error(`local scanner HTTP ${response.status}`);
+            const data = await response.json();
+            if (!data.success || !Array.isArray(data.games)) throw new Error(data.error || 'invalid scanner response');
+
+            const entries = data.games
+                .filter(entry => entry && entry.path && entry.name)
+                .map(entry => ({
+                    name: String(entry.name),
+                    path: String(entry.path),
+                    root: String(entry.root || ''),
+                    executable: entry.executable ? String(entry.executable) : null,
+                    marker: entry.marker ? String(entry.marker) : null
+                }));
+            const matchedIds = new Set();
+            const scanMatches = new Map();
+            entries.forEach(entry => {
+                const match = this.findGameForInstalledEntry(entry);
+                if (match) matchedIds.add(match.id);
+                scanMatches.set(entry.path, match ? match.id : null);
+            });
+
+            const signature = JSON.stringify(entries.map(entry => [entry.name, entry.path, entry.executable, entry.marker]));
+            const changed = signature !== this.installedScanSignature;
+            this.installedScanSignature = signature;
+            this.installedScanEntries = entries;
+            this.installedScanMatches = scanMatches;
+            this.scannedInstalledGames = matchedIds;
+            // A successful machine scan is authoritative; localStorage remains a fallback only.
+            this.installedGames = new Set(matchedIds);
+            this.installedScannerState = 'connected';
+            this.installedScanRoots = Array.isArray(data.roots) ? data.roots : [];
+            this.installedScanLastUpdated = data.scannedAt || new Date().toISOString();
+
+            if (changed) {
+                this.renderTabs();
+                this.filterAndRender();
+                this.updateStatsDashboard();
+            }
+        } catch (error) {
+            // Keep the last successful scan visible during a transient local-server failure.
+            if (this.scannedInstalledGames === null) this.installedScannerState = 'unavailable';
+            else this.installedScannerState = 'stale';
+            this.installedScanError = error.name === 'AbortError' ? 'scan timed out' : error.message;
+        } finally {
+            clearTimeout(timeout);
+            this.installedScanInFlight = false;
+            this.renderInstalledScanStatus();
+        }
+    }
+
+    findGameForInstalledEntry(entry) {
+        const entryKeys = [entry.name, entry.path, entry.executable]
+            .filter(Boolean)
+            .map(value => this.normalizeLookupKey(value));
+        if (entryKeys.length === 0) return null;
+
+        const exact = this.games.find(game => {
+            const gameKeys = [game.id, game.name].map(value => this.normalizeLookupKey(value));
+            return gameKeys.some(key => key && entryKeys.includes(key));
+        });
+        if (exact) return exact;
+
+        // Use conservative containment only for meaningful names to avoid false positives.
+        let best = null;
+        let bestLength = 0;
+        this.games.forEach(game => {
+            const gameKeys = [game.id, game.name].map(value => this.normalizeLookupKey(value)).filter(key => key.length >= 6);
+            gameKeys.forEach(gameKey => entryKeys.forEach(entryKey => {
+                if ((entryKey.includes(gameKey) || gameKey.includes(entryKey)) && gameKey.length > bestLength) {
+                    best = game;
+                    bestLength = gameKey.length;
+                }
+            }));
+        });
+        return best;
+    }
+
+    getInstalledDisplayGames() {
+        const matched = this.games.filter(game => this.installedGames.has(game.id));
+        const matchedIds = new Set(matched.map(game => game.id));
+        const localOnly = this.scannedInstalledGames === null ? [] : this.installedScanEntries
+            .filter(entry => !this.installedScanMatches.get(entry.path))
+            .map(entry => ({
+                id: `local-installed-${this.normalizeLookupKey(entry.path || entry.name)}`,
+                name: entry.name,
+                category: 'installed',
+                image: this.createGeneratedCoverDataUrl(entry.name),
+                localPath: entry.path,
+                executable: entry.executable,
+                isLocalInstalled: true
+            }));
+        return [...matched, ...localOnly.filter(game => !matchedIds.has(game.id))];
+    }
+
+    renderInstalledScanStatus() {
+        const status = document.getElementById('installedScanStatus');
+        if (!status) return;
+        const count = this.installedScanEntries.length;
+        const time = this.installedScanLastUpdated ? new Date(this.installedScanLastUpdated).toLocaleTimeString() : null;
+        status.className = `installed-scan-status ${this.installedScannerState}`;
+        if (this.installedScannerState === 'connected') {
+            status.textContent = `🔴 Installed scanner connected • ${count} found • updated ${time || 'now'}`;
+        } else if (this.installedScannerState === 'scanning') {
+            status.textContent = count > 0 ? `🔄 Installed scanner refreshing • ${count} found` : '🔄 Scanning C:\\Games, F:\\Games, and E:\\Games...';
+        } else if (this.installedScannerState === 'stale') {
+            status.textContent = `⚠️ Scanner temporarily unavailable • showing last scan (${count} found)`;
+        } else {
+            status.textContent = '⚠️ Local scanner not connected • run “node server.js” on this machine to scan the three game folders';
+        }
     }
 
     // Admin authentication using SHA-256 hash comparison
@@ -3511,6 +3705,7 @@ echo "Done!"
                     if (data.configVersion) {
                         this._lastConfigVersion = data.configVersion;
                     }
+                    this._lastAdminConfigSignature = this.getAdminConfigSignature(data.config);
                     console.log('Loaded admin config from server:', data.config);
                 }
             } else {
@@ -3535,6 +3730,7 @@ echo "Done!"
                 
                 // Apply the static config
                 this.adminConfig = staticConfig;
+                this._lastAdminConfigSignature = this.getAdminConfigSignature(staticConfig);
                 
                 // Set hidden tabs
                 if (staticConfig.hiddenTabs && Array.isArray(staticConfig.hiddenTabs)) {
@@ -3571,66 +3767,72 @@ echo "Done!"
     }
 
     // Save admin configuration to server - immediately affects ALL users
-    async saveAdminConfigToServer(retryCount = 0) {
+    async saveAdminConfigToServer() {
         if (!this.isAdmin) {
             console.error('Only admins can save configuration');
             return;
         }
 
-        try {
-            // Collect ALL game category changes (every single game)
-            const gameCategories = {};
-            this.games.forEach(game => {
-                if (game.category) {
-                    gameCategories[game.id] = game.category;
-                }
-            });
-
-            const payload = {
-                hiddenTabs: [...this.hiddenTabs],
-                gameCategories: gameCategories,
-                tabs: this.normalizeTabs(this.tabs)
-            };
-
-            const response = await fetch('/api/admin-config', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Admin-Token': 'glm-admin-2024'
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.configVersion) {
-                    this._lastConfigVersion = data.configVersion;
-                }
-                console.log('Admin config saved to server:', data);
-                this.showToast('Changes saved permanently to server!', 'success');
-                
-                // CRITICAL: Force immediate reload to show latest changes
-                // Wait 500ms for GitHub to propagate, then reload
-                setTimeout(async () => {
-                    await this.loadAdminConfigFromServer();
-                    this.renderTabs();
-                    this.filterAndRender();
-                    console.log('✅ Changes verified and displayed');
-                }, 500);
-            } else {
-                throw new Error('Server returned ' + response.status);
-            }
-        } catch (error) {
-            console.error('Failed to save admin config to server:', error);
-            // Retry up to 3 times with increasing delay
-            if (retryCount < 3) {
-                const delay = (retryCount + 1) * 2000;
-                console.log(`Retrying save in ${delay}ms (attempt ${retryCount + 2}/4)...`);
-                setTimeout(() => this.saveAdminConfigToServer(retryCount + 1), delay);
-            } else {
-                this.showToast('Failed to save to server after 4 attempts', 'error');
-            }
+        // Serialize rapid edits. A newer edit marks the current request dirty and
+        // is sent immediately after it completes, so no admin change is lost.
+        if (this._adminSaveInFlight) {
+            this._adminSaveDirty = true;
+            return this._adminSaveInFlight;
         }
+
+        const saveOperation = (async () => {
+            let lastError = null;
+            for (let attempt = 0; attempt < 4; attempt++) {
+                try {
+                    // Collect ALL game category changes (every single game)
+                    const gameCategories = {};
+                    this.games.forEach(game => {
+                        if (game.category) gameCategories[game.id] = game.category;
+                    });
+
+                    const payload = {
+                        hiddenTabs: [...this.hiddenTabs],
+                        gameCategories,
+                        tabs: this.normalizeTabs(this.tabs)
+                    };
+
+                    const response = await fetch('/api/admin-config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Admin-Token': 'glm-admin-2024'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error('Server returned ' + response.status);
+
+                    const data = await response.json();
+                    this._lastConfigVersion = data.configVersion || this._lastConfigVersion;
+                    this._lastAdminConfigSignature = this.getAdminConfigSignature(payload);
+                    console.log('Admin config saved to server:', data);
+                    this.showToast('Changes saved permanently to server!', 'success');
+                    return data;
+                } catch (error) {
+                    lastError = error;
+                    console.error('Failed to save admin config to server:', error);
+                    if (attempt < 3) {
+                        const delay = (attempt + 1) * 2000;
+                        console.log(`Retrying save in ${delay}ms (attempt ${attempt + 2}/4)...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+            this.showToast('Failed to save to server after 4 attempts', 'error');
+            return { success: false, error: lastError };
+        })();
+
+        this._adminSaveInFlight = saveOperation.finally(() => {
+            const saveAgain = this._adminSaveDirty;
+            this._adminSaveDirty = false;
+            this._adminSaveInFlight = null;
+            if (saveAgain) this.saveAdminConfigToServer();
+        });
+        return this._adminSaveInFlight;
     }
 
     // Legacy localStorage methods (kept for fallback)
@@ -3686,12 +3888,15 @@ echo "Done!"
     }
 
     toggleInstalled(gameId) {
-        if (this.installedGames.has(gameId)) {
-            this.installedGames.delete(gameId);
+        if (this.manualInstalledGames.has(gameId)) {
+            this.manualInstalledGames.delete(gameId);
             this.showToast(`${gameId} marked as not installed`, 'info');
         } else {
-            this.installedGames.add(gameId);
+            this.manualInstalledGames.add(gameId);
             this.showToast(`${gameId} marked as installed`, 'success');
+        }
+        if (this.scannedInstalledGames === null) {
+            this.installedGames = new Set(this.manualInstalledGames);
         }
         this.saveInstalledGames();
         this.filterAndRender();

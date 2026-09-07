@@ -1,14 +1,27 @@
 // Netlify Function: admin-config
-// Provides permanent server-side persistence for admin config via GitHub API
-// Survives cache clears, redeployments, and browser data wipes forever
+// Provides strongly-consistent server-side persistence for admin config.
+// Netlify Blobs is the primary store; GitHub remains an optional legacy fallback.
 
 const https = require('https');
 
-// GitHub token (split to avoid secret scanning)
-const p = ['github_pat_11A2ZP', '72Q0stsWQ9ShpJ', 'Sl_WXzi5uWdqN8', 'vVLh5rdMPPyFyh', 'UYw4TH1gmGlWfH', 'WrTaDBX73JOQ7b', 'grfs2S'];
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || p.join('');
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const GITHUB_REPO = 'Michaelunkai/game-library-manager-web';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'glm-admin-2024';
+
+let blobStore = null;
+try {
+  const { getStore } = require('@netlify/blobs');
+  blobStore = getStore({ name: 'game-library-admin-config', consistency: 'strong' });
+} catch (error) {
+  console.warn('Netlify Blobs unavailable; GitHub fallback only:', error.message);
+}
+
+const DEFAULT_CONFIG = {
+  hiddenTabs: [],
+  gameCategories: {},
+  tabs: null,
+  lastUpdated: 'bootstrap-v1'
+};
 
 // Both paths get updated simultaneously for redundancy
 const GITHUB_CONFIG_PATHS = [
@@ -26,6 +39,10 @@ const CORS_HEADERS = {
 
 function githubRequest(method, filePath, body) {
   return new Promise((resolve, reject) => {
+    if (!GITHUB_TOKEN) {
+      reject(new Error('GITHUB_TOKEN is not configured'));
+      return;
+    }
     const options = {
       hostname: 'api.github.com',
       path: `/repos/${GITHUB_REPO}/contents/${filePath}`,
@@ -66,8 +83,48 @@ async function readFromGitHub() {
   } catch (e) {
     console.error('GitHub read error:', e.message);
   }
-  return { config: { hiddenTabs: [], gameCategories: {}, tabs: null, lastUpdated: new Date().toISOString() }, sha: null };
+  return { config: { ...DEFAULT_CONFIG }, sha: null };
 }
+
+function normalizeConfig(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  return {
+    hiddenTabs: Array.isArray(source.hiddenTabs) ? source.hiddenTabs : [],
+    gameCategories: source.gameCategories && typeof source.gameCategories === 'object' ? source.gameCategories : {},
+    tabs: Array.isArray(source.tabs) ? source.tabs : null,
+    lastUpdated: source.lastUpdated || DEFAULT_CONFIG.lastUpdated
+  };
+}
+
+async function readFromPersistence() {
+  if (blobStore) {
+    try {
+      const config = await blobStore.get('admin-config', { type: 'json', consistency: 'strong' });
+      if (config) return { config: normalizeConfig(config), sha: config.lastUpdated || null, source: 'netlify-blobs' };
+    } catch (error) {
+      console.error('Netlify Blobs read error:', error.message);
+    }
+  }
+
+  const github = await readFromGitHub();
+  return { ...github, source: 'github' };
+}
+
+async function writeToPersistence(data) {
+  if (blobStore) {
+    try {
+      const result = await blobStore.setJSON('admin-config', data);
+      return { success: true, source: 'netlify-blobs', etag: result && result.etag };
+    } catch (error) {
+      console.error('Netlify Blobs write error:', error.message);
+    }
+  }
+
+  return { success: await writeToGitHub(data), source: 'github' };
+}
+
+// Keep simultaneous admin saves ordered so a slower request cannot overwrite a newer one.
+let writeQueue = Promise.resolve();
 
 async function writeToGitHub(data) {
   const content = Buffer.from(JSON.stringify(data, null, 2)).toString('base64');
@@ -104,15 +161,15 @@ exports.handler = async (event, context) => {
   }
 
   if (event.httpMethod === 'GET') {
-    const { config, sha } = await readFromGitHub();
+    const { config, sha, source } = await readFromPersistence();
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
       body: JSON.stringify({
         success: true,
         config: config,
-        configVersion: sha || new Date().toISOString(),
-        source: 'github'
+        configVersion: sha || config.lastUpdated || DEFAULT_CONFIG.lastUpdated,
+        source
       })
     };
   }
@@ -139,32 +196,40 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const data = {
-      hiddenTabs: payload.hiddenTabs || [],
-      gameCategories: payload.gameCategories || {},
-      tabs: Array.isArray(payload.tabs) ? payload.tabs : undefined,
-      lastUpdated: new Date().toISOString()
-    };
+    const operation = writeQueue.then(async () => {
+      const currentResult = await readFromPersistence();
+      const current = normalizeConfig(currentResult.config);
+      const data = normalizeConfig({
+        ...current,
+        hiddenTabs: Array.isArray(payload.hiddenTabs) ? payload.hiddenTabs : current.hiddenTabs,
+        gameCategories: payload.gameCategories && typeof payload.gameCategories === 'object'
+          ? { ...current.gameCategories, ...payload.gameCategories }
+          : current.gameCategories,
+        tabs: Array.isArray(payload.tabs) ? payload.tabs : current.tabs,
+        lastUpdated: new Date().toISOString()
+      });
+      const saved = await writeToPersistence(data);
+      return { ...saved, data };
+    });
+    writeQueue = operation.catch(() => undefined);
 
-    const success = await writeToGitHub(data);
+    const { success, source, data } = await operation;
 
     if (success) {
-      // Read back to get new SHA as version
-      const { sha } = await readFromGitHub();
       return {
         statusCode: 200,
         headers: CORS_HEADERS,
         body: JSON.stringify({
           success: true,
-          message: 'Config saved permanently to GitHub',
-          configVersion: sha || data.lastUpdated
+          message: `Config saved permanently to ${source}`,
+          configVersion: data.lastUpdated
         })
       };
     } else {
       return {
         statusCode: 500,
         headers: CORS_HEADERS,
-        body: JSON.stringify({ success: false, error: 'Failed to write to GitHub' })
+        body: JSON.stringify({ success: false, error: `Failed to write config to ${source || 'server storage'}` })
       };
     }
   }

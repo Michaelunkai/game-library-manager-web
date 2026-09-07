@@ -1,9 +1,9 @@
-const CACHE_NAME = "game-library-manager-v5";
+const CACHE_NAME = "game-library-manager-v6";
 const APP_SHELL = [
   "/",
   "/index.html",
-  "/styles.css?v=5.0",
-  "/app.js?v=4.0"
+  "/styles.css?v=5.2",
+  "/app.js?v=5.3"
 ];
 
 self.addEventListener("install", (event) => {

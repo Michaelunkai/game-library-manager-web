@@ -35,7 +35,7 @@
   [headers.values]
     Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
 
-# Route /api/admin-config to the Netlify Function (permanent GitHub persistence)
+# Route /api/admin-config to the Netlify Function (strongly-consistent persistent storage)
 [[redirects]]
   from = "/api/admin-config"
   to = "/.netlify/functions/admin-config"

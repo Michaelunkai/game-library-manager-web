@@ -23,6 +23,7 @@ A full-featured web application for managing and running Docker-based games from
 - **Search** - Find games by name, ID, or category (Ctrl+K)
 - **Sort Options** - Name, Time, Category (ascending/descending)
 - **Settings Export/Import** - Save and restore your preferences
+- **Installed tab** - With the local scanner running, detect games under `C:\Games`, `F:\Games`, and `E:\Games`
 
 ## How It Works
 
@@ -66,8 +67,19 @@ Total size: 5.2G
 [SAVED TO] E:/Games/ArcRunner
 ============================================================
 
-[NEXT] Moving to next game in 3 seconds...
+[NEXT] Moving to the next game...
 ```
+
+## Installed Scanner
+
+Browsers cannot read local drive folders directly. To enable the red **Installed** tab on the live site, install and keep the local helper running from this repository:
+
+```powershell
+npm install
+node server.js
+```
+
+The helper scans `C:\Games`, `F:\Games`, and `E:\Games` every five seconds and exposes the results at `http://127.0.0.1:3000/api/installed-games`. The website connects to that endpoint automatically; unavailable roots are ignored and the last successful scan remains visible during a transient error.
 
 ## Docker Command Format
 

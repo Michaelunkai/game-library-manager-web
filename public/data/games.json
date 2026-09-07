@@ -1222,7 +1222,7 @@
   {
     "id": "dishonored",
     "name": "Dishonored",
-    "category": "not_for_me",
+    "category": "action",
     "image": "images/dishonored.jpg",
     "dockerImage": "michadockermisha/backup:dishonored",
     "dockerImageUrl": "https://hub.docker.com/r/michadockermisha/backup/tags?name=dishonored",
@@ -1356,7 +1356,7 @@
   {
     "id": "styxbladesofgreed",
     "name": "Qualle Party",
-    "category": "finished",
+    "category": "action",
     "image": "images/styxbladesofgreed.jpg",
     "dockerImage": "michadockermisha/backup:styxbladesofgreed",
     "dockerImageUrl": "https://hub.docker.com/r/michadockermisha/backup/tags?name=styxbladesofgreed",
@@ -1378,7 +1378,7 @@
   {
     "id": "burdenofcommand",
     "name": "Burden of Command™",
-    "category": "not_for_me",
+    "category": "strategy",
     "image": "images/burdenofcommand.jpg",
     "dockerImage": "michadockermisha/backup:burdenofcommand",
     "dockerImageUrl": "https://hub.docker.com/r/michadockermisha/backup/tags?name=burdenofcommand",
@@ -1433,7 +1433,7 @@
   {
     "id": "towerborne",
     "name": "Towerborne",
-    "category": "not_for_me",
+    "category": "action",
     "image": "images/towerborne.jpg",
     "dockerImage": "michadockermisha/backup:towerborne",
     "dockerImageUrl": "https://hub.docker.com/r/michadockermisha/backup/tags?name=towerborne",
@@ -1664,7 +1664,7 @@
   {
     "id": "castlevanialordsofshadow2",
     "name": "Castlevania: Lords of Shadow 2",
-    "category": "not_for_me",
+    "category": "action",
     "image": "images/castlevanialordsofshadow2.jpg",
     "dockerImage": "michadockermisha/backup:castlevanialordsofshadow2",
     "dockerImageUrl": "https://hub.docker.com/r/michadockermisha/backup/tags?name=castlevanialordsofshadow2",
@@ -1697,7 +1697,7 @@
   {
     "id": "hifirush",
     "name": "Hi-Fi RUSH",
-    "category": "finished",
+    "category": "action",
     "image": "images/hifirush.jpg",
     "dockerImage": "michadockermisha/backup:hifirush",
     "dockerImageUrl": "https://hub.docker.com/r/michadockermisha/backup/tags?name=hifirush",
@@ -1719,7 +1719,7 @@
   {
     "id": "oriandthewillofthewisps",
     "name": "Ori and the Will of the Wisps",
-    "category": "not_for_me",
+    "category": "platformers",
     "image": "images/oriandthewillofthewisps.jpg",
     "dockerImage": "michadockermisha/backup:oriandthewillofthewisps",
     "time": 12,
@@ -1764,7 +1764,7 @@
   {
     "id": "childrenofmorta",
     "name": "Children of Morta",
-    "category": "not_for_me",
+    "category": "action",
     "image": "images/childrenofmorta.jpg",
     "dockerImage": "michadockermisha/backup:childrenofmorta",
     "time": 12,
@@ -1841,7 +1841,7 @@
   {
     "id": "tunic",
     "name": "TUNIC",
-    "category": "not_for_me",
+    "category": "action",
     "image": "images/tunic.jpg",
     "dockerImage": "michadockermisha/backup:tunic",
     "time": 5,
@@ -2028,7 +2028,7 @@
   {
     "id": "thewitcher3wildhunt",
     "name": "TheWitch",
-    "category": "finished",
+    "category": "rpg",
     "image": "images/thewitcher3wildhunt.jpg",
     "dockerImage": "michadockermisha/backup:thewitcher3wildhunt",
     "time": 51,
@@ -2072,7 +2072,7 @@
   {
     "id": "cairn",
     "name": "Cairn",
-    "category": "not_for_me",
+    "category": "action",
     "image": "images/cairn.jpg",
     "dockerImage": "michadockermisha/backup:cairn",
     "time": 2,
@@ -2294,7 +2294,7 @@
   {
     "id": "southparkthestickoftruth",
     "name": "Southparkthestickoftruth",
-    "category": "chill",
+    "category": "rpg",
     "image": "images/southparkthestickoftruth.png",
     "dockerImage": "michadockermisha/backup:southparkthestickoftruth",
     "time": 13,
@@ -2613,7 +2613,7 @@
   {
     "id": "beyondblue",
     "name": "Beyond Blue",
-    "category": "not_for_me",
+    "category": "storydriven",
     "image": "images/beyondblue.jpg",
     "dockerImage": "michadockermisha/backup:beyondblue",
     "time": 6,
@@ -2635,7 +2635,7 @@
   {
     "id": "batmanarkhamasylumgameoftheyearedition",
     "name": "Batmanarkhamasylumgameoftheyearedition",
-    "category": "finished",
+    "category": "action",
     "image": "images/batmanarkhamasylumgameoftheyearedition.png",
     "dockerImage": "michadockermisha/backup:batmanarkhamasylumgameoftheyearedition",
     "time": 18,
@@ -2657,7 +2657,7 @@
   {
     "id": "hollowknightsilksong",
     "name": "Hollow Knight: Silksong",
-    "category": "not_for_me",
+    "category": "platformers",
     "image": "images/hollowknightsilksong.jpg",
     "dockerImage": "michadockermisha/backup:hollowknightsilksong",
     "time": 18,
@@ -2690,7 +2690,7 @@
   {
     "id": "dispatch",
     "name": "Dispatch",
-    "category": "finished",
+    "category": "action",
     "image": "images/dispatch.jpg",
     "dockerImage": "michadockermisha/backup:dispatch",
     "time": 18,
@@ -3340,7 +3340,7 @@
   {
     "id": "sable",
     "name": "Sable",
-    "category": "not_for_me",
+    "category": "action",
     "image": "images/sable.jpg",
     "dockerImage": "michadockermisha/backup:sable",
     "time": 4,
@@ -3384,7 +3384,7 @@
   {
     "id": "blueprince",
     "name": "Blue Prince",
-    "category": "not_for_me",
+    "category": "action",
     "image": "images/blueprince.jpg",
     "dockerImage": "michadockermisha/backup:blueprince",
     "time": 15,
@@ -5999,7 +5999,7 @@
   {
     "id": "Wreckfest",
     "name": "Wreckfest",
-    "category": "action",
+    "category": "racing",
     "image": "images/wreckfest.jpg",
     "dockerImage": "michadockermisha/backup:Wreckfest",
     "time": 3,
@@ -7889,7 +7889,7 @@
   {
     "id": "MetalHellsinger",
     "name": "Metal Hellsinger",
-    "category": "not_for_me",
+    "category": "shooters",
     "image": "images/metalhellsinger.jpg",
     "dockerImage": "michadockermisha/backup:MetalHellsinger",
     "time": 3,
