@@ -1,4 +1,6 @@
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -64,6 +66,22 @@ async function fetchJsonWithRetry(url, attempts = 4) {
   throw lastError;
 }
 
+async function fetchFirstPageWithHostFallback(baseUrls, pageSize) {
+  let lastError;
+  for (const baseUrl of baseUrls) {
+    try {
+      const firstPage = await fetchJsonWithRetry(`${baseUrl}?page=1&page_size=${pageSize}`);
+      return { baseUrl, firstPage };
+    } catch (error) {
+      lastError = error;
+      // Netlify egress can be denied by one Docker Hub hostname while the
+      // equivalent first-party registry hostname remains available.
+      if (error.statusCode !== 401 && error.statusCode !== 403) throw error;
+    }
+  }
+  throw lastError;
+}
+
 function normalizeTag(tag) {
   return {
     name: tag.name,
@@ -72,6 +90,25 @@ function normalizeTag(tag) {
     digest: tag.digest || null,
     images: Array.isArray(tag.images) ? tag.images.length : 0
   };
+}
+
+function readBundledCatalogTags() {
+  const candidates = [
+    path.resolve(__dirname, '../../public/data/games.json'),
+    path.resolve(process.cwd(), 'public/data/games.json')
+  ];
+  for (const candidate of candidates) {
+    try {
+      const games = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+      if (!Array.isArray(games)) continue;
+      return games
+        .filter((game) => game && typeof game.id === 'string' && game.id.length > 0)
+        .map((game) => normalizeTag({ name: game.id }));
+    } catch (error) {
+      // Continue to the next bundle path if this function deployment omits it.
+    }
+  }
+  return [];
 }
 
 exports.handler = async (event) => {
@@ -91,10 +128,14 @@ exports.handler = async (event) => {
   const repoName = event.queryStringParameters?.repo || 'backup';
   const pageSize = Math.min(parseInt(event.queryStringParameters?.page_size || '100', 10), 100);
   const summaryOnly = ['1', 'true', 'yes'].includes(String(event.queryStringParameters?.summary || '').toLowerCase());
-  const baseUrl = `https://hub.docker.com/v2/repositories/${encodeURIComponent(dockerUser)}/${encodeURIComponent(repoName)}/tags`;
+  const basePath = `/v2/repositories/${encodeURIComponent(dockerUser)}/${encodeURIComponent(repoName)}/tags`;
+  const baseUrls = [
+    `https://hub.docker.com${basePath}`,
+    `https://registry.hub.docker.com${basePath}`
+  ];
 
   try {
-    const firstPage = await fetchJsonWithRetry(`${baseUrl}?page=1&page_size=${pageSize}`);
+    const { baseUrl, firstPage } = await fetchFirstPageWithHostFallback(baseUrls, pageSize);
     const totalCount = firstPage.count || 0;
     const latestTag = firstPage.results?.[0] ? normalizeTag(firstPage.results[0]) : null;
 
@@ -156,6 +197,32 @@ exports.handler = async (event) => {
       })
     };
   } catch (error) {
+    // Netlify egress can be blocked by Docker Hub even though the catalog is
+    // healthy. Keep the exact bundled catalog available for the default repo
+    // so startup remains usable and the response identifies the degradation.
+    if (dockerUser === 'michadockermisha' && repoName === 'backup') {
+      const fallbackTags = readBundledCatalogTags();
+      if (fallbackTags.length > 0) {
+        return {
+          statusCode: 200,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            success: false,
+            degraded: true,
+            source: 'bundled-catalog-fallback',
+            dockerUser,
+            repoName,
+            count: fallbackTags.length,
+            dockerHubReportedCount: null,
+            fetched: fallbackTags.length,
+            totalPages: 0,
+            tags: fallbackTags,
+            error: error.message,
+            fetchedAt: new Date().toISOString()
+          })
+        };
+      }
+    }
     return {
       statusCode: 502,
       headers: CORS_HEADERS,
