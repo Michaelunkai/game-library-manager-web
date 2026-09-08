@@ -4,7 +4,7 @@
   functions = "netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "24"
 
 [functions]
   included_files = ["data/admin-config.json", "public/data/admin-config.json", "public/data/games.json"]

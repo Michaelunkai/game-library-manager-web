@@ -17,7 +17,8 @@ try {
   const { getStore } = require('@netlify/blobs');
   const blobOptions = {
     name: 'game-library-admin-config',
-    consistency: 'strong'
+    consistency: 'strong',
+    fetch: require('../../lib/netlify-safe-fetch').createSafeFetch()
   };
   if (NETLIFY_SITE_ID && NETLIFY_BLOBS_TOKEN) {
     blobOptions.siteID = NETLIFY_SITE_ID;
@@ -64,7 +65,7 @@ const GITHUB_CONFIG_PATHS = [
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token, Cache-Control, Pragma',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token, If-Match, Cache-Control, Pragma',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Cache-Control': 'no-cache, no-store, must-revalidate',
   'Pragma': 'no-cache'
@@ -131,29 +132,23 @@ function normalizeConfig(value) {
 
 async function readFromPersistence() {
   if (blobStore) {
-    try {
-      const config = await blobStore.get('admin-config', { type: 'json', consistency: 'strong' });
-      if (config) return { config: normalizeConfig(config), sha: config.lastUpdated || null, source: 'netlify-blobs' };
-    } catch (error) {
-      console.error('Netlify Blobs read error:', error.message);
-    }
+    // Never turn an authoritative read failure into a stale fallback write.
+    const entry = await blobStore.getWithMetadata('admin-config', { type: 'json', consistency: 'strong' });
+    if (entry) return { config: normalizeConfig(entry.data), sha: entry.etag, etag: entry.etag, source: 'netlify-blobs' };
+    const bootstrap = await readFromGitHub();
+    return { ...bootstrap, sha: 'new:' + (bootstrap.sha || DEFAULT_CONFIG.lastUpdated), etag: null, source: 'netlify-blobs' };
   }
-
   const github = await readFromGitHub();
   return { ...github, source: 'github' };
 }
 
-async function writeToPersistence(data) {
-  if (blobStore) {
-    try {
-      const result = await blobStore.setJSON('admin-config', data);
-      return { success: true, source: 'netlify-blobs', etag: result && result.etag };
-    } catch (error) {
-      console.error('Netlify Blobs write error:', error.message);
-    }
-  }
-
-  return { success: await writeToGitHub(data), source: 'github' };
+async function writeToPersistence(data, current) {
+  if (!blobStore || current.source !== 'netlify-blobs') return { success: false, statusCode: 503, source: current.source };
+  const condition = current.etag ? { onlyIfMatch: current.etag } : { onlyIfNew: true };
+  const result = await blobStore.setJSON('admin-config', data, condition);
+  if (result.modified !== true) return { success: false, statusCode: 409, source: 'netlify-blobs' };
+  if (typeof result.etag !== 'string' || !result.etag) throw new Error('Storage did not return a confirmed ETag');
+  return { success: true, source: 'netlify-blobs', etag: result.etag };
 }
 
 // Keep simultaneous admin saves ordered so a slower request cannot overwrite a newer one.
@@ -187,7 +182,7 @@ async function writeToGitHub(data) {
   return anySuccess;
 }
 
-exports.handler = async (event, context) => {
+async function handle(event, context) {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: CORS_HEADERS, body: '' };
@@ -202,7 +197,8 @@ exports.handler = async (event, context) => {
         success: true,
         config: config,
         configVersion: sha || config.lastUpdated || DEFAULT_CONFIG.lastUpdated,
-        source
+        source,
+        capabilities: { conditionalWrites: !!blobStore && source === 'netlify-blobs' }
       })
     };
   }
@@ -229,8 +225,16 @@ exports.handler = async (event, context) => {
       };
     }
 
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'Invalid config object' }) };
+    }
+    const expected = payload.expectedVersion || event.headers['if-match'] || event.headers['If-Match'];
+    if (typeof expected !== 'string' || !expected) {
+      return { statusCode: 428, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'Reload the library before saving. A config version is required.' }) };
+    }
     const operation = writeQueue.then(async () => {
       const currentResult = await readFromPersistence();
+      if (expected !== currentResult.sha) return { success: false, statusCode: 409, source: currentResult.source };
       const current = normalizeConfig(currentResult.config);
       const data = normalizeConfig({
         ...current,
@@ -241,12 +245,12 @@ exports.handler = async (event, context) => {
         tabs: Array.isArray(payload.tabs) ? payload.tabs : current.tabs,
         lastUpdated: new Date().toISOString()
       });
-      const saved = await writeToPersistence(data);
+      const saved = await writeToPersistence(data, currentResult);
       return { ...saved, data };
     });
     writeQueue = operation.catch(() => undefined);
 
-    const { success, source, data } = await operation;
+    const { success, source, data, etag, statusCode } = await operation;
 
     if (success) {
       return {
@@ -255,14 +259,14 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({
           success: true,
           message: `Config saved permanently to ${source}`,
-          configVersion: data.lastUpdated
+          configVersion: etag || data.lastUpdated
         })
       };
     } else {
       return {
-        statusCode: 500,
+        statusCode: statusCode || 503,
         headers: CORS_HEADERS,
-        body: JSON.stringify({ success: false, error: `Failed to write config to ${source || 'server storage'}` })
+        body: JSON.stringify({ success: false, error: statusCode === 409 ? 'Configuration changed; local edits must be reconciled before retrying.' : 'Conditional storage is unavailable; no fallback write was attempted.' })
       };
     }
   }
@@ -272,4 +276,12 @@ exports.handler = async (event, context) => {
     headers: CORS_HEADERS,
     body: JSON.stringify({ error: 'Method not allowed' })
   };
+};
+
+exports.handler = async (event, context) => {
+  try { return await handle(event, context); }
+  catch (error) {
+    console.error('Admin config operation failed:', error.message);
+    return { statusCode: 503, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'Storage is temporarily unavailable. Keep local edits and retry after reconnecting.' }) };
+  }
 };

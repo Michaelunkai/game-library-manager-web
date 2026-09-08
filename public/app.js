@@ -1,4 +1,76 @@
-﻿/**
+// Shared browser sync controller. The queue is persisted before every request.
+// This module contains no credentials and does not contact any service by itself.
+(function (root) {
+  const copy = value => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+  const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const get = (config, edit) => edit.section === 'gameCategories' ? config.gameCategories[edit.key] : config[edit.section];
+  const set = (config, edit) => { if (edit.section === 'gameCategories') config.gameCategories[edit.key] = copy(edit.after); else config[edit.section] = copy(edit.after); };
+  class ConditionalAdminSync {
+    constructor(storage, key = 'gameLibraryAdminOutboxV1') {
+      this.storage = storage; this.key = key; this.pending = []; this.remote = null; this.displayed = null; this.version = null;
+      const saved = storage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!Array.isArray(parsed) || parsed.some(e => !['gameCategories', 'hiddenTabs', 'tabs'].includes(e.section))) throw Error('Invalid shared edit queue. Export local storage before recovery.');
+        this.pending = parsed;
+      }
+    }
+    persist() { this.storage.setItem(this.key, JSON.stringify(this.pending)); }
+    receive(config, version, fallback) {
+      this.remote = { hiddenTabs: [], tabs: copy(config.tabs ?? fallback?.tabs ?? null), ...copy(config), gameCategories: { ...(fallback?.gameCategories || {}), ...copy(config.gameCategories || {}) } };
+      if (!Array.isArray(this.remote.tabs)) this.remote.tabs = copy(fallback?.tabs ?? null);
+      this.version = version;
+      // Reconcile an uncertain prior POST by its actual values before any retry.
+      this.pending = this.pending.filter(e => !equal(get(this.remote, e), e.after));
+      this.displayed = copy(this.remote);
+      for (const edit of this.pending) {
+        edit.conflict = !equal(get(this.remote, edit), edit.before);
+        set(this.displayed, edit); // Always keep unsaved edits visible and recoverable.
+      }
+      this.persist();
+      return copy(this.displayed);
+    }
+    queue(config) {
+      if (!this.remote || !this.displayed) throw Error('Connect once before editing shared configuration.');
+      const edits = ['hiddenTabs', 'tabs'].map(section => ({ section, key: '' }));
+      for (const key of Object.keys(config.gameCategories)) edits.push({ section: 'gameCategories', key });
+      for (const key of edits) {
+        const next = get(config, key);
+        if (equal(get(this.displayed, key), next)) continue;
+        let pending = this.pending.find(e => e.section === key.section && e.key === key.key);
+        if (!pending) { pending = { ...key, before: copy(get(this.remote, key)) }; this.pending.push(pending); }
+        pending.after = copy(next);
+        // A new edit does not silently resolve an existing conflict.
+      }
+      this.pending = this.pending.filter(e => !equal(e.before, e.after));
+      this.displayed = copy(config); this.persist();
+    }
+    snapshot() {
+      if (this.pending.some(e => e.conflict)) throw Error('Shared edits conflict with another client. Resolve them before publishing.');
+      const payload = copy(this.remote);
+      for (const edit of this.pending) set(payload, edit);
+      payload.expectedVersion = this.version;
+      return payload;
+    }
+    acknowledge(sent, config) {
+      for (const saved of sent) {
+        const current = this.pending.find(e => e.section === saved.section && e.key === saved.key);
+        if (current && equal(get(config, saved), saved.after) && !equal(current.after, saved.after)) current.before = copy(saved.after);
+      }
+      this.persist();
+    }
+    resolve(useLocal) {
+      if (useLocal) for (const edit of this.pending) { edit.before = copy(get(this.remote, edit)); edit.conflict = false; }
+      else this.pending = [];
+      this.persist();
+      return this.receive(this.remote, this.version);
+    }
+  }
+  if (typeof module !== 'undefined' && module.exports) module.exports = ConditionalAdminSync;
+  else root.ConditionalAdminSync = ConditionalAdminSync;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/**
  * Game Library Manager v5.0 - Enhanced UX Edition
  * A full-featured Docker game library manager with premium UX
  *
@@ -66,7 +138,7 @@ class GameLibrary {
         ]);
 
         this.settings = this.loadSettings();
-        this.dockerSyncIntervalMs = 60000;
+        this.dockerSyncIntervalMs = 15000;
         this.lastDockerTagCount = null;
         this.lastDockerLatestTag = null;
 
@@ -207,10 +279,10 @@ class GameLibrary {
         // Also update sync button to show auto-sync is active
         const syncBtn = document.getElementById('syncDockerBtn');
         if (syncBtn) {
-            syncBtn.title = 'Auto-syncing every 60s (click to sync now)';
+            syncBtn.title = 'Auto-syncing every 15s (click to sync now)';
         }
 
-        console.log('🔄 Auto-sync started: checking Docker Hub every 60 seconds');
+        console.log('🔄 Auto-sync started: checking Docker Hub every 15 seconds');
     }
 
     async autoSyncDockerHub() {
@@ -3398,7 +3470,7 @@ echo "Done!"
             showCategories: true,
             dockerUsername: 'michadockermisha',
             repoName: 'backup',
-            mountPath: 'F:/Games'
+            mountPath: 'E:/games'
         };
 
         try {
@@ -5396,6 +5468,123 @@ echo "Done!"
         overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     }
 }
+
+// Added before the website's existing DOMContentLoaded initialization.
+(function installConditionalSync(Prototype) {
+  const legacyLoad = Prototype.loadAdminConfigFromServer;
+  const legacySave = Prototype.saveAdminConfigToServer;
+  const legacyPolling = Prototype.startAdminConfigPolling;
+  const clone = value => JSON.parse(JSON.stringify(value));
+  const capture = app => ({ hiddenTabs: [...app.hiddenTabs].sort(), tabs: app.normalizeTabs(app.tabs), gameCategories: Object.fromEntries(app.games.filter(g => g.category).map(g => [g.id, g.category])) });
+  const controller = app => app._conditionalAdminSync || (app._conditionalAdminSync = new window.ConditionalAdminSync(localStorage));
+  function apply(app, config) {
+    app.hiddenTabs = new Set(config.hiddenTabs || []);
+    if (Array.isArray(config.tabs)) app.tabs = app.normalizeTabs(config.tabs);
+    for (const game of app.games) if (config.gameCategories[game.id]) game.category = config.gameCategories[game.id];
+    app.serverGameCategories = clone(config.gameCategories);
+    localStorage.setItem('hiddenTabs', JSON.stringify([...app.hiddenTabs]));
+    localStorage.setItem('gameLibraryTabs', JSON.stringify(app.tabs));
+    localStorage.setItem('gameLibraryGames', JSON.stringify(app.games));
+    app._lastAdminConfigSignature = app.getAdminConfigSignature(config);
+    app.renderTabs(); app.filterAndRender();
+  }
+  function banner(app) {
+    let box = document.getElementById('sharedSyncNotice');
+    if (!box) {
+      box = document.createElement('div'); box.id = 'sharedSyncNotice'; box.setAttribute('role', 'status');
+      Object.assign(box.style, { position: 'fixed', bottom: '18px', left: '18px', zIndex: '10000', maxWidth: '640px', padding: '16px', borderRadius: '12px', background: '#20302b', color: '#fff', boxShadow: '0 8px 32px #0006' });
+      document.body.appendChild(box);
+    }
+    box.replaceChildren();
+    const sync = controller(app), conflicts = sync.pending.filter(e => e.conflict);
+    box.hidden = sync.pending.length === 0;
+    if (box.hidden) return;
+    const message = document.createElement('div');
+    message.textContent = conflicts.length ? 'Shared changes conflict: ' + conflicts.map(e => e.key || e.section).join(', ') + '. Your edits are saved on this device.' : sync.pending.length + ' shared change(s) saved on this device, awaiting server confirmation.';
+    box.appendChild(message);
+    function button(label, action) { const node = document.createElement('button'); node.textContent = label; node.style.margin = '10px 8px 0 0'; node.addEventListener('click', action); box.appendChild(node); }
+    button('Retry sync', () => app.saveAdminConfigToServer());
+    if (conflicts.length) {
+      button('Review differences', () => {
+        const detail = document.createElement('pre'); detail.style.whiteSpace = 'pre-wrap'; detail.style.maxHeight = '240px'; detail.style.overflow = 'auto';
+        detail.textContent = conflicts.map(e => (e.key || e.section) + '\nYour edit: ' + JSON.stringify(e.after) + '\nServer: ' + JSON.stringify(e.section === 'gameCategories' ? sync.remote.gameCategories[e.key] : sync.remote[e.section])).join('\n\n'); box.appendChild(detail);
+      });
+      button('Publish my reviewed edits', () => { apply(app, sync.resolve(true)); app.saveAdminConfigToServer(); });
+      button('Use server values', () => { apply(app, sync.resolve(false)); banner(app); });
+    }
+  }
+  async function read(app) {
+    const response = await fetch('/api/admin-config?t=' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(20000) });
+    if (!response.ok) throw Error('Server read failed: ' + response.status);
+    const data = await response.json();
+    if (!data.success || !data.config || !data.configVersion) throw Error('Server did not provide a valid configuration version.');
+    return data;
+  }
+  Prototype.loadAdminConfigFromServer = async function () {
+    try {
+      const epoch = this._sharedEpoch || 0;
+      const sync = controller(this), data = await read(this);
+      if (this._sharedSavePromise || (this._sharedEpoch || 0) !== epoch) return;
+      if (data.capabilities?.conditionalWrites !== true && this._conditionalMode !== true) {
+        this._conditionalMode = false;
+        return await legacyLoad.call(this);
+      }
+      this._conditionalMode = true;
+      apply(this, sync.receive(data.config, data.configVersion, capture(this)));
+      this._lastConfigVersion = data.configVersion; banner(this);
+    } catch (error) {
+      console.warn('Shared configuration preserved:', error.message);
+      // The last durable local state remains usable while offline.
+      if (this._conditionalMode !== true) await legacyLoad.call(this);
+    }
+  };
+  Prototype.startAdminConfigPolling = function () {
+    if (this._conditionalMode !== true) return legacyPolling.call(this);
+    clearInterval(this.configPollInterval);
+    this.configPollInterval = setInterval(async () => {
+      if (this._sharedSavePromise || this._sharedPolling) return;
+      this._sharedPolling = true;
+      try {
+        if (this.isAdmin && controller(this).pending.length) await this.saveAdminConfigToServer();
+        else await this.loadAdminConfigFromServer();
+      } finally { this._sharedPolling = false; }
+    }, 2000);
+  };
+  Prototype.saveAdminConfigToServer = function () {
+    if (this._conditionalMode !== true) return legacySave.call(this);
+    if (!this.isAdmin) return Promise.resolve({ success: false, error: 'Admin sign in is required.' });
+    let sync;
+    try { sync = controller(this); sync.queue(capture(this)); banner(this); }
+    catch (error) { this.showToast(error.message, 'error'); return Promise.resolve({ success: false, error: error.message }); }
+    if (this._sharedSavePromise) return this._sharedSavePromise;
+    this._sharedEpoch = (this._sharedEpoch || 0) + 1;
+    this._sharedSavePromise = (async () => {
+      try {
+        for (let attempt = 0; attempt < 4 && sync.pending.length; attempt++) {
+          const latest = await read(this);
+          apply(this, sync.receive(latest.config, latest.configVersion, capture(this)));
+          if (!sync.pending.length) break;
+          const payload = sync.snapshot(), sent = clone(sync.pending);
+          const response = await fetch('/api/admin-config', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Token': 'glm-admin-2024', 'If-Match': payload.expectedVersion }, body: JSON.stringify(payload), signal: AbortSignal.timeout(20000) });
+          if (response.status === 409 || response.status === 412) continue;
+          if (!response.ok) throw Error('Save failed: HTTP ' + response.status + '. Your edits remain queued.');
+          const saved = await response.json();
+          if (!saved.success || !saved.configVersion) throw Error('The server did not confirm the write. Your edits remain queued.');
+          const confirmed = await read(this);
+          sync.acknowledge(sent, confirmed.config);
+          apply(this, sync.receive(confirmed.config, confirmed.configVersion, capture(this)));
+        }
+        if (sync.pending.length) throw Error('Some edits need another sync or conflict review.');
+        this.showToast('Shared changes confirmed by the server.', 'success');
+        return { success: true };
+      } catch (error) {
+        this.showToast(error.message, 'error');
+        return { success: false, error: error.message };
+      } finally { banner(this); }
+    })().finally(() => { this._sharedSavePromise = null; });
+    return this._sharedSavePromise;
+  };
+})(GameLibrary.prototype);
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', () => {
