@@ -15,7 +15,7 @@ namespace GameLibrary.Native;
 
 internal sealed record WandTarget(string TitleId, string GameId, string TitleName, string Platform, string VersionPath);
 internal sealed record WandCustomInstallationRequest(string GameId, string ExecutablePath, string WorkingDirectory, string Sku, string CorrelationId);
-internal sealed record WandLaunchResult(Process? Process, bool UsedProtocol, string Message);
+internal sealed record WandLaunchResult(Process? Process, bool UsedProtocol, string Message, bool OwnsProcess = false);
 
 internal static class WandIntegration
 {
@@ -434,7 +434,7 @@ internal static class WandIntegration
                     if (await WaitForConnectionEvidenceAsync(selectedExecutable, existing.Id, handoffStarted, TimeSpan.FromSeconds(30), cancellation))
                     {
                         ownedBootstrap?.Dispose();
-                        return new WandLaunchResult(existing, true, "Wand connected to the already running " + label + " game.");
+                        return new WandLaunchResult(existing, true, "Wand connected to the already running " + label + " game.", OwnsProcess: ownedBootstrapGame);
                     }
                     if (attempt < maxAttempts)
                     {
@@ -470,7 +470,7 @@ internal static class WandIntegration
                 if (process != null && await WaitForConnectionEvidenceAsync(selectedExecutable, process.Id, launchStarted, TimeSpan.FromSeconds(30), cancellation))
                 {
                     ownedProtocolGame = null;
-                    return new WandLaunchResult(process, true, "Wand connected to " + label + ". Tracking the exact game process.");
+                    return new WandLaunchResult(process, true, "Wand connected to " + label + ". Tracking the exact game process.", OwnsProcess: true);
                 }
                 if (process != null)
                 {

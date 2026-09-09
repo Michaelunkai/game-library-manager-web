@@ -73,7 +73,10 @@ public sealed class JobWindow : Window
         var identityMap = new Dictionary<string, string>(StringComparer.Ordinal);
         for (int i = 0; i < Math.Min(containers.Length, this.completionGameIds.Length); i++)
         {
-            if (!string.Equals(containers[i], DockerScripts.ContainerName(this.completionGameIds[i]), StringComparison.Ordinal))
+            string expectedContainer = completionDestination == null
+                ? DockerScripts.ContainerName(this.completionGameIds[i])
+                : DockerScripts.ContainerNameForDestination(this.completionGameIds[i], completionDestination);
+            if (!string.Equals(containers[i], expectedContainer, StringComparison.Ordinal))
                 throw new ArgumentException("An install container did not match its exact game identity.", nameof(containers));
             identityMap[containers[i]] = this.completionGameIds[i];
         }
@@ -107,7 +110,8 @@ public sealed class JobWindow : Window
         {
             Running = false;
             ownsInstallation = false;
-            await RaiseCompletedAsync();
+            try { await RaiseCompletedAsync(); }
+            catch (Exception ex) { try { store.Log("Download outer completion boundary failed: " + ex); } catch { } }
         }
     }
     private void Append(string? line)
@@ -186,8 +190,8 @@ public sealed class JobWindow : Window
             {
                 process.OutputDataReceived += (_, e) => Append(e.Data); process.ErrorDataReceived += (_, e) => Append(e.Data);
             }
-            process.Start();
             completionStartedAtUtc = DateTime.UtcNow;
+            process.Start();
             if (!openInDefaultTerminal) { process.BeginOutputReadLine(); process.BeginErrorReadLine(); }
             completionMonitor = MonitorCompletionsAsync(completionCancellation.Token);
             status.Text = openInDefaultTerminal ? "Running in your default terminal · " + path : wsl2 ? "Running in WSL2 Ubuntu · " + path : "Running · " + log;
@@ -258,13 +262,14 @@ public sealed class JobWindow : Window
     private async Task DrainCompletionsAsync()
     {
         if (completionDestination == null || completionGameIds.Length == 0) return;
+        string destination = completionDestination;
         await completionDrainGate.WaitAsync();
         try
         {
             foreach (string id in completionGameIds)
             {
-                string? expectedOperationId = acquireInstallation == null ? null : OperationId;
-                if (notifiedCompletions.Contains(id) || !InstalledScanner.HasFreshCompletionMarker(completionDestination, id, completionStartedAtUtc, operationId: expectedOperationId)) continue;
+                string expectedOperationId = OperationId;
+                if (notifiedCompletions.Contains(id) || !InstalledScanner.HasFreshCompletionMarker(destination, id, completionStartedAtUtc, operationId: expectedOperationId)) continue;
                 notifiedCompletions.Add(id);
                 foreach (var handler in GameCompleted?.GetInvocationList() ?? Array.Empty<Delegate>())
                 {

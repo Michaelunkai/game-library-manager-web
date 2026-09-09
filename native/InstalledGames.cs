@@ -64,7 +64,7 @@ public partial class MainWindow
         Save(); Reload();
     }
 
-    internal async Task ScanCompletedDownloads(Game[] games, string destination, bool processSucceeded, DateTime? completionStartedAtUtc = null)
+    internal async Task ScanCompletedDownloads(Game[] games, string destination, bool processSucceeded, DateTime? completionStartedAtUtc = null, string? operationId = null)
     {
         try
         {
@@ -76,7 +76,7 @@ public partial class MainWindow
             // job. Jobs that never started have no valid completion timestamp,
             // so they intentionally produce an empty completed set.
             var completed = completionStartedAtUtc is DateTime started
-                ? games.Where(game => InstalledScanner.HasFreshCompletionMarker(destination, game.Id, started)).ToArray()
+                ? games.Where(game => InstalledScanner.HasFreshCompletionMarker(destination, game.Id, started, operationId: operationId)).ToArray()
                 : Array.Empty<Game>();
             var snapshot = games.Select(g => (g.Id, g.Name)).ToArray();
             var found = await Task.Run(() => InstalledScanner.ScanDownloads(destination, snapshot, lifetime.Token));

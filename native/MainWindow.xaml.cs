@@ -748,9 +748,9 @@ public partial class MainWindow : Window
                 string extension = wsl2 ? "sh" : "bat";
                 string script = DockerScripts.Generate(games, State.Settings, extension, shellTarget: wsl2 ? "wsl2" : "native-linux");
                 var byId = games.ToDictionary(g => g.Id, StringComparer.Ordinal);
-                var job = new JobWindow(Store, script, games.Select(g => DockerScripts.ContainerName(g.Id)).ToArray(), openInDefaultTerminal: !wsl2, scriptExtension: extension, completionDestination: destination, completionGameIds: gameIds, acquireInstallation: cancellation => AcquireInstallScopeAsync(gameIds, destination, cancellation));
+                var job = new JobWindow(Store, script, games.Select(g => DockerScripts.ContainerNameForDestination(g.Id, destination)).ToArray(), openInDefaultTerminal: !wsl2, scriptExtension: extension, completionDestination: destination, completionGameIds: gameIds, acquireInstallation: cancellation => AcquireInstallScopeAsync(gameIds, destination, cancellation));
                 job.GameCompleted += id => byId.TryGetValue(id, out var game) ? ScanCompletedGame(game, destination, job.CompletionStartedAtUtc, job.OperationId) : Task.CompletedTask;
-                job.CompletedAsync += success => ScanCompletedDownloads(games, destination, success, job.CompletionStartedAtUtc);
+                job.CompletedAsync += success => ScanCompletedDownloads(games, destination, success, job.CompletionStartedAtUtc, job.OperationId);
                 jobs.Add(job); job.Closed += (_, _) => jobs.Remove(job); job.Show(); review.Close();
             });
             review.ShowDialog();

@@ -214,7 +214,9 @@ public partial class MainWindow
             catch (OperationCanceledException) { dialog.Notice.Text = $"Stopped. {updated} completed updates were saved."; }
             finally
             {
-                running = false; Reload();
+                running = false;
+                try { Reload(); }
+                catch (Exception ex) { Store.Log("Metadata dialog reload failed; saved metadata was preserved: " + ex); }
                 if (refreshDialogClosed) DisposeRefreshCancellation();
             }
         };

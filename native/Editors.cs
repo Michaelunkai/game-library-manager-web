@@ -19,6 +19,8 @@ public sealed class EditorWindow : Window
     public TextBlock Notice { get; } = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 16) };
     private readonly CancellationTokenSource closedCancellation = new();
     private bool closed;
+    private int asyncActions;
+    private int closedCancellationDisposed;
     internal CancellationToken ClosedToken => closedCancellation.Token;
     internal bool IsClosed => closed;
     public EditorWindow(Window owner, string title, string description)
@@ -30,7 +32,18 @@ public sealed class EditorWindow : Window
         Content = new ScrollViewer { Content = Fields, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Fields.Children.Add(new TextBlock { Text = title, FontSize = 25, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 14) });
         Notice.Text = description; Notice.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Fields.Children.Add(Notice);
-        Closed += (_, _) => { closed = true; closedCancellation.Cancel(); };
+        Closed += (_, _) =>
+        {
+            closed = true;
+            try { closedCancellation.Cancel(); }
+            catch (Exception ex) { try { (Owner as MainWindow)?.Store.Log("Dialog cancellation failed: " + ex.Message); } catch { } }
+            if (Volatile.Read(ref asyncActions) == 0) DisposeClosedCancellation();
+        };
+    }
+    private void DisposeClosedCancellation()
+    {
+        if (Interlocked.Exchange(ref closedCancellationDisposed, 1) != 0) return;
+        try { closedCancellation.Dispose(); } catch { }
     }
     public TextBlock Paragraph(string text)
     {
@@ -66,11 +79,21 @@ public sealed class EditorWindow : Window
         if (id != null) AutomationProperties.SetAutomationId(button, id);
         button.Click += async (_, _) =>
         {
-            try { Fields.IsEnabled = false; await action(); }
+            if (closed) return;
+            Interlocked.Increment(ref asyncActions);
+            try
+            {
+                Fields.IsEnabled = false; await action();
+            }
             catch (OperationCanceledException) when (closed || (Owner as MainWindow)?.IsClosing == true) { }
             catch (OperationCanceledException) { Notice.Text = "The operation was cancelled; your current library was preserved."; }
             catch (Exception ex) when (!closed && (Owner as MainWindow)?.IsClosing != true) { Notice.Text = ex.Message; }
-            finally { if (!closed && !Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished) Fields.IsEnabled = true; }
+            finally
+            {
+                try { if (!closed && !Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished) Fields.IsEnabled = true; }
+                catch (Exception ex) { try { (Owner as MainWindow)?.Store.Log("Dialog control restore failed: " + ex.Message); } catch { } }
+                if (Interlocked.Decrement(ref asyncActions) == 0 && closed) DisposeClosedCancellation();
+            }
         };
         Fields.Children.Add(button); return button;
     }
@@ -211,10 +234,14 @@ public partial class MainWindow
             var result = await WandIntegration.LaunchAsync(game, exe, wandPath, Store, cancellation);
             if (closing || cancellation.IsCancellationRequested)
             {
-                if (result.Process != null) StopUntrackedProcess(result.Process, Store);
+                if (result.Process != null)
+                {
+                    if (result.OwnsProcess) StopUntrackedProcess(result.Process, Store);
+                    else { try { result.Process.Dispose(); } catch { } }
+                }
                 return;
             }
-            if (result.Process != null) TrackPlayProcess(game, result.Process, usesWand: true);
+            if (result.Process != null) TrackPlayProcess(game, result.Process, usesWand: true, ownsProcess: result.OwnsProcess);
             StatusText.Text = result.Message;
             Store.Log("Wand launch for " + game.Id + "; protocol=" + result.UsedProtocol.ToString().ToLowerInvariant() + "; started=" + (result.Process != null).ToString().ToLowerInvariant());
         }

@@ -24,8 +24,19 @@ public static class DockerScripts
     public static string PsQuote(string text) => "'" + text.Replace("'", "''") + "'";
     public static string ShQuote(string text) => "'" + text.Replace("'", "'\"'\"'") + "'";
     public static string ContainerName(string id) => "glm-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(id))).ToLowerInvariant()[..16];
+    // Docker container names are global to the active daemon, while a library
+    // destination is only local to one install script. Keep the legacy
+    // game-only name for existing folder identities, but namespace live
+    // containers by their canonical destination so two same-game installs to
+    // different folders cannot collide on the daemon.
+    internal static string ContainerNameForDestination(string id, string destination)
+    {
+        string canonicalDestination = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destination.Trim())).ToUpperInvariant();
+        string identity = id + "\0" + canonicalDestination;
+        return "glm-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant()[..24];
+    }
     public static string InstallFolder(string id) => id + "-" + ContainerName(id)[4..12];
-    internal static string InstallLockPath(string destination, string gameId) => Path.Combine(Path.GetFullPath(destination), ".gamelibrarymanager-locks", ContainerName(gameId) + ".lock");
+    internal static string InstallLockPath(string destination, string gameId) => Path.Combine(Path.GetFullPath(destination), ".gamelibrarymanager-locks", ContainerNameForDestination(gameId, destination) + ".lock");
     internal static string OwnershipMetadata(string gameId) => "native|" + gameId;
     internal static bool OwnershipMatches(string metadata, string gameId) => string.Equals(metadata.Trim(), OwnershipMetadata(gameId), StringComparison.Ordinal);
     internal static string OwnershipFromLabelsJson(string json)
@@ -98,7 +109,8 @@ public static class DockerScripts
         foreach (var game in games)
         {
             index++;
-            string name = ContainerName(game.Id), image = settings.DockerUsername + "/" + settings.RepoName + ":" + game.Id;
+            string destinationPath = Path.GetFullPath(settings.MountPath);
+            string name = ContainerNameForDestination(game.Id, destinationPath), image = settings.DockerUsername + "/" + settings.RepoName + ":" + game.Id;
             string ownership = OwnershipMetadata(game.Id);
             lines.Add("Write-Output ((Get-Date -Format o) + " + PsQuote(" GAME " + index + "/" + games.Length + " · " + (stop ? "Stopping " : "Downloading ") + game.Name) + ")");
             string lockPath = ".gamelibrarymanager-locks\\" + name + ".lock";
@@ -205,9 +217,10 @@ public static class DockerScripts
         lines.Add("native_install_unlock() { if [ \"$native_install_lock_held\" != 1 ]; then flock -u 9 2>/dev/null || true; exec 9>&- 2>/dev/null || true; fi; }");
         foreach (var game in games)
         {
-            var name = ShQuote(ContainerName(game.Id));
+            string canonicalDestination = Path.GetFullPath(settings.MountPath);
+            var name = ShQuote(ContainerNameForDestination(game.Id, canonicalDestination));
             var ownership = ShQuote(OwnershipMetadata(game.Id));
-            string lockPath = "$destination/.gamelibrarymanager-locks/" + ContainerName(game.Id) + ".lock";
+            string lockPath = "$destination/.gamelibrarymanager-locks/" + ContainerNameForDestination(game.Id, canonicalDestination) + ".lock";
             lines.Add("native_install_lock \"" + lockPath + "\"");
             if (stop) { lines.Add("if native_container_owned " + name + " " + ownership + "; then docker stop " + name + "; else ownership_status=$?; if [ $ownership_status -eq 2 ]; then exit 1; fi; fi"); lines.Add("native_install_unlock"); continue; }
             var image = ShQuote(settings.DockerUsername + "/" + settings.RepoName + ":" + game.Id);

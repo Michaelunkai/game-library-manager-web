@@ -303,7 +303,17 @@ public static class SelfTests
                 && powershell.Contains("Exit-NativeInstallLock", StringComparison.Ordinal)
                 && shell.Contains("native_install_lock", StringComparison.Ordinal)
                 && shell.Contains("native_install_unlock", StringComparison.Ordinal),
-                "Concurrent jobs still share the timestamp-only script/log path.");
+                 "Concurrent jobs still share the timestamp-only script/log path.");
+        });
+        Check("Same-game installs to different destinations receive isolated Docker identities", () =>
+        {
+            string first = DockerScripts.ContainerNameForDestination("same-game", @"E:\\games\\first");
+            string second = DockerScripts.ContainerNameForDestination("same-game", @"E:\\games\\second");
+            string firstAgain = DockerScripts.ContainerNameForDestination("same-game", @"e:\\games\\first\\");
+            Require(first != second && first == firstAgain && first.Length == 28,
+                "Destination-scoped container names did not remain unique and canonical.");
+            Require(DockerScripts.InstallFolder("same-game") == DockerScripts.InstallFolder("same-game"),
+                "The stable downloaded folder identity changed with the destination namespace.");
         });
         Check("A 1259-game BAT export stays below Windows command-line limits", () =>
         {
@@ -318,7 +328,7 @@ public static class SelfTests
         Check("Stop scripts affect only selected owned container names", () =>
         {
             var script = DockerScripts.Generate(new[] { new Game { Id = "game" } }, state.Settings, stop: true);
-            Require(script.Contains(DockerScripts.ContainerName("game")) && !script.Contains("-aq") && !script.Contains("prune"), "Stop scope is excessive.");
+            Require(script.Contains(DockerScripts.ContainerNameForDestination("game", state.Settings.MountPath)) && !script.Contains("-aq") && !script.Contains("prune"), "Stop scope is excessive.");
         });
         Check("Docker cleanup refuses mismatched ownership metadata", () =>
         {
@@ -382,6 +392,10 @@ public static class SelfTests
             File.WriteAllText(marker, "GameLibraryManager|marker-proof");
             File.SetLastWriteTimeUtc(marker, DateTime.UtcNow);
             Require(InstalledScanner.HasFreshCompletionMarker(markerRoot, "marker-proof", DateTime.UtcNow.AddMinutes(-1)), "A new completion marker was not recognized.");
+            File.WriteAllText(marker, "GameLibraryManager|marker-proof|operation-a");
+            Require(InstalledScanner.HasFreshCompletionMarker(markerRoot, "marker-proof", DateTime.UtcNow.AddMinutes(-1), operationId: "operation-a")
+                && !InstalledScanner.HasFreshCompletionMarker(markerRoot, "marker-proof", DateTime.UtcNow.AddMinutes(-1), operationId: "operation-b"),
+                "A completion marker was not isolated to its exact install operation.");
             File.WriteAllText(marker, "GameLibraryManager|marker-proof\npartial");
             Require(!InstalledScanner.IsValidCompletionMarker(marker, "marker-proof"), "A malformed completion marker was accepted.");
         });
