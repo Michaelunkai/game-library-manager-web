@@ -45,12 +45,20 @@ public static class Program
         using var mutex = new Mutex(true, "Local\\GameLibrary-" + instance, out bool owner);
         using var activate = new EventWaitHandle(false, EventResetMode.AutoReset, "Local\\GameLibrary-Activate-" + instance);
         if (!owner) { activate.Set(); return 0; }
+        void LogProcessFailure(string prefix, object? failure)
+        {
+            try { store.Log(prefix + ": " + failure); } catch { }
+        }
+        UnhandledExceptionEventHandler processFailure = (_, e) => LogProcessFailure("Unhandled process failure", e.ExceptionObject);
+        EventHandler<UnobservedTaskExceptionEventArgs> taskFailure = (_, e) => { LogProcessFailure("Unobserved task failure", e.Exception); e.SetObserved(); };
+        AppDomain.CurrentDomain.UnhandledException += processFailure;
+        TaskScheduler.UnobservedTaskException += taskFailure;
         var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
         app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/GameLibrary;component/Theme.xaml", UriKind.Relative) });
         app.DispatcherUnhandledException += (_, e) =>
         {
-            store.Log("Unhandled UI failure: " + e.Exception);
-            System.Windows.MessageBox.Show("The operation could not finish. Your saved library is preserved.\n\n" + e.Exception.Message, "Game Library", MessageBoxButton.OK, MessageBoxImage.Error);
+            LogProcessFailure("Unhandled UI failure", e.Exception);
+            try { System.Windows.MessageBox.Show("The operation could not finish. Your saved library is preserved.\n\n" + e.Exception.Message, "Game Library", MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
             e.Handled = true;
         };
         try
@@ -61,7 +69,15 @@ public static class Program
             var listener = Task.Run(() =>
             {
                 while (!stopping.IsCancellationRequested)
-                    if (activate.WaitOne(500)) app.Dispatcher.BeginInvoke(window.RestoreWindow);
+                {
+                    try
+                    {
+                        if (activate.WaitOne(500) && !stopping.IsCancellationRequested)
+                            app.Dispatcher.BeginInvoke(new Action(() => window.RestoreWindow()));
+                    }
+                    catch (ObjectDisposedException) when (stopping.IsCancellationRequested) { break; }
+                    catch (InvalidOperationException) when (stopping.IsCancellationRequested) { break; }
+                }
             });
             var exit = app.Run(window);
             stopping.Cancel();
@@ -74,7 +90,12 @@ public static class Program
             System.Windows.MessageBox.Show("Game Library could not start.\n\n" + ex.Message + "\n\nDetails: " + Path.Combine(store.Root, "activity.log"), "Game Library", MessageBoxButton.OK, MessageBoxImage.Error);
             return 1;
         }
-        finally { mutex.ReleaseMutex(); }
+        finally
+        {
+            TaskScheduler.UnobservedTaskException -= taskFailure;
+            AppDomain.CurrentDomain.UnhandledException -= processFailure;
+            mutex.ReleaseMutex();
+        }
     }
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] public static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
 }

@@ -200,8 +200,9 @@ public static class SelfTests
         });
         Check("Wand connection evidence requires IPC and a hook marker", () =>
         {
-            Require(WandIntegration.ContainsConnectionEvidence("[42:7][info] ipc connected\n[warning] dxgi_hooked: true", 42), "A complete Wand overlay connection log was rejected.");
+            Require(WandIntegration.ContainsConnectionEvidence("[42:7][info] ipc connected\n[42:7][warning] dxgi_hooked: true", 42), "A complete Wand overlay connection log was rejected.");
             Require(!WandIntegration.ContainsConnectionEvidence("[41:7][info] ipc connected\n[warning] dxgi_hooked: true", 42), "Connection evidence from a different game PID was accepted.");
+            Require(!WandIntegration.ContainsConnectionEvidence("[41:7][info] ipc connected\n[42:7][warning] dxgi_hooked: true", 42), "Stale IPC from another game PID was combined with a current hook marker.");
             Require(!WandIntegration.ContainsConnectionEvidence("[42:7][info] ipc connected"), "IPC alone was accepted as a Wand connection.");
             Require(!WandIntegration.ContainsConnectionEvidence("[42:7][warning] dxgi_hooked: true"), "A hook marker without IPC was accepted as a Wand connection.");
         });
@@ -266,6 +267,16 @@ public static class SelfTests
             string bat = DockerScripts.Generate(new[] { new Game { Id = "terminalproof", Name = "Terminal proof" } }, state.Settings, "bat");
             var start = JobWindow.BuildDefaultTerminalStartInfo(Path.Combine(root, "install-games.bat"));
             Require(bat.StartsWith("@echo off\r\n", StringComparison.Ordinal) && bat.Contains("# GLM_POWERSHELL_START") && bat.Contains(DockerScripts.CompletionMarkerName) && !bat.Contains("\r\npause\r\n") && start.UseShellExecute && start.FileName.EndsWith("install-games.bat", StringComparison.OrdinalIgnoreCase), "Install did not preserve the visible BAT/default-terminal route, completion proof, or completion exit.");
+        });
+        Check("Concurrent install jobs receive unique script and log paths", () =>
+        {
+            var timestamp = new DateTime(2026, 9, 9, 10, 0, 0, 123, DateTimeKind.Local);
+            string first = JobWindow.BuildJobLogPath(root, timestamp, Guid.Parse("11111111-1111-1111-1111-111111111111"));
+            string second = JobWindow.BuildJobLogPath(root, timestamp, Guid.Parse("22222222-2222-2222-2222-222222222222"));
+            Require(!string.Equals(first, second, StringComparison.OrdinalIgnoreCase)
+                && Path.GetExtension(Path.ChangeExtension(first, ".bat")) == ".bat"
+                && !Path.GetFileName(first).Equals(timestamp.ToString("yyyyMMdd-HHmmss-fff") + ".log", StringComparison.Ordinal),
+                "Concurrent jobs still share the timestamp-only script/log path.");
         });
         Check("A 1259-game BAT export stays below Windows command-line limits", () =>
         {

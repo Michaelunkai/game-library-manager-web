@@ -83,14 +83,15 @@ public partial class MainWindow : Window
         Style = (Style)System.Windows.Application.Current.FindResource(typeof(Window));
         Loaded += OnLoaded;
         Closing += OnClosing;
-        StateChanged += (_, _) => { if (ready && WindowState == WindowState.Minimized && State.Settings.MinimizeToTray) HideToTray(); };
+        StateChanged += (_, _) => ObserveUiAction("Window state change", () => { if (ready && WindowState == WindowState.Minimized && State.Settings.MinimizeToTray) HideToTray(); });
         PreviewKeyDown += Keyboard;
-        poll.Tick += async (_, _) => await Refresh(DateTime.UtcNow - lastCatalogRefresh >= TimeSpan.FromSeconds(15));
-        playtime.Tick += (_, _) => UpdatePlaySessions();
-        searchDelay.Tick += (_, _) => { searchDelay.Stop(); ApplyFilter(); };
+        poll.Tick += (_, _) => ObserveUiOperation("Catalog poll", () => Refresh(DateTime.UtcNow - lastCatalogRefresh >= TimeSpan.FromSeconds(15)));
+        playtime.Tick += (_, _) => ObserveUiAction("Play-time update", UpdatePlaySessions);
+        searchDelay.Tick += (_, _) => ObserveUiAction("Search filter", () => { searchDelay.Stop(); ApplyFilter(); });
         GameList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) => ScheduleMetadata()));
     }
-    private async void OnLoaded(object sender, RoutedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e) => ObserveUiOperation("Startup", InitializeAsync);
+    private async Task InitializeAsync()
     {
         try
         {
@@ -123,13 +124,13 @@ public partial class MainWindow : Window
         var iconStream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Assets/GameLibrary.ico"))!.Stream;
         tray = new Forms.NotifyIcon { Icon = new System.Drawing.Icon(iconStream), Text = "Game Library", Visible = true };
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Open Game Library", null, (_, _) => Dispatcher.Invoke(RestoreWindow));
-        menu.Items.Add("Refresh catalog", null, (_, _) => Dispatcher.InvokeAsync(async () => await Refresh(true)));
-        menu.Items.Add("Open download folder", null, (_, _) => Dispatcher.Invoke(() => OpenFolder(State.Settings.MountPath)));
+        menu.Items.Add("Open Game Library", null, (_, _) => PostUiAction("Tray restore", RestoreWindow));
+        menu.Items.Add("Refresh catalog", null, (_, _) => PostUiOperation("Tray catalog refresh", () => Refresh(true)));
+        menu.Items.Add("Open download folder", null, (_, _) => PostUiAction("Tray open download folder", () => OpenFolder(State.Settings.MountPath)));
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Exit", null, (_, _) => Dispatcher.Invoke(Close));
+        menu.Items.Add("Exit", null, (_, _) => PostUiAction("Tray exit", Close));
         tray.ContextMenuStrip = menu;
-        tray.DoubleClick += (_, _) => Dispatcher.Invoke(RestoreWindow);
+        tray.DoubleClick += (_, _) => PostUiAction("Tray restore", RestoreWindow);
     }
     internal void HideToTray() { Hide(); Store.Log("Window hidden to tray"); }
     public void RestoreWindow() { Show(); WindowState = WindowState.Normal; Activate(); Store.Log("Window restored"); }
@@ -142,14 +143,18 @@ public partial class MainWindow : Window
             e.Cancel = true; return;
         }
         closing = true;
-        if (ready)
+        try
         {
-            State.Settings.WindowWidth = RestoreBounds.Width; State.Settings.WindowHeight = RestoreBounds.Height;
-            FlushPlaySessions();
-            Save();
+            if (ready)
+            {
+                State.Settings.WindowWidth = RestoreBounds.Width; State.Settings.WindowHeight = RestoreBounds.Height;
+                FlushPlaySessions();
+                Save();
+            }
         }
+        catch (Exception ex) { Store.Log("Shutdown state flush failed: " + ex); }
         lifetime.Cancel(); poll.Stop(); searchDelay.Stop(); playtime.Stop();
-        tray?.Dispose(); tray = null;
+        try { tray?.Dispose(); } catch (Exception ex) { Store.Log("Tray cleanup failed: " + ex.Message); } finally { tray = null; }
         foreach (var job in jobs.ToArray()) job.Close();
         Store.Log("Clean shutdown");
     }
@@ -283,7 +288,50 @@ public partial class MainWindow : Window
         SelectedSize.ToolTip = $"{selected.Length} selected; {selected.Count(g => g.SizeGb <= 0)} sizes unknown";
     }
     internal void Save() { try { Store.Save(State); } catch (Exception ex) { Error(ex); } }
-    private void Error(Exception ex) { Store.Log(ex.ToString()); StatusText.Text = ex.Message; System.Windows.MessageBox.Show(this, ex.Message, "Game Library", MessageBoxButton.OK, MessageBoxImage.Warning); }
+    private void ObserveUiAction(string operation, Action action)
+    {
+        try { action(); }
+        catch (Exception ex) { ReportUiFailure(operation, ex); }
+    }
+    private void ObserveUiOperation(string operation, Func<Task> action) => _ = ObserveUiOperationAsync(operation, action);
+    private async Task ObserveUiOperationAsync(string operation, Func<Task> action)
+    {
+        try { await action(); }
+        catch (OperationCanceledException) when (closing || lifetime.IsCancellationRequested) { }
+        catch (Exception ex) { ReportUiFailure(operation, ex); }
+    }
+    private void PostUiAction(string operation, Action action)
+    {
+        try
+        {
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+            _ = Dispatcher.BeginInvoke(new Action(() => ObserveUiAction(operation, action)));
+        }
+        catch (InvalidOperationException) { }
+        catch (Exception ex) { try { Store.Log(operation + " dispatch failed: " + ex); } catch { } }
+    }
+    private void PostUiOperation(string operation, Func<Task> action)
+    {
+        try
+        {
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+            _ = Dispatcher.BeginInvoke(new Action(() => ObserveUiOperation(operation, action)));
+        }
+        catch (InvalidOperationException) { }
+        catch (Exception ex) { try { Store.Log(operation + " dispatch failed: " + ex); } catch { } }
+    }
+    private void ReportUiFailure(string operation, Exception ex)
+    {
+        try { Store.Log(operation + ": " + ex); } catch { }
+        if (closing || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        try
+        {
+            StatusText.Text = ex.Message;
+            if (IsVisible) System.Windows.MessageBox.Show(this, ex.Message, "Game Library", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception reportError) { try { Store.Log(operation + " reporting failed: " + reportError); } catch { } }
+    }
+    private void Error(Exception ex) => ReportUiFailure("UI operation failed", ex);
     private void SearchChanged(object sender, TextChangedEventArgs e) { if (!ready) { searchPending = true; return; } searchDelay.Stop(); searchDelay.Start(); }
     private void CategoryChanged(object sender, SelectionChangedEventArgs e) { if (!ready || CategoryList.SelectedItem is not Category category) return; tab = category.Id; State.Settings.LastTab = tab; Save(); ApplyFilter(); }
     private void FilterChanged(object sender, SelectionChangedEventArgs e) { if (!ready) return; State.Settings.SortBy = SortBox.SelectedItem as string ?? "Newest first"; Save(); ApplyFilter(); }
@@ -308,12 +356,12 @@ public partial class MainWindow : Window
         if (((Button)sender).Tag is not Game game) return;
         try { PlayGame(game); } catch (Exception ex) { Error(ex); }
     }
-    private async void PlayWithWandFromCard(object sender, RoutedEventArgs e)
+    private void PlayWithWandFromCard(object sender, RoutedEventArgs e)
     {
         if (((Button)sender).Tag is not Game game) return;
-        try { await PlayWithWand(game); } catch (Exception ex) { Error(ex); }
+        ObserveUiOperation("Play with Wand", () => PlayWithWand(game));
     }
-    private async void RefreshCatalog(object sender, RoutedEventArgs e) => await Refresh(true);
+    private void RefreshCatalog(object sender, RoutedEventArgs e) => ObserveUiOperation("Catalog refresh", () => Refresh(true));
     internal async Task Refresh(bool full)
     {
         if (offline) { StatusText.Text = "Offline mode · shared edits stay on this PC until you restart online"; return; }
@@ -335,7 +383,7 @@ public partial class MainWindow : Window
     private void Keyboard(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (KeyboardDevice.Modifiers == ModifierKeys.Control && e.Key == Key.K) { SearchBox.Focus(); SearchBox.SelectAll(); e.Handled = true; }
-        else if (e.Key == Key.F5) { _ = Refresh(true); e.Handled = true; }
+        else if (e.Key == Key.F5) { ObserveUiOperation("Catalog refresh", () => Refresh(true)); e.Handled = true; }
         else if (KeyboardDevice.Modifiers == ModifierKeys.Control && e.Key == Key.A && !SearchBox.IsKeyboardFocused) { SelectAll(this, new()); e.Handled = true; }
         else if (e.Key == Key.Enter && GameList.IsKeyboardFocusWithin && GameList.SelectedItem is Game game) { Details(game); e.Handled = true; }
         else if (e.Key == Key.Escape) { SearchBox.Clear(); DeselectAll(this, new()); }
@@ -458,12 +506,13 @@ public partial class MainWindow : Window
             string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(password.Password))).ToLowerInvariant();
             if (!CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(hash), Encoding.ASCII.GetBytes("fba92b2c989a5072544ca49d7f75db2005e6479bf286a38902de90e487230762"))) { dialog.Notice.Text = "Incorrect password."; return; }
             adminToken = "glm-admin-2024";
-            AdminButton.Content = "Sign out"; AccountLabel.Text = "Admin · shared catalog"; dialog.Close(); Reload(); _ = Refresh(false);
+            AdminButton.Content = "Sign out"; AccountLabel.Text = "Admin · shared catalog"; dialog.Close(); Reload(); ObserveUiOperation("Admin refresh", () => Refresh(false));
         });
         dialog.ShowDialog();
     }
     private bool RequireAdmin() { if (IsAdmin) return true; AdminSignIn(this, new()); return IsAdmin; }
-    private async void MoveSelected(object sender, RoutedEventArgs e)
+    private void MoveSelected(object sender, RoutedEventArgs e) => ObserveUiOperation("Move selected games", MoveSelectedAsync);
+    private async Task MoveSelectedAsync()
     {
         var selected = Games.Where(g => g.Selected).ToArray();
         if (selected.Length == 0) { StatusText.Text = "Select games to move first."; return; }
@@ -545,14 +594,15 @@ public partial class MainWindow : Window
                 var byId = games.ToDictionary(g => g.Id, StringComparer.Ordinal);
                 var job = new JobWindow(Store, script, games.Select(g => DockerScripts.ContainerName(g.Id)).ToArray(), openInDefaultTerminal: !wsl2, scriptExtension: extension, completionDestination: destination, completionGameIds: byId.Keys);
                 job.GameCompleted += id => byId.TryGetValue(id, out var game) ? ScanCompletedGame(game, destination) : Task.CompletedTask;
-                job.Completed += success => _ = ScanCompletedDownloads(games, destination, success);
+                job.Completed += success => ObserveUiOperation("Completed download scan", () => ScanCompletedDownloads(games, destination, success));
                 jobs.Add(job); job.Closed += (_, _) => jobs.Remove(job); job.Show(); review.Close();
             });
             review.ShowDialog();
         }
         catch (Exception ex) { Error(ex); }
     }
-    private async void ScanFolder(object sender, RoutedEventArgs e)
+    private void ScanFolder(object sender, RoutedEventArgs e) => ObserveUiOperation("Installed folder scan", ScanFolderAsync);
+    private async Task ScanFolderAsync()
     {
         var picker = new Microsoft.Win32.OpenFolderDialog { Title = "Choose the folder containing installed games", InitialDirectory = Directory.Exists(State.Settings.MountPath) ? State.Settings.MountPath : "" };
         if (picker.ShowDialog(this) != true) return;

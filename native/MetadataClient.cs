@@ -106,7 +106,12 @@ public partial class MainWindow
     {
         if (offline || !ready || closing || automaticMetadataRunning || Program.TestReport != null || !IsVisible) return;
         automaticMetadataRunning = true;
-        _ = Dispatcher.InvokeAsync(RunAutomaticMetadata, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task.Unwrap();
+        try
+        {
+            _ = Dispatcher.BeginInvoke(new Action(() => ObserveUiOperation("Automatic metadata", RunAutomaticMetadata)), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        }
+        catch (InvalidOperationException) { automaticMetadataRunning = false; }
+        catch (Exception ex) { automaticMetadataRunning = false; Store.Log("Automatic metadata dispatch failed: " + ex); }
     }
     private async Task RunAutomaticMetadata()
     {

@@ -39,6 +39,12 @@ public sealed class JobWindow : Window
         if (!Path.GetExtension(path).Equals(".bat", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The default Windows terminal launcher requires a BAT script.", nameof(path));
         return new ProcessStartInfo(path) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(path))! };
     }
+    internal static string BuildJobLogPath(string root, DateTime timestamp, Guid operationId)
+    {
+        string jobs = Path.Combine(Path.GetFullPath(root), "jobs");
+        Directory.CreateDirectory(jobs);
+        return Path.Combine(jobs, timestamp.ToString("yyyyMMdd-HHmmss-fff", System.Globalization.CultureInfo.InvariantCulture) + "-" + operationId.ToString("N") + ".log");
+    }
     public JobWindow(LibraryStore store, string script, string[] containers, bool openInDefaultTerminal = false, string scriptExtension = "ps1", string? completionDestination = null, IEnumerable<string>? completionGameIds = null)
     {
         this.store = store; this.script = script; this.containers = containers;
@@ -56,23 +62,52 @@ public sealed class JobWindow : Window
         Width = 900; Height = 600; MinWidth = 600; MinHeight = 400;
         var grid = new DockPanel { Margin = new Thickness(18) };
         var stop = new Button { Content = "Stop this operation", Margin = new Thickness(0, 0, 0, 12), HorizontalAlignment = HorizontalAlignment.Left };
-        stop.Click += async (_, _) => await Stop(); DockPanel.SetDock(stop, Dock.Top); grid.Children.Add(stop);
+        stop.Click += async (_, _) =>
+        {
+            try { await Stop(); }
+            catch (Exception ex) { Append("Could not stop the operation: " + ex.Message); }
+        }; DockPanel.SetDock(stop, Dock.Top); grid.Children.Add(stop);
         DockPanel.SetDock(status, Dock.Bottom); grid.Children.Add(status); grid.Children.Add(output); Content = grid;
         Directory.CreateDirectory(Path.Combine(store.Root, "jobs"));
-        log = Path.Combine(store.Root, "jobs", DateTime.Now.ToString("yyyyMMdd-HHmmss-fff") + ".log");
-        Loaded += async (_, _) => await Run();
+        log = BuildJobLogPath(store.Root, DateTime.Now, Guid.NewGuid());
+        Loaded += (_, _) => _ = RunObservedAsync();
         Closing += (_, e) => { if (Running) { e.Cancel = true; status.Text = "Stop the operation before closing. Partial files will be preserved."; } };
+    }
+    private async Task RunObservedAsync()
+    {
+        try { await Run(); }
+        catch (Exception ex)
+        {
+            try { store.Log("Download job escaped its error boundary: " + ex); } catch { }
+            Append("Could not complete: " + ex.Message);
+            Running = false;
+        }
     }
     private void Append(string? line)
     {
         if (line == null) return;
-        Dispatcher.Invoke(() =>
+        void Write()
         {
-            var text = DateTime.Now.ToString("HH:mm:ss") + "  " + line + Environment.NewLine;
-            File.AppendAllText(log, text);
-            if (output.Text.Length > 500_000) output.Text = output.Text[^250_000..];
-            output.AppendText(text); output.ScrollToEnd();
-        });
+            try
+            {
+                var text = DateTime.Now.ToString("HH:mm:ss") + "  " + line + Environment.NewLine;
+                File.AppendAllText(log, text);
+                if (output.Text.Length > 500_000) output.Text = output.Text[^250_000..];
+                output.AppendText(text); output.ScrollToEnd();
+            }
+            catch (Exception ex)
+            {
+                try { store.Log("Job output update failed: " + ex.Message); } catch { }
+            }
+        }
+        try
+        {
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+            if (Dispatcher.CheckAccess()) Write();
+            else _ = Dispatcher.BeginInvoke((Action)Write);
+        }
+        catch (InvalidOperationException) { }
+        catch (Exception ex) { try { store.Log("Job output dispatch failed: " + ex.Message); } catch { } }
     }
     private async Task Run()
     {
@@ -129,7 +164,9 @@ public sealed class JobWindow : Window
         finally
         {
             completionCancellation.Cancel();
-            try { await completionMonitor; } catch (OperationCanceledException) { }
+            try { await completionMonitor; }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { try { store.Log("Download completion monitor failed: " + ex); } catch { } }
             // WaitForExitAsync above also waits for redirected output to reach EOF.
             // Consumers can now update installed state without racing a still-running job.
             Running = false; process?.Dispose(); process = null;
@@ -170,7 +207,8 @@ public sealed class JobWindow : Window
     {
         if (!Running) return;
         cancelled = true;
-        if (process is { HasExited: false }) process.Kill(true);
+        try { if (process is { HasExited: false }) process.Kill(true); }
+        catch (Exception ex) { Append("The download process could not be stopped: " + ex.Message); }
         foreach (string container in containers)
         {
             if (containerGameIds.TryGetValue(container, out string? gameId)) await StopOwnedContainerAsync(container, gameId);
@@ -184,9 +222,9 @@ public sealed class JobWindow : Window
             var inspectStart = new ProcessStartInfo(DockerScripts.Executable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
             inspectStart.ArgumentList.Add("container"); inspectStart.ArgumentList.Add("inspect"); inspectStart.ArgumentList.Add(container); inspectStart.ArgumentList.Add("--format"); inspectStart.ArgumentList.Add(DockerScripts.OwnershipFormat);
             using var inspect = Process.Start(inspectStart)!;
-            var inspectOutput = inspect.StandardOutput.ReadToEndAsync(); _ = inspect.StandardError.ReadToEndAsync();
+            var inspectOutput = inspect.StandardOutput.ReadToEndAsync(); var inspectError = inspect.StandardError.ReadToEndAsync();
             await inspect.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20));
-            if (inspect.ExitCode != 0) return; // --rm jobs commonly removed the container already.
+            if (inspect.ExitCode != 0) { Append(await inspectError); return; } // --rm jobs commonly removed the container already.
             if (!DockerScripts.OwnershipMatches(DockerScripts.OwnershipFromLabelsJson(await inspectOutput), gameId))
             {
                 Append("Refusing to stop unowned container " + container + ".");

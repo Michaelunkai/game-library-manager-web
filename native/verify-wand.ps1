@@ -1,4 +1,9 @@
-param([string]$ExePath = (Join-Path $PSScriptRoot 'dist\GameLibrary.exe'))
+param(
+    [string]$ExePath = (Join-Path $PSScriptRoot 'dist\GameLibrary.exe'),
+    [string]$GameSearch = 'WizardwithaGun',
+    [string]$GameTitle = 'Wizardwitha Gun',
+    [string]$InstalledGame = 'E:\games\WizardwithaGun\wizardwithagun.exe'
+)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
@@ -47,21 +52,25 @@ function Wait-GameRow($Window) {
         if ($rows.Count -eq 1) { return $rows[0] }
         Start-Sleep -Milliseconds 150
     } while ($clock.Elapsed.TotalSeconds -lt 15)
-    throw 'Wizard with a Gun did not resolve to one native row.'
+    throw ($GameSearch + ' did not resolve to one native row.')
 }
-function Wait-DetailsDialog([int]$ProcessId) {
+function Wait-DetailsDialog([int]$ProcessId, [string]$Title) {
     $root = [Windows.Automation.AutomationElement]::RootElement
+    $windowCondition = New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Window)
     $clock = [Diagnostics.Stopwatch]::StartNew()
     do {
-        $windows = $root.FindAll([Windows.Automation.TreeScope]::Children, (New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::ProcessIdProperty, $ProcessId)))
+        # WPF owned modal windows are not consistently exposed as direct RootElement
+        # children or as descendants of the owner window. Search the process's full
+        # UIA window tree so the proof follows the same dialog a user sees.
+        $windows = $root.FindAll([Windows.Automation.TreeScope]::Descendants, $windowCondition) | Where-Object { $_.Current.ProcessId -eq $ProcessId }
         foreach ($window in $windows) {
-            if ($window.Current.Name -eq 'Wizardwitha Gun') { return $window }
+            if ($window.Current.Name -eq $Title) { return $window }
         }
-        $candidate = $script:proofOwner.FindFirst([Windows.Automation.TreeScope]::Descendants, (New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::NameProperty, 'Wizardwitha Gun')))
+        $candidate = $script:proofOwner.FindFirst([Windows.Automation.TreeScope]::Descendants, (New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::NameProperty, $Title)))
         if ($null -ne $candidate -and $candidate.Current.ControlType -eq [Windows.Automation.ControlType]::Window) { return $candidate }
         Start-Sleep -Milliseconds 120
     } while ($clock.Elapsed.TotalSeconds -lt 10)
-    throw 'Wizard details dialog did not open.'
+    throw ($GameSearch + ' details dialog did not open.')
 }
 function Find-ExactProcess([string]$Path) {
     $name = [IO.Path]::GetFileNameWithoutExtension($Path)
@@ -80,27 +89,31 @@ function Find-FreshConnectionLog([string]$Executable, [int]$ExpectedPid, [DateTi
         if ($candidateStem -ne $gameStem -or $candidate.LastWriteTimeUtc -lt $SinceUtc.AddSeconds(-1)) { continue }
         try {
             $tail = Get-Content -LiteralPath $candidate.FullName -Raw -ErrorAction Stop
-            if ($tail -match '(?i)ipc connected' -and $tail -match '(?i)(hooked: true|hook res: true)' -and $tail.Contains('[' + $ExpectedPid + ':')) { return $candidate.FullName }
+            $pidLines = @($tail -split "`r?`n" | Where-Object { $_.Contains('[' + $ExpectedPid + ':') })
+            $hasIpc = @($pidLines | Where-Object { $_ -match '(?i)ipc connected' }).Count -gt 0
+            $hasHook = @($pidLines | Where-Object { $_ -match '(?i)(hooked: true|hook res: true)' }).Count -gt 0
+            if ($hasIpc -and $hasHook) { return $candidate.FullName }
         } catch {}
     }
     return $null
 }
 try {
-    $installedGame = 'E:\games\WizardwithaGun\wizardwithagun.exe'
+    $installedGame = [IO.Path]::GetFullPath($InstalledGame)
     if (-not (Test-Path -LiteralPath $installedGame -PathType Leaf)) { throw 'The installed Wand proof game executable is missing.' }
-    foreach ($name in @('wizardwithagun','Wand','WeMod')) { Get-Process -Name $name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue }
+    $gameProcessName = [IO.Path]::GetFileNameWithoutExtension($installedGame)
+    foreach ($name in @($gameProcessName,'Wand','WeMod')) { Get-Process -Name $name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue }
     $app = Start-Process -FilePath (Resolve-Path $ExePath).Path -ArgumentList @('--offline') -PassThru
     $window = Wait-AppWindow
     Add-Check 'Rebuilt native WPF app exposes a ready game list' ($window.Current.ProcessId -eq $app.Id)
     $search = Find-ById $window 'SearchBox'
-    ([Windows.Automation.ValuePattern]$search.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern)).SetValue('WizardwithaGun')
+    ([Windows.Automation.ValuePattern]$search.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern)).SetValue($GameSearch)
     $row = Wait-GameRow $window
     $detail = Find-Button $row 'Details'
     if ($null -eq $detail) { throw 'Wizard details action was not exposed.' }
     Start-Sleep -Milliseconds 750
     Invoke-Control $detail
     $script:proofOwner = $window
-    $dialog = Wait-DetailsDialog $app.Id
+    $dialog = Wait-DetailsDialog $app.Id $GameTitle
     $wandButton = Find-Button $dialog 'Play with Wand mods'
     if ($null -eq $wandButton) { throw 'Play with Wand mods action was not exposed.' }
     Add-Check 'Wizard details exposes the Wand launch action' $true
@@ -123,7 +136,7 @@ try {
         Start-Sleep -Milliseconds 250
     } while ([DateTime]::UtcNow -lt $connectionDeadline)
     Add-Check 'Wand overlay log confirms a fresh IPC and hook connection for the exact game' ($null -ne $connectionLog)
-    $payload = [pscustomobject]@{ at=[DateTime]::UtcNow.ToString('o'); passed=$true; executable=(Resolve-Path $ExePath).Path; sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $ExePath).Hash; gamePath=$installedGame; gamePid=$game.Id; wandPids=@($wand | Select-Object -ExpandProperty Id); connectionLog=$connectionLog; checks=@($checks.ToArray()) }
+    $payload = [pscustomobject]@{ at=[DateTime]::UtcNow.ToString('o'); passed=$true; executable=(Resolve-Path $ExePath).Path; sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $ExePath).Hash; gameSearch=$GameSearch; gameTitle=$GameTitle; gamePath=$installedGame; gamePid=$game.Id; wandPids=@($wand | Select-Object -ExpandProperty Id); connectionLog=$connectionLog; checks=@($checks.ToArray()) }
     $payload | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $report -Encoding UTF8
     Write-Output ('PASS: Wand native proof; game PID ' + $game.Id + '; Wand processes ' + (($wand | Select-Object -ExpandProperty Id) -join ',') + '; evidence=' + $report)
 }

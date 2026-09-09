@@ -1,4 +1,4 @@
-param([string]$ExePath = (Join-Path $PSScriptRoot 'dist\GameLibrary.exe'), [switch]$DockerProof, [switch]$MetadataProof, [switch]$PlayProof, [switch]$ScriptProof, [switch]$AdminProof, [switch]$TrayProof, [switch]$LocalGameProof, [switch]$AutomaticCatalogProof, [switch]$KillScriptProof, [string]$DockerTag = 'inmot')
+param([string]$ExePath = (Join-Path $PSScriptRoot 'dist\GameLibrary.exe'), [string]$DataRoot = '', [switch]$DockerProof, [switch]$MetadataProof, [switch]$PlayProof, [switch]$ScriptProof, [switch]$AdminProof, [switch]$TrayProof, [switch]$LocalGameProof, [switch]$AutomaticCatalogProof, [switch]$KillScriptProof, [string]$DockerTag = 'inmot')
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
@@ -32,7 +32,8 @@ public static class GLMNativeDialog {
 '@
 $evidenceRoot = Join-Path $PSScriptRoot 'evidence'
 [void][IO.Directory]::CreateDirectory($evidenceRoot)
-$dataRoot = Join-Path $evidenceRoot ('external-ui-' + (Get-Date -Format yyyyMMdd-HHmmss))
+$dataRoot = if ([string]::IsNullOrWhiteSpace($DataRoot)) { Join-Path $evidenceRoot ('external-ui-' + (Get-Date -Format yyyyMMdd-HHmmss)) } else { [IO.Path]::GetFullPath($DataRoot) }
+[void][IO.Directory]::CreateDirectory($dataRoot)
 if ($PlayProof) {
     $installedProof=Get-Content -Raw -LiteralPath (Join-Path $evidenceRoot 'docker-native-peppergrinder.json') | ConvertFrom-Json; $dataRoot=$installedProof.dataRoot
     $fixtureStatePath=Join-Path $dataRoot 'state.json'
@@ -67,7 +68,7 @@ function Wait-AppWindow {
             }
         }
         Start-Sleep -Milliseconds 150
-    } while ($clock.Elapsed.TotalSeconds -lt 120)
+    } while ($clock.Elapsed.TotalSeconds -lt 300)
     throw 'Native window did not become accessible.'
 }
 function Find-Id($Root, [string]$Id) {

@@ -524,10 +524,21 @@ internal static class WandIntegration
     internal static bool ContainsConnectionEvidence(string log, int? expectedPid = null)
     {
         if (string.IsNullOrWhiteSpace(log)) return false;
-        if (expectedPid.HasValue && !log.Contains("[" + expectedPid.Value + ":", StringComparison.Ordinal)) return false;
-        return log.Contains("ipc connected", StringComparison.OrdinalIgnoreCase)
-            && (log.Contains("hooked: true", StringComparison.OrdinalIgnoreCase)
-                || log.Contains("hook res: true", StringComparison.OrdinalIgnoreCase));
+        if (!expectedPid.HasValue)
+            return log.Contains("ipc connected", StringComparison.OrdinalIgnoreCase)
+                && (log.Contains("hooked: true", StringComparison.OrdinalIgnoreCase)
+                    || log.Contains("hook res: true", StringComparison.OrdinalIgnoreCase));
+
+        // Overlay logs are append-only and can contain several game sessions.
+        // Require both markers to belong to the same exact game PID; checking
+        // for the PID anywhere in the file can combine a stale hook with a new
+        // game's unrelated log entry and falsely report a connected session.
+        string marker = "[" + expectedPid.Value + ":";
+        var pidLines = log.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => line.Contains(marker, StringComparison.Ordinal));
+        return pidLines.Any(line => line.Contains("ipc connected", StringComparison.OrdinalIgnoreCase))
+            && pidLines.Any(line => line.Contains("hooked: true", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("hook res: true", StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<bool> WaitForConnectionEvidenceAsync(string executable, int expectedPid, DateTime sinceUtc, TimeSpan timeout, CancellationToken cancellation)
