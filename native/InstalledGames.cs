@@ -64,7 +64,7 @@ public partial class MainWindow
         Save(); Reload();
     }
 
-    internal async Task ScanCompletedDownloads(Game[] games, string destination, bool processSucceeded)
+    internal async Task ScanCompletedDownloads(Game[] games, string destination, bool processSucceeded, DateTime? completionStartedAtUtc = null)
     {
         try
         {
@@ -72,7 +72,12 @@ public partial class MainWindow
             // bind mount. This prevents a partial multi-game job from turning an early
             // executable copy into an Installed marker while still allowing completed
             // games from a failed batch to appear immediately.
-            var completed = games.Where(game => InstalledScanner.HasCompletionMarker(destination, game.Id, game.Name)).ToArray();
+            // A marker from an older operation must never be attributed to this
+            // job. Jobs that never started have no valid completion timestamp,
+            // so they intentionally produce an empty completed set.
+            var completed = completionStartedAtUtc is DateTime started
+                ? games.Where(game => InstalledScanner.HasFreshCompletionMarker(destination, game.Id, started)).ToArray()
+                : Array.Empty<Game>();
             var snapshot = games.Select(g => (g.Id, g.Name)).ToArray();
             var found = await Task.Run(() => InstalledScanner.ScanDownloads(destination, snapshot, lifetime.Token));
             var completedIds = completed.Select(g => g.Id).ToHashSet(StringComparer.Ordinal);
@@ -93,11 +98,15 @@ public partial class MainWindow
         }
     }
 
-    internal async Task ScanCompletedGame(Game game, string destination)
+    internal async Task ScanCompletedGame(Game game, string destination, DateTime? completionStartedAtUtc = null, string? operationId = null)
     {
         try
         {
-            if (!InstalledScanner.HasCompletionMarker(destination, game.Id, game.Name)) return;
+            if (completionStartedAtUtc is DateTime started)
+            {
+                if (!InstalledScanner.HasFreshCompletionMarker(destination, game.Id, started, game.Name, operationId)) return;
+            }
+            else if (!InstalledScanner.HasCompletionMarker(destination, game.Id, game.Name)) return;
             var found = await Task.Run(() => InstalledScanner.ScanDownloads(destination, new[] { (game.Id, game.Name) }, lifetime.Token), lifetime.Token);
             found.Games.RemoveAll(entry => !entry.IsLocal && entry.Id != game.Id);
             if (found.Games.Any(entry => entry.Id == game.Id))

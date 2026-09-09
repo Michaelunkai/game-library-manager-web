@@ -12,6 +12,10 @@ Packaged executable:
 
 `F:\study\repos\fullstack\game-library-manager-web\native\dist\GameLibrary.exe`
 
+Keep the adjacent `dist\tools` directory with the executable. It includes the
+bundled Node.js runtime and the native Wand LevelDB bridge, so Play with Wand
+does not depend on a separately installed Node.js runtime.
+
 The Start menu entry is **Game Library**. Close exits; minimize hides to the system tray by default. A second launch restores the existing instance. The tray menu supports Open, Refresh, Open download folder, and Exit.
 
 ## Using the library
@@ -66,6 +70,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\verify-native.ps1 -Kil
 The Kill All export proof saves and parses both formats without running them. `verify-killall-scripts.ps1 -ScriptPath <exported.ps1>` separately tests the unchanged PowerShell payload with a strict fake Docker command in isolated PowerShell 5 child processes; it never invokes real Docker.
 
 Build uses a stable .NET 10 SDK. `-DotnetPath` selects an explicit SDK host. This machine's original stable SDK directories were incomplete, so a separate Microsoft SDK 10.0.400 was downloaded to `%USERPROFILE%\.codex\toolchains\gamelibrary-dotnet10` and verified against Microsoft's SHA512 manifest. Global SDK directories and PATH were not changed.
+
+The build redirects temporary files, NuGet packages, and the .NET CLI home to a
+`study\temp\glm-native-build` folder on the drive containing this native tree;
+the publish step refuses to leave a stale or incomplete Wand tool tree in the
+distribution.
 
 `--self-test` uses temporary fixture data and simulated HTTP failures; it does not mutate production. `--ui-test` runs the packaged WPF UI against an explicitly selected data directory and exits. The external PowerShell verifier exercises actual Windows UI Automation controls and process lifecycle.
 

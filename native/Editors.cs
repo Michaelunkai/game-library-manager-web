@@ -17,6 +17,10 @@ public sealed class EditorWindow : Window
 {
     public StackPanel Fields { get; } = new() { Margin = new Thickness(24, 20, 24, 24) };
     public TextBlock Notice { get; } = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 16) };
+    private readonly CancellationTokenSource closedCancellation = new();
+    private bool closed;
+    internal CancellationToken ClosedToken => closedCancellation.Token;
+    internal bool IsClosed => closed;
     public EditorWindow(Window owner, string title, string description)
     {
         Owner = owner; Title = title; Width = 570; MaxHeight = SystemParameters.WorkArea.Height - 70;
@@ -26,6 +30,7 @@ public sealed class EditorWindow : Window
         Content = new ScrollViewer { Content = Fields, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Fields.Children.Add(new TextBlock { Text = title, FontSize = 25, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 14) });
         Notice.Text = description; Notice.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Fields.Children.Add(Notice);
+        Closed += (_, _) => { closed = true; closedCancellation.Cancel(); };
     }
     public TextBlock Paragraph(string text)
     {
@@ -62,9 +67,10 @@ public sealed class EditorWindow : Window
         button.Click += async (_, _) =>
         {
             try { Fields.IsEnabled = false; await action(); }
-            catch (OperationCanceledException) { Notice.Text = "Import cancelled; your current library was preserved."; }
-            catch (Exception ex) { Notice.Text = ex.Message; }
-            finally { Fields.IsEnabled = true; }
+            catch (OperationCanceledException) when (closed || (Owner as MainWindow)?.IsClosing == true) { }
+            catch (OperationCanceledException) { Notice.Text = "The operation was cancelled; your current library was preserved."; }
+            catch (Exception ex) when (!closed && (Owner as MainWindow)?.IsClosing != true) { Notice.Text = ex.Message; }
+            finally { if (!closed && !Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished) Fields.IsEnabled = true; }
         };
         Fields.Children.Add(button); return button;
     }
@@ -145,9 +151,9 @@ public partial class MainWindow
             if (picker.ShowDialog(dialog) != true) return;
             State.LaunchPaths[game.Id] = picker.FileName; State.InstalledGames.Add(game.Id); Save(); Reload(); dialog.Notice.Text = "Launcher saved: " + picker.FileName;
         });
-        dialog.Action("Play", () => { PlayGame(game); dialog.Close(); }, "PlayGame");
+        dialog.ActionAsync("Play", async () => { await PlayGame(game); if (!dialog.IsClosed && !closing) dialog.Close(); }, "PlayGame");
         dialog.Action("Open Wand", OpenWand, "OpenWand");
-        dialog.ActionAsync("Play with Wand mods", async () => { await PlayWithWand(game); dialog.Close(); }, "PlayWithWand");
+        dialog.ActionAsync("Play with Wand mods", async () => { await PlayWithWand(game, dialog.ClosedToken); if (!dialog.IsClosed && !closing) dialog.Close(); }, "PlayWithWand");
         dialog.Action("Open installation folder", () => OpenFolder(ResolveInstallationFolder(game)));
         if (!game.IsLocal)
         {
@@ -156,12 +162,27 @@ public partial class MainWindow
         }
         dialog.ShowDialog();
     }
-    private void PlayGame(Game game)
+    private async Task PlayGame(Game game)
     {
-        if (!TryGetLauncher(game, out var exe)) throw new FileNotFoundException("No game executable was found. Scan the installation folder or choose the game's executable.");
-        if (!Path.GetExtension(exe).Equals(".exe", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The launcher must be a Windows executable.");
-        StartPlaySession(game, () => Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = Path.GetDirectoryName(exe), UseShellExecute = true }) ?? throw new InvalidOperationException("The game process could not be started."));
-        StatusText.Text = "Playing " + game.Name + " · tracking time";
+        await playLaunchGate.WaitAsync(lifetime.Token);
+        try
+        {
+            if (closing) return;
+            if (!TryGetLauncher(game, out var exe)) throw new FileNotFoundException("No game executable was found. Scan the installation folder or choose the game's executable.");
+            if (!Path.GetExtension(exe).Equals(".exe", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The launcher must be a Windows executable.");
+            if (TryActivateExistingPlay(game)) return;
+            var running = WandIntegration.FindRunningExactProcess(exe);
+            if (running != null)
+            {
+                TrackPlayProcess(game, running, ownsProcess: false);
+                ActivateProcess(running);
+                StatusText.Text = game.Name + " is already running.";
+                return;
+            }
+            StartPlaySession(game, () => Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = Path.GetDirectoryName(exe), UseShellExecute = true }) ?? throw new InvalidOperationException("The game process could not be started."));
+            StatusText.Text = "Playing " + game.Name + " · tracking time";
+        }
+        finally { playLaunchGate.Release(); }
     }
     private string ResolveInstallationFolder(Game game)
     {
@@ -171,21 +192,46 @@ public partial class MainWindow
         return InstalledScanner.FindCatalogFolders(State.Settings.MountPath, game.Id, game.Name).FirstOrDefault()
             ?? Path.Combine(State.Settings.MountPath, DockerScripts.InstallFolder(game.Id));
     }
-    private async Task PlayWithWand(Game game)
+    private Task PlayWithWand(Game game) => PlayWithWand(game, lifetime.Token);
+    private async Task PlayWithWand(Game game, CancellationToken cancellation)
     {
-        await wandLaunchGate.WaitAsync(lifetime.Token);
+        await playLaunchGate.WaitAsync(cancellation);
         try
         {
+            if (closing || cancellation.IsCancellationRequested) return;
             if (!TryGetLauncher(game, out var exe)) throw new FileNotFoundException("No game executable was found. Scan the installation folder or choose the game's executable.");
             if (!Path.GetExtension(exe).Equals(".exe", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The launcher must be a Windows executable.");
             var wandPath = ResolveWandPath();
-            if (TryActivateExistingPlay(game)) return;
-            var result = await WandIntegration.LaunchAsync(game, exe, wandPath, Store, lifetime.Token);
-            if (result.Process != null) TrackPlayProcess(game, result.Process);
+            if (TryActivateExistingPlay(game))
+            {
+                if (activePlays.TryGetValue(game.Id, out var active) && !active.UsesWand)
+                    StatusText.Text = game.Name + " is already running without Wand mods. Close it before using Play with Wand.";
+                return;
+            }
+            var result = await WandIntegration.LaunchAsync(game, exe, wandPath, Store, cancellation);
+            if (closing || cancellation.IsCancellationRequested)
+            {
+                if (result.Process != null) StopUntrackedProcess(result.Process, Store);
+                return;
+            }
+            if (result.Process != null) TrackPlayProcess(game, result.Process, usesWand: true);
             StatusText.Text = result.Message;
             Store.Log("Wand launch for " + game.Id + "; protocol=" + result.UsedProtocol.ToString().ToLowerInvariant() + "; started=" + (result.Process != null).ToString().ToLowerInvariant());
         }
-        finally { wandLaunchGate.Release(); }
+        finally { playLaunchGate.Release(); }
+    }
+
+    private static void StopUntrackedProcess(Process process, LibraryStore store)
+    {
+        try
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+        }
+        catch (Exception ex)
+        {
+            try { store.Log("Could not stop the untracked Wand process after shutdown: " + ex.Message); } catch { }
+        }
+        finally { try { process.Dispose(); } catch { } }
     }
     private bool TryGetLauncher(Game game, out string executable)
     {
@@ -507,23 +553,26 @@ public static class InstalledScanner
     internal static bool HasCompletionMarker(string root, string id, string? name = null) =>
         FindCatalogFolders(root, id, name).Any(folder => IsValidCompletionMarker(Path.Combine(folder, DockerScripts.CompletionMarkerName), id));
 
-    internal static bool HasFreshCompletionMarker(string root, string id, DateTime sinceUtc, string? name = null) =>
+    internal static bool HasFreshCompletionMarker(string root, string id, DateTime sinceUtc, string? name = null, string? operationId = null) =>
         FindCatalogFolders(root, id, name).Any(folder =>
         {
             string marker = Path.Combine(folder, DockerScripts.CompletionMarkerName);
-            try { return IsValidCompletionMarker(marker, id) && File.GetLastWriteTimeUtc(marker) >= sinceUtc; }
+            try { return IsValidCompletionMarker(marker, id, operationId) && File.GetLastWriteTimeUtc(marker) >= sinceUtc; }
             catch (IOException) { return false; }
             catch (UnauthorizedAccessException) { return false; }
         });
 
-    internal static bool IsValidCompletionMarker(string markerPath, string id)
+    internal static bool IsValidCompletionMarker(string markerPath, string id, string? operationId = null)
     {
         try
         {
             if (!File.Exists(markerPath)) return false;
             string expected = "GameLibraryManager|" + id;
             string actual = File.ReadAllText(markerPath).Trim();
-            return string.Equals(actual, expected, StringComparison.Ordinal);
+            if (operationId == null)
+                return string.Equals(actual, expected, StringComparison.Ordinal)
+                    || actual.StartsWith(expected + "|", StringComparison.Ordinal);
+            return string.Equals(actual, expected + "|" + operationId, StringComparison.Ordinal);
         }
         catch (IOException) { return false; }
         catch (UnauthorizedAccessException) { return false; }

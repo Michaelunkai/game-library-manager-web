@@ -73,10 +73,23 @@ public static class Program
                     try
                     {
                         if (activate.WaitOne(500) && !stopping.IsCancellationRequested)
-                            app.Dispatcher.BeginInvoke(new Action(() => window.RestoreWindow()));
+                            app.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                try
+                                {
+                                    if (!window.IsClosing && !app.Dispatcher.HasShutdownStarted && !app.Dispatcher.HasShutdownFinished)
+                                        window.RestoreWindow();
+                                }
+                                catch (Exception ex) { LogProcessFailure("Activation dispatch failed", ex); }
+                            }));
                     }
-                    catch (ObjectDisposedException) when (stopping.IsCancellationRequested) { break; }
-                    catch (InvalidOperationException) when (stopping.IsCancellationRequested) { break; }
+                    catch (ObjectDisposedException) { if (stopping.IsCancellationRequested || app.Dispatcher.HasShutdownStarted) break; }
+                    catch (InvalidOperationException) { if (stopping.IsCancellationRequested || app.Dispatcher.HasShutdownStarted) break; }
+                    catch (Exception ex)
+                    {
+                        LogProcessFailure("Activation listener failed", ex);
+                        if (stopping.IsCancellationRequested || app.Dispatcher.HasShutdownStarted) break;
+                    }
                 }
             });
             var exit = app.Run(window);

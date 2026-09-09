@@ -12,6 +12,7 @@ namespace GameLibrary.Native;
 public static class DockerScripts
 {
     internal const string CompletionMarkerName = ".gamelibrarymanager-install-complete";
+    internal const string OperationLabel = "com.gamelibrary.operation-id";
     // JSON avoids Windows PowerShell 5 native-argument stripping of the inner
     // quotes required by a Go-template `index` expression. Bash keeps the
     // dedicated template below because its quoting is stable there.
@@ -24,6 +25,7 @@ public static class DockerScripts
     public static string ShQuote(string text) => "'" + text.Replace("'", "'\"'\"'") + "'";
     public static string ContainerName(string id) => "glm-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(id))).ToLowerInvariant()[..16];
     public static string InstallFolder(string id) => id + "-" + ContainerName(id)[4..12];
+    internal static string InstallLockPath(string destination, string gameId) => Path.Combine(Path.GetFullPath(destination), ".gamelibrarymanager-locks", ContainerName(gameId) + ".lock");
     internal static string OwnershipMetadata(string gameId) => "native|" + gameId;
     internal static bool OwnershipMatches(string metadata, string gameId) => string.Equals(metadata.Trim(), OwnershipMetadata(gameId), StringComparison.Ordinal);
     internal static string OwnershipFromLabelsJson(string json)
@@ -39,6 +41,20 @@ public static class DockerScripts
         catch (JsonException)
         {
             return string.Empty;
+        }
+    }
+    internal static bool OperationMatches(string json, string operationId)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var labels = document.RootElement;
+            return labels.TryGetProperty(OperationLabel, out var operationValue)
+                && string.Equals(operationValue.GetString(), operationId, StringComparison.Ordinal);
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
     public static void Validate(Preferences settings, IEnumerable<Game> games)
@@ -70,10 +86,14 @@ public static class DockerScripts
             "$dockerCommand = Get-Command docker.exe -ErrorAction SilentlyContinue; $dockerExecutable = if ($dockerCommand) { $dockerCommand.Source } else { Join-Path $env:ProgramFiles 'Docker\\Docker\\resources\\bin\\docker.exe' }",
             "if (-not (Test-Path -LiteralPath $dockerExecutable -PathType Leaf)) { throw 'Docker Desktop is not installed. Install it, start Docker Desktop, then retry.' }",
             "$env:PATH = (Split-Path -Parent $dockerExecutable) + [IO.Path]::PathSeparator + $env:PATH # Also resolves Docker Desktop's credential helper in this process only.",
-            "& $dockerExecutable info --format '{{.OSType}}'", "if ($LASTEXITCODE -ne 0) { throw 'Start Docker Desktop, then retry. Your Docker backend settings have not been changed.' }"
+            "& $dockerExecutable info --format '{{.OSType}}'", "if ($LASTEXITCODE -ne 0) { throw 'Start Docker Desktop, then retry. Your Docker backend settings have not been changed.' }",
+            "$operationId = if ([string]::IsNullOrWhiteSpace($env:GLM_INSTALL_OPERATION_ID)) { [guid]::NewGuid().ToString('N') } else { $env:GLM_INSTALL_OPERATION_ID }; if ($operationId -notmatch '^[A-Za-z0-9-]{8,64}$') { throw 'The install operation identity is invalid.' }",
+            "$destination = " + PsQuote(Path.GetFullPath(settings.MountPath)) + "; [void][IO.Directory]::CreateDirectory($destination); [void][IO.Directory]::CreateDirectory((Join-Path $destination '.gamelibrarymanager-locks'))",
+            "$nativeInstallLockHeld = $env:GLM_NATIVE_INSTALL_LOCK_HELD -eq '1'"
         };
-        lines.Add("function Test-NativeContainer { param([string]$name, [string]$expectedMetadata); try { $inspection = & $dockerExecutable container inspect $name --format " + PsQuote(OwnershipFormat) + " 2>$null } catch { return $false }; $inspectExitCode = $LASTEXITCODE; if ($inspectExitCode -ne 0) { return $false }; try { $labels = (([string]($inspection | Out-String)).Trim() | ConvertFrom-Json) } catch { throw ('Refusing destructive cleanup for unowned container ' + $name + '.') }; $actualMetadata = [string]$labels.'com.gamelibrary.owner' + '|' + [string]$labels.'com.gamelibrary.game-id'; if ($actualMetadata -cne $expectedMetadata) { throw ('Refusing destructive cleanup for unowned container ' + $name + '.') }; return $true }");
-        if (!stop) lines.Add("$destination = " + PsQuote(Path.GetFullPath(settings.MountPath)) + "; [void][System.IO.Directory]::CreateDirectory($destination)");
+        lines.Add("function Test-NativeContainer { param([string]$name, [string]$expectedMetadata, [string]$expectedOperationId); try { $inspection = & $dockerExecutable container inspect $name --format " + PsQuote(OwnershipFormat) + " 2>$null } catch { return $false }; $inspectExitCode = $LASTEXITCODE; if ($inspectExitCode -ne 0) { return $false }; try { $labels = (([string]($inspection | Out-String)).Trim() | ConvertFrom-Json) } catch { throw ('Refusing destructive cleanup for unowned container ' + $name + '.') }; $actualMetadata = [string]$labels.'com.gamelibrary.owner' + '|' + [string]$labels.'com.gamelibrary.game-id'; $actualOperationId = [string]$labels.'" + OperationLabel + "'; if ($actualMetadata -cne $expectedMetadata -or ($expectedOperationId -and $actualOperationId -cne $expectedOperationId)) { throw ('Refusing destructive cleanup for unowned container ' + $name + '.') }; return $true }");
+        lines.Add("function Enter-NativeInstallLock { param([string]$path); if ($nativeInstallLockHeld) { return $null }; $deadline = [DateTime]::UtcNow.AddHours(24); while ($true) { try { return [IO.File]::Open($path, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None, 1, [IO.FileOptions]::WriteThrough) } catch [IO.IOException] { if ([DateTime]::UtcNow -ge $deadline) { throw ('Timed out waiting for the selected game install lock: ' + $path) }; Start-Sleep -Milliseconds 250 } } }");
+        lines.Add("function Exit-NativeInstallLock { param([IO.FileStream]$lock); if ($null -ne $lock) { $lock.Dispose() } }");
         int index = 0;
         foreach (var game in games)
         {
@@ -81,9 +101,13 @@ public static class DockerScripts
             string name = ContainerName(game.Id), image = settings.DockerUsername + "/" + settings.RepoName + ":" + game.Id;
             string ownership = OwnershipMetadata(game.Id);
             lines.Add("Write-Output ((Get-Date -Format o) + " + PsQuote(" GAME " + index + "/" + games.Length + " · " + (stop ? "Stopping " : "Downloading ") + game.Name) + ")");
+            string lockPath = ".gamelibrarymanager-locks\\" + name + ".lock";
+            lines.Add("$installMutex = Enter-NativeInstallLock (Join-Path $destination " + PsQuote(lockPath) + ")");
+            lines.Add("try {");
             if (stop)
             {
                 lines.Add("if (Test-NativeContainer " + PsQuote(name) + " " + PsQuote(ownership) + ") { & $dockerExecutable stop " + PsQuote(name) + "; if ($LASTEXITCODE -ne 0) { throw 'Could not stop selected container.' } }");
+                lines.Add("} finally { Exit-NativeInstallLock $installMutex }");
                 continue;
             }
             lines.Add("$pullSuccess = $false; for ($attempt = 1; $attempt -le 5 -and -not $pullSuccess; $attempt++) {");
@@ -95,19 +119,20 @@ public static class DockerScripts
             string folder = "/output/" + folderName;
             string marker = folder + "/" + CompletionMarkerName;
             string hostMarker = Path.Combine(folderName, CompletionMarkerName);
-            string markerValue = "GameLibraryManager|" + game.Id;
-            lines.Add("$completionMarker = Join-Path $destination " + PsQuote(hostMarker) + "; Remove-Item -LiteralPath $completionMarker -Force -ErrorAction SilentlyContinue");
+            string markerPrefix = "GameLibraryManager|" + game.Id + "|";
+            lines.Add("$markerValue = " + PsQuote(markerPrefix) + " + $operationId; $completionMarker = Join-Path $destination " + PsQuote(hostMarker) + "; Remove-Item -LiteralPath $completionMarker -Force -ErrorAction SilentlyContinue");
             // Docker Desktop bind mounts map the Linux files into Windows storage. BusyBox
             // `cp -a` attempts to preserve Unix modes/owners and reports an I/O error for
             // files that copied successfully. Copy recursively without attribute
             // preservation, then require a non-empty destination before reporting success.
-            string shell = "set -eu; mkdir -p " + ShQuote(folder) + "; rm -f " + ShQuote(marker) + "; cp -rL /home/. " + ShQuote(folder + "/") + "; rm -f " + ShQuote(marker) + "; find " + ShQuote(folder) + " -mindepth 1 -print -quit | grep -q .; printf '%s\\n' " + ShQuote(markerValue) + " > " + ShQuote(marker) + "; test -s " + ShQuote(marker) + "; du -sh " + ShQuote(folder);
-            string cleanup = "if (Test-NativeContainer " + PsQuote(name) + " " + PsQuote(ownership) + ") { & $dockerExecutable container rm --force " + PsQuote(name) + " *> $null; if ($LASTEXITCODE -ne 0) { throw 'Could not remove the native container.' } }";
+            string shell = "set -eu; mkdir -p " + ShQuote(folder) + "; rm -f " + ShQuote(marker) + "; cp -rL /home/. " + ShQuote(folder + "/") + "; rm -f " + ShQuote(marker) + "; find " + ShQuote(folder) + " -mindepth 1 -print -quit | grep -q .; marker_value=" + ShQuote(markerPrefix) + "$GLM_INSTALL_OPERATION_ID; printf '%s\\n' \"$marker_value\" > " + ShQuote(marker) + "; test -s " + ShQuote(marker) + "; du -sh " + ShQuote(folder);
+            string cleanup = "if (Test-NativeContainer " + PsQuote(name) + " " + PsQuote(ownership) + " $operationId) { & $dockerExecutable container rm --force " + PsQuote(name) + " *> $null; if ($LASTEXITCODE -ne 0) { throw 'Could not remove the native container.' } }";
             lines.Add("$runSuccess = $false; for ($attempt = 1; $attempt -le 3 -and -not $runSuccess; $attempt++) {");
-            lines.Add("  Remove-Item -LiteralPath $completionMarker -Force -ErrorAction SilentlyContinue; " + cleanup + "; & $dockerExecutable run --rm --name " + PsQuote(name) + " --label " + PsQuote("com.gamelibrary.owner=native") + " --label " + PsQuote("com.gamelibrary.game-id=" + game.Id) + " --mount (\"type=bind,source=$destination,target=/output\") " + PsQuote(image) + " sh -c " + PsQuote(shell) + "; $markerContent = if (Test-Path -LiteralPath $completionMarker -PathType Leaf) { Get-Content -LiteralPath $completionMarker -Raw -ErrorAction SilentlyContinue } else { '' }; if ($LASTEXITCODE -eq 0 -and ([string]$markerContent).Trim() -eq " + PsQuote(markerValue) + ") { $runSuccess = $true } else { Write-Warning ('Extraction failed for " + game.Id + " on attempt ' + $attempt + '/3; the completion marker was not written or was invalid.'); " + cleanup + "; if ($attempt -lt 3) { Start-Sleep -Seconds ([Math]::Min($attempt * 3, 15)) } }");
+            lines.Add("  Remove-Item -LiteralPath $completionMarker -Force -ErrorAction SilentlyContinue; " + cleanup + "; & $dockerExecutable run --rm --name " + PsQuote(name) + " --env ('GLM_INSTALL_OPERATION_ID=' + $operationId) --label " + PsQuote("com.gamelibrary.owner=native") + " --label " + PsQuote("com.gamelibrary.game-id=" + game.Id) + " --label (" + PsQuote(OperationLabel + "=") + " + $operationId) --mount (\"type=bind,source=$destination,target=/output\") " + PsQuote(image) + " sh -c " + PsQuote(shell) + "; $markerContent = if (Test-Path -LiteralPath $completionMarker -PathType Leaf) { Get-Content -LiteralPath $completionMarker -Raw -ErrorAction SilentlyContinue } else { '' }; if ($LASTEXITCODE -eq 0 -and ([string]$markerContent).Trim() -eq $markerValue) { $runSuccess = $true } else { Write-Warning ('Extraction failed for " + game.Id + " on attempt ' + $attempt + '/3; the completion marker was not written or was invalid.'); " + cleanup + "; if ($attempt -lt 3) { Start-Sleep -Seconds ([Math]::Min($attempt * 3, 15)) } }");
             lines.Add("}");
             lines.Add("if (-not $runSuccess) { throw " + PsQuote("Extraction failed for " + game.Id + " after three attempts. Partial files were preserved; review the log and retry.") + " }");
             lines.Add("Write-Output ((Get-Date -Format o) + " + PsQuote(" Completed " + game.Id) + ")");
+            lines.Add("} finally { Exit-NativeInstallLock $installMutex }");
         }
         lines.Add("Write-Output 'All selected operations completed.'");
         var script = string.Join("\r\n", lines) + "\r\n";
@@ -169,28 +194,36 @@ public static class DockerScripts
     private static string Shell(Game[] games, Preferences settings, bool stop, string shellTarget)
     {
         if (shellTarget is not ("native-linux" or "wsl2")) throw new ArgumentException("Choose Native Linux or WSL2 for Bash exports.");
-        var lines = new List<string> { "#!/usr/bin/env bash", "set -euo pipefail", "command -v docker >/dev/null || { echo 'Docker is required'; exit 1; }" };
+        var lines = new List<string> { "#!/usr/bin/env bash", "set -euo pipefail", "command -v docker >/dev/null || { echo 'Docker is required'; exit 1; }", "command -v flock >/dev/null || { echo 'flock is required for safe concurrent installs'; exit 1; }" };
         string destination = ShellDestination(settings.MountPath, shellTarget);
         lines.Insert(3, "# Target: " + shellTarget + " · operations match the PowerShell/BAT exports.");
-        if (!stop) { lines.Add("destination=" + ShQuote(destination)); lines.Add("mkdir -p -- \"$destination\""); }
-        lines.Add("native_container_owned() { local name=\"$1\" expected=\"$2\" metadata; if ! metadata=$(docker container inspect \"$name\" --format " + ShQuote(ShellOwnershipFormat) + " 2>/dev/null); then return 1; fi; if [ \"$metadata\" != \"$expected\" ]; then echo \"Refusing destructive cleanup for unowned container ${name}.\" >&2; return 2; fi; return 0; }");
+        lines.Add("destination=" + ShQuote(destination)); lines.Add("mkdir -p -- \"$destination/.gamelibrarymanager-locks\"");
+        lines.Add("operation_id=\"${GLM_INSTALL_OPERATION_ID:-$(date +%s%N)-$$}\"");
+        lines.Add("native_install_lock_held=\"${GLM_NATIVE_INSTALL_LOCK_HELD:-0}\"");
+        lines.Add("native_container_owned() { local name=\"$1\" expected=\"$2\" expected_operation=\"${3:-}\" metadata operation; if ! metadata=$(docker container inspect \"$name\" --format " + ShQuote(ShellOwnershipFormat) + " 2>/dev/null); then return 1; fi; if [ \"$metadata\" != \"$expected\" ]; then echo \"Refusing destructive cleanup for unowned container ${name}.\" >&2; return 2; fi; if [ -n \"$expected_operation\" ]; then if ! operation=$(docker container inspect \"$name\" --format " + ShQuote("{{ index .Config.Labels \"" + OperationLabel + "\" }}") + " 2>/dev/null); then return 2; fi; if [ \"$operation\" != \"$expected_operation\" ]; then echo \"Refusing cleanup for a container owned by another install operation: ${name}.\" >&2; return 2; fi; fi; return 0; }");
+        lines.Add("native_install_lock() { local path=\"$1\"; if [ \"$native_install_lock_held\" = 1 ]; then return 0; fi; local deadline=$((SECONDS+86400)); while :; do if exec 9>>\"$path\" 2>/dev/null && flock -n 9 2>/dev/null; then return 0; fi; exec 9>&- 2>/dev/null || true; if [ \"$SECONDS\" -ge \"$deadline\" ]; then echo \"Timed out waiting for the selected game install lock: $path\" >&2; return 1; fi; sleep 0.25; done; }");
+        lines.Add("native_install_unlock() { if [ \"$native_install_lock_held\" != 1 ]; then flock -u 9 2>/dev/null || true; exec 9>&- 2>/dev/null || true; fi; }");
         foreach (var game in games)
         {
             var name = ShQuote(ContainerName(game.Id));
             var ownership = ShQuote(OwnershipMetadata(game.Id));
-            if (stop) { lines.Add("if native_container_owned " + name + " " + ownership + "; then docker stop " + name + "; else ownership_status=$?; if [ $ownership_status -eq 2 ]; then exit 1; fi; fi"); continue; }
+            string lockPath = "$destination/.gamelibrarymanager-locks/" + ContainerName(game.Id) + ".lock";
+            lines.Add("native_install_lock \"" + lockPath + "\"");
+            if (stop) { lines.Add("if native_container_owned " + name + " " + ownership + "; then docker stop " + name + "; else ownership_status=$?; if [ $ownership_status -eq 2 ]; then exit 1; fi; fi"); lines.Add("native_install_unlock"); continue; }
             var image = ShQuote(settings.DockerUsername + "/" + settings.RepoName + ":" + game.Id);
             lines.Add("pull_success=0; for attempt in 1 2 3 4 5; do if docker info >/dev/null 2>&1 && docker pull " + image + "; then pull_success=1; break; fi; echo \"[RETRY $attempt/5] Pull failed; waiting before retry...\"; sleep $((attempt * 2)); done");
             lines.Add("if [ $pull_success -ne 1 ]; then echo " + ShQuote("Docker pull failed for " + game.Name + " after five attempts.") + " >&2; exit 1; fi");
             var folder = "/output/" + InstallFolder(game.Id);
             var marker = folder + "/" + CompletionMarkerName;
-            var markerValue = "GameLibraryManager|" + game.Id;
+            var markerPrefix = "GameLibraryManager|" + game.Id + "|";
             lines.Add("completion_marker=\"$destination/" + InstallFolder(game.Id) + "/" + CompletionMarkerName + "\"");
-            var copy = "set -eu; mkdir -p " + ShQuote(folder) + "; rm -f " + ShQuote(marker) + "; cp -rL /home/. " + ShQuote(folder + "/") + "; rm -f " + ShQuote(marker) + "; find " + ShQuote(folder) + " -mindepth 1 -print -quit | grep -q .; printf '%s\\n' " + ShQuote(markerValue) + " > " + ShQuote(marker) + "; test -s " + ShQuote(marker);
-            var markerCheck = "test -s \"$completion_marker\" && test \"$(cat \"$completion_marker\")\" = " + ShQuote(markerValue);
-            var cleanup = "if native_container_owned " + name + " " + ownership + "; then docker rm -f " + name + " >/dev/null 2>&1 || { echo 'Could not remove the native container.' >&2; exit 1; }; else ownership_status=$?; if [ $ownership_status -eq 2 ]; then exit 1; fi; fi";
-            lines.Add("run_success=0; for attempt in 1 2 3; do rm -f -- \"$completion_marker\"; " + cleanup + "; if docker run --rm --name " + name + " --label " + ShQuote("com.gamelibrary.owner=native") + " --label " + ShQuote("com.gamelibrary.game-id=" + game.Id) + " --mount \"type=bind,source=$destination,target=/output\" " + image + " sh -c " + ShQuote(copy) + " && " + markerCheck + "; then run_success=1; break; fi; " + cleanup + "; echo \"[RETRY $attempt/3] Extraction failed or completion marker missing; waiting before retry...\"; sleep $((attempt * 3)); done");
+            lines.Add("marker_value=" + ShQuote(markerPrefix) + "\"$operation_id\"");
+            var copy = "set -eu; mkdir -p " + ShQuote(folder) + "; rm -f " + ShQuote(marker) + "; cp -rL /home/. " + ShQuote(folder + "/") + "; rm -f " + ShQuote(marker) + "; find " + ShQuote(folder) + " -mindepth 1 -print -quit | grep -q .; marker_value=" + ShQuote(markerPrefix) + "$GLM_INSTALL_OPERATION_ID; printf '%s\\n' \"$marker_value\" > " + ShQuote(marker) + "; test -s " + ShQuote(marker);
+            var markerCheck = "test -s \"$completion_marker\" && test \"$(cat \"$completion_marker\")\" = \"$marker_value\"";
+            var cleanup = "if native_container_owned " + name + " " + ownership + " \"$operation_id\"; then docker rm -f " + name + " >/dev/null 2>&1 || { echo 'Could not remove the native container.' >&2; exit 1; }; else ownership_status=$?; if [ $ownership_status -eq 2 ]; then exit 1; fi; fi";
+            lines.Add("run_success=0; for attempt in 1 2 3; do rm -f -- \"$completion_marker\"; " + cleanup + "; if docker run --rm --name " + name + " --env \"GLM_INSTALL_OPERATION_ID=$operation_id\" --label " + ShQuote("com.gamelibrary.owner=native") + " --label " + ShQuote("com.gamelibrary.game-id=" + game.Id) + " --label \"" + OperationLabel + "=$operation_id\" --mount \"type=bind,source=$destination,target=/output\" " + image + " sh -c " + ShQuote(copy) + " && " + markerCheck + "; then run_success=1; break; fi; " + cleanup + "; echo \"[RETRY $attempt/3] Extraction failed or completion marker missing; waiting before retry...\"; sleep $((attempt * 3)); done");
             lines.Add("if [ $run_success -ne 1 ]; then echo " + ShQuote("Extraction failed for " + game.Name + " after three attempts.") + " >&2; exit 1; fi");
+            lines.Add("native_install_unlock");
         }
         return string.Join("\n", lines) + "\n";
     }

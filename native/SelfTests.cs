@@ -202,7 +202,8 @@ public static class SelfTests
         Check("Wand title matching rejects generic parent and substring collisions", () =>
         {
             var catalog = JsonNode.Parse("{\"titles\":{\"1\":{\"id\":\"1\",\"name\":\"Railbound\",\"gameIds\":[\"11\"]},\"2\":{\"id\":\"2\",\"name\":\"FINAL FANTASY XV WINDOWS EDITION\",\"gameIds\":[\"22\"]},\"3\":{\"id\":\"3\",\"name\":\"SpeedRunners\",\"gameIds\":[\"33\"]},\"4\":{\"id\":\"4\",\"name\":\"SpeedRunners 2: King of Speed\",\"gameIds\":[\"44\"]}},\"games\":{\"11\":{\"id\":\"11\",\"titleId\":\"1\",\"platformId\":\"steam\",\"versionPath\":\"Railbound.exe\"},\"22\":{\"id\":\"22\",\"titleId\":\"2\",\"platformId\":\"steam\",\"versionPath\":\"Windows.exe\"},\"33\":{\"id\":\"33\",\"titleId\":\"3\",\"platformId\":\"steam\",\"versionPath\":\"SpeedRunners.exe\"},\"44\":{\"id\":\"44\",\"titleId\":\"4\",\"platformId\":\"steam\",\"versionPath\":\"SpeedRunners2.exe\"}}}")!.AsObject();
-            Require(WandIntegration.TryResolve(catalog, new Game { Id = "railbound", Name = "Railbound" }, @"E:\\games\\railbound\\Windows\\Windows.exe", out var rail) && rail.GameId == "11", "Generic executable text displaced the exact Railbound title.");
+            Require(!WandIntegration.TryResolve(catalog, new Game { Id = "railbound", Name = "Railbound" }, @"E:\\games\\railbound\\Windows\\Windows.exe", out _), "A title match accepted an executable that did not match the catalog version path.");
+            Require(WandIntegration.TryResolve(catalog, new Game { Id = "railbound", Name = "Railbound" }, @"E:\\games\\railbound\\Railbound.exe", out var rail) && rail.GameId == "11", "The exact Railbound executable was not selected.");
             Require(WandIntegration.TryResolve(catalog, new Game { Id = "speedrunners", Name = "SpeedRunners" }, @"E:\\games\\speedrunners\\SpeedRunners.exe", out var speed) && speed.GameId == "33", "Exact SpeedRunners matching was displaced by a longer title.");
         });
         Check("Play with Wand fails closed instead of starting an unmodified fallback", () =>
@@ -293,9 +294,15 @@ public static class SelfTests
             var timestamp = new DateTime(2026, 9, 9, 10, 0, 0, 123, DateTimeKind.Local);
             string first = JobWindow.BuildJobLogPath(root, timestamp, Guid.Parse("11111111-1111-1111-1111-111111111111"));
             string second = JobWindow.BuildJobLogPath(root, timestamp, Guid.Parse("22222222-2222-2222-2222-222222222222"));
+            string powershell = DockerScripts.Generate(new[] { new Game { Id = "concurrent-lock", Name = "Concurrent lock" } }, state.Settings, "ps1");
+            string shell = DockerScripts.Generate(new[] { new Game { Id = "concurrent-lock", Name = "Concurrent lock" } }, state.Settings, "sh");
             Require(!string.Equals(first, second, StringComparison.OrdinalIgnoreCase)
                 && Path.GetExtension(Path.ChangeExtension(first, ".bat")) == ".bat"
-                && !Path.GetFileName(first).Equals(timestamp.ToString("yyyyMMdd-HHmmss-fff") + ".log", StringComparison.Ordinal),
+                && !Path.GetFileName(first).Equals(timestamp.ToString("yyyyMMdd-HHmmss-fff") + ".log", StringComparison.Ordinal)
+                && powershell.Contains("Enter-NativeInstallLock", StringComparison.Ordinal)
+                && powershell.Contains("Exit-NativeInstallLock", StringComparison.Ordinal)
+                && shell.Contains("native_install_lock", StringComparison.Ordinal)
+                && shell.Contains("native_install_unlock", StringComparison.Ordinal),
                 "Concurrent jobs still share the timestamp-only script/log path.");
         });
         Check("A 1259-game BAT export stays below Windows command-line limits", () =>

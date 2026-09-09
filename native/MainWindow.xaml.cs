@@ -71,8 +71,12 @@ public partial class MainWindow : Window
     private readonly List<JobWindow> jobs = new();
     private readonly Dictionary<string, PlaySession> activePlays = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SemaphoreSlim> installGates = new(StringComparer.Ordinal);
-    private readonly SemaphoreSlim wandLaunchGate = new(1, 1);
+    // Direct Play and Play with Wand share one launch gate. This prevents a
+    // direct launch from appearing between Wand's PID snapshot and its URI
+    // handoff, where it could otherwise be mistaken for a Wand-owned process.
+    private readonly SemaphoreSlim playLaunchGate = new(1, 1);
     internal bool IsAdmin => adminToken != null;
+    internal bool IsClosing => closing;
     private static readonly HashSet<string> protectedTabs = new(StringComparer.Ordinal) { "not_for_me", "finished", "mybackup", "oporationsystems", "music", "win11maintaince", "3th_party_tools", "gamedownloaders" };
 
     public MainWindow(LibraryStore store, bool offline = false)
@@ -99,8 +103,10 @@ public partial class MainWindow : Window
         {
             StatusText.Text = "Preparing the bundled catalog…";
             await Task.Run(Store.EnsureAssets);
+            lifetime.Token.ThrowIfCancellationRequested();
             Sync.ReloadCache();
             State = Store.LoadState();
+            lifetime.Token.ThrowIfCancellationRequested();
             Width = Math.Clamp(State.Settings.WindowWidth, MinWidth, SystemParameters.WorkArea.Width);
             Height = Math.Clamp(State.Settings.WindowHeight, MinHeight, SystemParameters.WorkArea.Height);
             tab = State.Settings.LastTab;
@@ -108,6 +114,7 @@ public partial class MainWindow : Window
             SortBox.SelectedItem = State.Settings.SortBy;
             if (SortBox.SelectedIndex < 0) SortBox.SelectedIndex = 4;
             RatingBox.ItemsSource = new[] { "Any rating", "1+ stars", "2+ stars", "3+ stars", "4+ stars", "5 stars" }; RatingBox.SelectedIndex = 0;
+            lifetime.Token.ThrowIfCancellationRequested();
             InitializeTray(); ApplyTheme(); ready = true; Reload();
             // A fast automation client or a user can type while the bundled
             // catalog is still loading. Reapply that text after readiness so
@@ -119,6 +126,7 @@ public partial class MainWindow : Window
             if (Program.TestReport != null) { if (!offline) await Refresh(true); await RunUiProof(Program.TestReport); return; }
             if (!offline) { poll.Start(); await Refresh(true); }
         }
+        catch (OperationCanceledException) when (closing || lifetime.IsCancellationRequested) { }
         catch (Exception ex) { Error(ex); }
     }
     private void InitializeTray()
@@ -135,11 +143,11 @@ public partial class MainWindow : Window
         tray.DoubleClick += (_, _) => PostUiAction("Tray restore", RestoreWindow);
     }
     internal void HideToTray() { Hide(); Store.Log("Window hidden to tray"); }
-    public void RestoreWindow() { Show(); WindowState = WindowState.Normal; Activate(); Store.Log("Window restored"); }
+    public void RestoreWindow() { if (closing) return; Show(); WindowState = WindowState.Normal; Activate(); Store.Log("Window restored"); }
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         if (closing) return;
-        if (jobs.Any(j => j.Running))
+        if (jobs.Any(j => j.Busy))
         {
             System.Windows.MessageBox.Show(this, "A download is still running. Stop it in its progress window before exiting.", "Download in progress", MessageBoxButton.OK, MessageBoxImage.Information);
             e.Cancel = true; return;
@@ -147,6 +155,8 @@ public partial class MainWindow : Window
         closing = true;
         try
         {
+            try { lifetime.Cancel(); }
+            catch (Exception ex) { try { Store.Log("Shutdown cancellation callbacks failed; continuing cleanup: " + ex); } catch { } }
             if (ready)
             {
                 State.Settings.WindowWidth = RestoreBounds.Width; State.Settings.WindowHeight = RestoreBounds.Height;
@@ -155,7 +165,7 @@ public partial class MainWindow : Window
             }
         }
         catch (Exception ex) { Store.Log("Shutdown state flush failed: " + ex); }
-        lifetime.Cancel(); poll.Stop(); searchDelay.Stop(); playtime.Stop();
+        poll.Stop(); searchDelay.Stop(); playtime.Stop();
         try { tray?.Dispose(); } catch (Exception ex) { Store.Log("Tray cleanup failed: " + ex.Message); } finally { tray = null; }
         foreach (var job in jobs.ToArray())
         {
@@ -294,14 +304,14 @@ public partial class MainWindow : Window
         SelectedSize.ToolTip = $"{selected.Length} selected; {selected.Count(g => g.SizeGb <= 0)} sizes unknown";
     }
     internal void Save() { try { Store.Save(State); } catch (Exception ex) { Error(ex); } }
-    private async Task<IDisposable> AcquireInstallScopeAsync(IEnumerable<string> gameIds, CancellationToken cancellation)
+    private async Task<IDisposable> AcquireInstallScopeAsync(IEnumerable<string> gameIds, string destination, CancellationToken cancellation)
     {
         var ids = gameIds
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(id => id, StringComparer.Ordinal)
             .ToArray();
-        var held = new List<SemaphoreSlim>(ids.Length);
+        var held = new List<HeldInstallGate>(ids.Length);
         try
         {
             foreach (var id in ids)
@@ -320,25 +330,61 @@ public partial class MainWindow : Window
                     }
                 }
                 await gate.WaitAsync(cancellation);
-                held.Add(gate);
+                FileStream? lockFile = null;
+                try
+                {
+                    string lockPath = DockerScripts.InstallLockPath(destination, id);
+                    Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
+                    while (lockFile == null)
+                    {
+                        cancellation.ThrowIfCancellationRequested();
+                        try { lockFile = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.WriteThrough); }
+                        catch (IOException) { await Task.Delay(250, cancellation); }
+                    }
+                    held.Add(new HeldInstallGate(gate, lockFile));
+                    lockFile = null;
+                }
+                finally
+                {
+                    if (lockFile != null)
+                    {
+                        try { lockFile.Dispose(); } catch { }
+                        gate.Release();
+                    }
+                }
             }
             return new InstallScope(held);
         }
         catch
         {
-            for (var index = held.Count - 1; index >= 0; index--) held[index].Release();
+            for (var index = held.Count - 1; index >= 0; index--) held[index].Dispose();
             throw;
         }
     }
     private sealed class InstallScope : IDisposable
     {
-        private List<SemaphoreSlim>? held;
-        internal InstallScope(List<SemaphoreSlim> held) => this.held = held;
+        private List<HeldInstallGate>? held;
+        internal InstallScope(List<HeldInstallGate> held) => this.held = held;
         public void Dispose()
         {
             var gates = Interlocked.Exchange(ref held, null);
             if (gates == null) return;
-            for (var index = gates.Count - 1; index >= 0; index--) gates[index].Release();
+            for (var index = gates.Count - 1; index >= 0; index--) gates[index].Dispose();
+        }
+    }
+    private sealed class HeldInstallGate : IDisposable
+    {
+        private SemaphoreSlim? semaphore;
+        private FileStream? lockFile;
+        internal HeldInstallGate(SemaphoreSlim semaphore, FileStream lockFile) { this.semaphore = semaphore; this.lockFile = lockFile; }
+        public void Dispose()
+        {
+            var currentLockFile = Interlocked.Exchange(ref lockFile, null);
+            if (currentLockFile != null)
+            {
+                try { currentLockFile.Dispose(); } catch (ObjectDisposedException) { } catch (IOException) { }
+            }
+            Interlocked.Exchange(ref semaphore, null)?.Release();
         }
     }
     private void ObserveUiAction(string operation, Action action)
@@ -407,7 +453,7 @@ public partial class MainWindow : Window
     private void PlayFromCard(object sender, RoutedEventArgs e)
     {
         if (((Button)sender).Tag is not Game game) return;
-        try { PlayGame(game); } catch (Exception ex) { Error(ex); }
+        ObserveUiOperation("Play", () => PlayGame(game));
     }
     private void PlayWithWandFromCard(object sender, RoutedEventArgs e)
     {
@@ -424,7 +470,7 @@ public partial class MainWindow : Window
         var before = Sync.Effective(State).ToJsonString();
         try { await Sync.Refresh(State, full, adminToken, lifetime.Token); if (!closing) { if (full || before != Sync.Effective(State).ToJsonString()) Reload(); StatusText.Text = Sync.Status; } }
         catch (Exception ex) { if (!closing) Error(ex); }
-        finally { refreshing = false; ScheduleMetadata(); }
+        finally { refreshing = false; if (!closing) ScheduleMetadata(); }
     }
     private void ToggleTheme(object sender, RoutedEventArgs e) { State.Settings.Theme = State.Settings.Theme == "dark" ? "light" : "dark"; Save(); ApplyTheme(); }
     private void ApplyTheme()
@@ -454,6 +500,7 @@ public partial class MainWindow : Window
         public required string ExecutablePath { get; init; }
         public required double StartingSeconds { get; init; }
         public required Stopwatch Clock { get; init; }
+        public bool UsesWand { get; init; }
         public DateTime GraceUntilUtc { get; set; }
         public DateTime LastSavedUtc { get; set; }
         public HashSet<int> ObservedProcessIds { get; } = new();
@@ -461,32 +508,68 @@ public partial class MainWindow : Window
     private void StartPlaySession(Game game, Func<Process> start)
     {
         if (TryActivateExistingPlay(game)) return;
-        TrackPlayProcess(game, start());
+        Process? launched = null;
+        try
+        {
+            launched = start();
+            TrackPlayProcess(game, launched, ownsProcess: true);
+            launched = null;
+        }
+        finally
+        {
+            if (launched != null) StopUntrackedProcess(launched, "direct launch tracking");
+        }
     }
     private async Task StartPlaySessionAsync(Game game, Func<Task<Process>> start)
     {
         if (TryActivateExistingPlay(game)) return;
-        TrackPlayProcess(game, await start());
+        Process? launched = null;
+        try
+        {
+            launched = await start();
+            TrackPlayProcess(game, launched, ownsProcess: true);
+            launched = null;
+        }
+        finally
+        {
+            if (launched != null) StopUntrackedProcess(launched, "direct async launch tracking");
+        }
     }
     private bool TryActivateExistingPlay(Game game)
     {
         if (!activePlays.TryGetValue(game.Id, out var existing)) return false;
         try { if (!existing.Process.HasExited) { existing.Process.Refresh(); ActivateProcess(existing.Process); StatusText.Text = game.Name + " is already running."; return true; } }
         catch { }
-        activePlays.Remove(game.Id);
+        CommitPlaySession(game.Id, existing); Save();
         return false;
     }
-    private void TrackPlayProcess(Game game, Process process)
+    private void TrackPlayProcess(Game game, Process process, bool usesWand = false, bool ownsProcess = false)
     {
-        process.EnableRaisingEvents = true;
-        string executable;
-        try { executable = process.MainModule?.FileName ?? State.LaunchPaths.GetValueOrDefault(game.Id, ""); }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { executable = State.LaunchPaths.GetValueOrDefault(game.Id, ""); }
-        var now = DateTime.UtcNow;
-        var session = new PlaySession { Process = process, ExecutablePath = executable, StartingSeconds = State.PlayTimeSeconds.GetValueOrDefault(game.Id), Clock = Stopwatch.StartNew(), GraceUntilUtc = now.AddSeconds(20), LastSavedUtc = now };
-        session.ObservedProcessIds.Add(process.Id); activePlays[game.Id] = session;
-        Store.Log("Launched game " + game.Id + "; tracking play time from PID " + process.Id);
-        StatusText.Text = "Playing " + game.Name + " · tracking time";
+        try
+        {
+            process.EnableRaisingEvents = true;
+            string executable;
+            try { executable = process.MainModule?.FileName ?? State.LaunchPaths.GetValueOrDefault(game.Id, ""); }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { executable = State.LaunchPaths.GetValueOrDefault(game.Id, ""); }
+            int processId = process.Id;
+            var now = DateTime.UtcNow;
+            var session = new PlaySession { Process = process, ExecutablePath = executable, StartingSeconds = State.PlayTimeSeconds.GetValueOrDefault(game.Id), Clock = Stopwatch.StartNew(), UsesWand = usesWand, GraceUntilUtc = now.AddSeconds(20), LastSavedUtc = now };
+            session.ObservedProcessIds.Add(processId); activePlays[game.Id] = session;
+            Store.Log("Launched game " + game.Id + "; tracking play time from PID " + processId);
+            StatusText.Text = "Playing " + game.Name + " · tracking time";
+        }
+        catch
+        {
+            if (ownsProcess) StopUntrackedProcess(process, "play tracking");
+            else { try { process.Dispose(); } catch { } }
+            throw;
+        }
+    }
+    private void StopUntrackedProcess(Process process, string context)
+    {
+        try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+        catch (Exception ex) { try { Store.Log("Could not stop the untracked process after " + context + ": " + ex.Message); } catch { } }
+        finally { try { process.Dispose(); } catch { } }
     }
     private static void ActivateProcess(Process process)
     {
@@ -523,6 +606,7 @@ public partial class MainWindow : Window
         foreach (var entry in activePlays.ToArray())
         {
             var id = entry.Key; var session = entry.Value; Process? replacement = null;
+            bool stateKnown = false;
             try
             {
                 session.Process.Refresh();
@@ -531,13 +615,20 @@ public partial class MainWindow : Window
                 if (replacement != null) { session.Process.Dispose(); session.Process = replacement; session.ObservedProcessIds.Add(replacement.Id); }
                 if (!session.Process.HasExited)
                 {
+                    stateKnown = true;
                     State.PlayTimeSeconds[id] = session.StartingSeconds + session.Clock.Elapsed.TotalSeconds;
                     if ((DateTime.UtcNow - session.LastSavedUtc).TotalSeconds >= 10) { session.LastSavedUtc = DateTime.UtcNow; save = true; }
                     UpdatePlayedLabel(id, State.PlayTimeSeconds[id]);
                     continue;
                 }
+                stateKnown = true;
             }
-            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException)
+            {
+                Store.Log("Could not determine whether game " + id + " is still running; keeping its play session for the next poll: " + ex.Message);
+                continue;
+            }
+            if (!stateKnown) continue;
             CommitPlaySession(id, session); save = true;
         }
         if (save) Save();
@@ -657,9 +748,9 @@ public partial class MainWindow : Window
                 string extension = wsl2 ? "sh" : "bat";
                 string script = DockerScripts.Generate(games, State.Settings, extension, shellTarget: wsl2 ? "wsl2" : "native-linux");
                 var byId = games.ToDictionary(g => g.Id, StringComparer.Ordinal);
-                var job = new JobWindow(Store, script, games.Select(g => DockerScripts.ContainerName(g.Id)).ToArray(), openInDefaultTerminal: !wsl2, scriptExtension: extension, completionDestination: destination, completionGameIds: gameIds, acquireInstallation: cancellation => AcquireInstallScopeAsync(gameIds, cancellation));
-                job.GameCompleted += id => byId.TryGetValue(id, out var game) ? ScanCompletedGame(game, destination) : Task.CompletedTask;
-                job.Completed += success => ObserveUiOperation("Completed download scan", () => ScanCompletedDownloads(games, destination, success));
+                var job = new JobWindow(Store, script, games.Select(g => DockerScripts.ContainerName(g.Id)).ToArray(), openInDefaultTerminal: !wsl2, scriptExtension: extension, completionDestination: destination, completionGameIds: gameIds, acquireInstallation: cancellation => AcquireInstallScopeAsync(gameIds, destination, cancellation));
+                job.GameCompleted += id => byId.TryGetValue(id, out var game) ? ScanCompletedGame(game, destination, job.CompletionStartedAtUtc, job.OperationId) : Task.CompletedTask;
+                job.CompletedAsync += success => ScanCompletedDownloads(games, destination, success, job.CompletionStartedAtUtc);
                 jobs.Add(job); job.Closed += (_, _) => jobs.Remove(job); job.Show(); review.Close();
             });
             review.ShowDialog();

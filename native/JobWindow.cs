@@ -23,21 +23,30 @@ public sealed class JobWindow : Window
     private readonly IReadOnlyDictionary<string, string> containerGameIds;
     private readonly Func<CancellationToken, Task<IDisposable>>? acquireInstallation;
     private readonly HashSet<string> notifiedCompletions = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim completionDrainGate = new(1, 1);
+    private readonly object stopSync = new();
     private DateTime completionStartedAtUtc;
     private readonly TextBox output = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, FontFamily = new System.Windows.Media.FontFamily("Consolas"), FontSize = 12 };
     private readonly TextBlock status = new() { Text = "Starting…", Margin = new Thickness(0, 10, 0, 0) };
     private Process? process;
     private CancellationTokenSource? runCancellation;
+    private Task? stopCleanup;
     private readonly string log;
     public bool Running { get; private set; }
+    internal bool Busy => Running || completionDispatching;
     internal int? LastExitCode { get; private set; }
+    internal DateTime? CompletionStartedAtUtc => completionStartedAtUtc == default ? null : completionStartedAtUtc;
     internal string DisplayedOutput => output.Text;
     public event Action<bool>? Completed;
+    internal event Func<bool, Task>? CompletedAsync;
     public event Func<string, Task>? GameCompleted;
     private bool cancelled;
     private bool started;
     private bool completionRaised;
+    private bool completionDispatching;
     private bool ownsInstallation;
+    private bool stopRequested;
+    internal string OperationId { get; } = Guid.NewGuid().ToString("N");
     internal static ProcessStartInfo BuildDefaultTerminalStartInfo(string path)
     {
         if (!Path.GetExtension(path).Equals(".bat", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The default Windows terminal launcher requires a BAT script.", nameof(path));
@@ -59,9 +68,15 @@ public sealed class JobWindow : Window
         this.completionGameIds = completionGameIds?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToArray() ?? Array.Empty<string>();
         this.acquireInstallation = acquireInstallation;
         ownsInstallation = acquireInstallation == null;
+        if (acquireInstallation != null && containers.Length != this.completionGameIds.Length)
+            throw new ArgumentException("Each install container must have one exact game identity.", nameof(containers));
         var identityMap = new Dictionary<string, string>(StringComparer.Ordinal);
         for (int i = 0; i < Math.Min(containers.Length, this.completionGameIds.Length); i++)
+        {
+            if (!string.Equals(containers[i], DockerScripts.ContainerName(this.completionGameIds[i]), StringComparison.Ordinal))
+                throw new ArgumentException("An install container did not match its exact game identity.", nameof(containers));
             identityMap[containers[i]] = this.completionGameIds[i];
+        }
         this.containerGameIds = identityMap;
         Style = (Style)System.Windows.Application.Current.FindResource(typeof(Window));
         Title = openInDefaultTerminal ? "Game Library · Download terminal" : wsl2 ? "Game Library · WSL2 Ubuntu install" : "Game Library · Download progress";
@@ -77,7 +92,7 @@ public sealed class JobWindow : Window
         Directory.CreateDirectory(Path.Combine(store.Root, "jobs"));
         log = BuildJobLogPath(store.Root, DateTime.Now, Guid.NewGuid());
         Loaded += (_, _) => _ = RunObservedAsync();
-        Closing += (_, e) => { if (Running) { e.Cancel = true; status.Text = "Stop the operation before closing. Partial files will be preserved."; } };
+        Closing += (_, e) => { if (Busy) { e.Cancel = true; status.Text = "Stop the operation before closing. Partial files will be preserved."; } };
     }
     private async Task RunObservedAsync()
     {
@@ -92,7 +107,7 @@ public sealed class JobWindow : Window
         {
             Running = false;
             ownsInstallation = false;
-            RaiseCompleted();
+            await RaiseCompletedAsync();
         }
     }
     private void Append(string? line)
@@ -138,6 +153,7 @@ public sealed class JobWindow : Window
                 status.Text = "Waiting for any other install of the same game to finish…";
                 Append(status.Text);
                 installationScope = await acquireInstallation(operationCancellation.Token);
+                operationCancellation.Token.ThrowIfCancellationRequested();
                 ownsInstallation = true;
             }
             string path = Path.ChangeExtension(log, "." + scriptExtension);
@@ -163,13 +179,15 @@ public sealed class JobWindow : Window
                 start = new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
                 foreach (var arg in new[] { "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path }) start.ArgumentList.Add(arg);
             }
+            start.EnvironmentVariables["GLM_INSTALL_OPERATION_ID"] = OperationId;
+            start.EnvironmentVariables["GLM_NATIVE_INSTALL_LOCK_HELD"] = acquireInstallation != null && ownsInstallation ? "1" : "0";
             process = new Process { StartInfo = start, EnableRaisingEvents = true };
             if (!openInDefaultTerminal)
             {
                 process.OutputDataReceived += (_, e) => Append(e.Data); process.ErrorDataReceived += (_, e) => Append(e.Data);
             }
-            completionStartedAtUtc = DateTime.UtcNow;
             process.Start();
+            completionStartedAtUtc = DateTime.UtcNow;
             if (!openInDefaultTerminal) { process.BeginOutputReadLine(); process.BeginErrorReadLine(); }
             completionMonitor = MonitorCompletionsAsync(completionCancellation.Token);
             status.Text = openInDefaultTerminal ? "Running in your default terminal · " + path : wsl2 ? "Running in WSL2 Ubuntu · " + path : "Running · " + log;
@@ -192,24 +210,38 @@ public sealed class JobWindow : Window
             catch (Exception ex) { try { store.Log("Download completion monitor failed: " + ex); } catch { } }
             // WaitForExitAsync above also waits for redirected output to reach EOF.
             // Consumers can now update installed state without racing a still-running job.
+            try { process?.Dispose(); }
+            catch (Exception ex) { try { store.Log("Download process cleanup failed: " + ex.Message); } catch { } }
+            finally { process = null; runCancellation = null; }
+            try { if (stopCleanup != null) await stopCleanup; }
+            catch (Exception ex) { try { store.Log("Download stop cleanup failed: " + ex); } catch { } }
+            Running = false;
+            completionDispatching = true;
+            try { await RaiseCompletedAsync(); }
+            catch (Exception ex) { try { store.Log("Download completion dispatch failed: " + ex); } catch { } }
+            finally { completionDispatching = false; }
             try { installationScope?.Dispose(); }
             catch (Exception ex) { try { store.Log("Download installation lock release failed: " + ex.Message); } catch { } }
             installationScope = null;
             ownsInstallation = false;
-            Running = false;
-            try { process?.Dispose(); }
-            catch (Exception ex) { try { store.Log("Download process cleanup failed: " + ex.Message); } catch { } }
-            finally { process = null; runCancellation = null; }
-            RaiseCompleted();
         }
     }
 
-    private void RaiseCompleted()
+    private async Task RaiseCompletedAsync()
     {
         if (completionRaised) return;
         completionRaised = true;
-        try { Completed?.Invoke(LastExitCode == 0 && !cancelled); }
-        catch (Exception ex) { try { store.Log("Download completion handler: " + ex.Message); } catch { } }
+        bool success = LastExitCode == 0 && !cancelled;
+        foreach (var handler in Completed?.GetInvocationList() ?? Array.Empty<Delegate>())
+        {
+            try { ((Action<bool>)handler)(success); }
+            catch (Exception ex) { try { store.Log("Download completion handler: " + ex.Message); } catch { } }
+        }
+        foreach (var handler in CompletedAsync?.GetInvocationList() ?? Array.Empty<Delegate>())
+        {
+            try { await ((Func<bool, Task>)handler)(success); }
+            catch (Exception ex) { try { store.Log("Download async completion handler: " + ex); } catch { } }
+        }
     }
 
     private async Task MonitorCompletionsAsync(CancellationToken cancellation)
@@ -226,33 +258,84 @@ public sealed class JobWindow : Window
     private async Task DrainCompletionsAsync()
     {
         if (completionDestination == null || completionGameIds.Length == 0) return;
-        foreach (string id in completionGameIds)
+        await completionDrainGate.WaitAsync();
+        try
         {
-            if (notifiedCompletions.Contains(id) || !InstalledScanner.HasFreshCompletionMarker(completionDestination, id, completionStartedAtUtc)) continue;
-            notifiedCompletions.Add(id);
-            try
+            foreach (string id in completionGameIds)
             {
-                if (GameCompleted != null) await GameCompleted(id);
-            }
-            catch (Exception ex)
-            {
-                Append("Immediate installed-state update for " + id + " failed; the final scan will retry: " + ex.Message);
+                string? expectedOperationId = acquireInstallation == null ? null : OperationId;
+                if (notifiedCompletions.Contains(id) || !InstalledScanner.HasFreshCompletionMarker(completionDestination, id, completionStartedAtUtc, operationId: expectedOperationId)) continue;
+                notifiedCompletions.Add(id);
+                foreach (var handler in GameCompleted?.GetInvocationList() ?? Array.Empty<Delegate>())
+                {
+                    try { await ((Func<string, Task>)handler)(id); }
+                    catch (Exception ex)
+                    {
+                        Append("Immediate installed-state update for " + id + " failed; the final scan will retry: " + ex.Message);
+                    }
+                }
             }
         }
+        finally { completionDrainGate.Release(); }
     }
     private async Task Stop()
     {
-        if (!Running) return;
-        cancelled = true;
-        try { runCancellation?.Cancel(); }
-        catch (ObjectDisposedException) { }
-        try { if (process is { HasExited: false }) process.Kill(true); }
-        catch (Exception ex) { Append("The download process could not be stopped: " + ex.Message); }
-        if (acquireInstallation != null && !ownsInstallation)
+        Task cleanup;
+        bool firstRequest = false;
+        bool shouldCancel = false;
+        bool shouldKill = false;
+        bool shouldCleanup = false;
+        bool wasQueued = false;
+        lock (stopSync)
         {
-            Append("This install was still queued behind another same-game install; the running install was left untouched.");
-            return;
+            if (!Running || completionDispatching) return;
+            if (stopRequested)
+            {
+                cleanup = stopCleanup ?? Task.CompletedTask;
+            }
+            else
+            {
+                stopRequested = true;
+                firstRequest = true;
+                bool processRunning = false;
+                try { processRunning = process is { HasExited: false }; }
+                catch (InvalidOperationException) { }
+                wasQueued = acquireInstallation != null && !ownsInstallation;
+                shouldCancel = processRunning || wasQueued;
+                shouldKill = processRunning;
+                shouldCleanup = ownsInstallation && !wasQueued;
+                cancelled = shouldCancel;
+                stopCleanup = shouldCleanup ? StartStopCleanup() : Task.CompletedTask;
+                cleanup = stopCleanup;
+            }
         }
+        if (!firstRequest) { await cleanup; return; }
+        if (shouldCancel)
+        {
+            try { runCancellation?.Cancel(); }
+            catch (ObjectDisposedException) { }
+        }
+        if (shouldKill)
+        {
+            try { if (process is { HasExited: false }) process.Kill(true); }
+            catch (Exception ex) { Append("The download process could not be stopped: " + ex.Message); }
+        }
+        if (wasQueued) Append("This install was still queued behind another same-game install; the running install was left untouched.");
+        await cleanup;
+    }
+    private Task StartStopCleanup()
+    {
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = FinishStopCleanupAsync(completion);
+        return completion.Task;
+    }
+    private async Task FinishStopCleanupAsync(TaskCompletionSource<bool> completion)
+    {
+        try { await StopOwnedContainersAsync(); completion.TrySetResult(true); }
+        catch (Exception ex) { completion.TrySetException(ex); }
+    }
+    private async Task StopOwnedContainersAsync()
+    {
         foreach (string container in containers)
         {
             if (containerGameIds.TryGetValue(container, out string? gameId)) await StopOwnedContainerAsync(container, gameId);
@@ -269,9 +352,10 @@ public sealed class JobWindow : Window
             var inspectOutput = inspect.StandardOutput.ReadToEndAsync(); var inspectError = inspect.StandardError.ReadToEndAsync();
             await inspect.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20));
             if (inspect.ExitCode != 0) { Append(await inspectError); return; } // --rm jobs commonly removed the container already.
-            if (!DockerScripts.OwnershipMatches(DockerScripts.OwnershipFromLabelsJson(await inspectOutput), gameId))
+            string inspectJson = await inspectOutput;
+            if (!DockerScripts.OwnershipMatches(DockerScripts.OwnershipFromLabelsJson(inspectJson), gameId) || !DockerScripts.OperationMatches(inspectJson, OperationId))
             {
-                Append("Refusing to stop unowned container " + container + ".");
+                Append("Refusing to stop a container not owned by this install operation: " + container + ".");
                 return;
             }
             var stopStart = new ProcessStartInfo(DockerScripts.Executable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
