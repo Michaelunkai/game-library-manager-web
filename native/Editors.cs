@@ -87,7 +87,14 @@ public sealed class EditorWindow : Window
             }
             catch (OperationCanceledException) when (closed || (Owner as MainWindow)?.IsClosing == true) { }
             catch (OperationCanceledException) { Notice.Text = "The operation was cancelled; your current library was preserved."; }
-            catch (Exception ex) when (!closed && (Owner as MainWindow)?.IsClosing != true) { Notice.Text = ex.Message; }
+            catch (Exception ex)
+            {
+                try { (Owner as MainWindow)?.Store.Log("Dialog action failed: " + ex); } catch { }
+                if (!closed && (Owner as MainWindow)?.IsClosing != true && !Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
+                {
+                    try { Notice.Text = ex.Message; } catch { }
+                }
+            }
             finally
             {
                 try { if (!closed && !Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished) Fields.IsEnabled = true; }
