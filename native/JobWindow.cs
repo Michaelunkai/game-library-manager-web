@@ -58,6 +58,17 @@ public sealed class JobWindow : Window
         Directory.CreateDirectory(jobs);
         return Path.Combine(jobs, timestamp.ToString("yyyyMMdd-HHmmss-fff", System.Globalization.CultureInfo.InvariantCulture) + "-" + operationId.ToString("N") + ".log");
     }
+    internal static string BindJobEnvironment(string script, string extension, string operationId, bool lockHeld)
+    {
+        if (!Guid.TryParseExact(operationId, "N", out _)) throw new ArgumentException("Invalid install operation identity.", nameof(operationId));
+        string held = lockHeld ? "1" : "0";
+        return extension switch
+        {
+            "bat" => "@set \"GLM_INSTALL_OPERATION_ID=" + operationId + "\"\r\n@set \"GLM_NATIVE_INSTALL_LOCK_HELD=" + held + "\"\r\n" + script,
+            "sh" => "#!/usr/bin/env bash\nexport GLM_INSTALL_OPERATION_ID='" + operationId + "'\nexport GLM_NATIVE_INSTALL_LOCK_HELD='" + held + "'\n" + script,
+            _ => "$env:GLM_INSTALL_OPERATION_ID = '" + operationId + "'\r\n$env:GLM_NATIVE_INSTALL_LOCK_HELD = '" + held + "'\r\n" + script
+        };
+    }
     public JobWindow(LibraryStore store, string script, string[] containers, bool openInDefaultTerminal = false, string scriptExtension = "ps1", string? completionDestination = null, IEnumerable<string>? completionGameIds = null, Func<CancellationToken, Task<IDisposable>>? acquireInstallation = null)
     {
         this.store = store; this.script = script; this.containers = containers;
@@ -161,7 +172,8 @@ public sealed class JobWindow : Window
                 ownsInstallation = true;
             }
             string path = Path.ChangeExtension(log, "." + scriptExtension);
-            File.WriteAllText(path, script, scriptExtension == "bat" ? new System.Text.UTF8Encoding(false) : new System.Text.UTF8Encoding(true));
+            string boundScript = BindJobEnvironment(script, scriptExtension, OperationId, acquireInstallation != null && ownsInstallation);
+            File.WriteAllText(path, boundScript, new System.Text.UTF8Encoding(scriptExtension == "ps1"));
             ProcessStartInfo start;
             if (openInDefaultTerminal)
             {
@@ -183,8 +195,6 @@ public sealed class JobWindow : Window
                 start = new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
                 foreach (var arg in new[] { "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path }) start.ArgumentList.Add(arg);
             }
-            start.EnvironmentVariables["GLM_INSTALL_OPERATION_ID"] = OperationId;
-            start.EnvironmentVariables["GLM_NATIVE_INSTALL_LOCK_HELD"] = acquireInstallation != null && ownsInstallation ? "1" : "0";
             process = new Process { StartInfo = start, EnableRaisingEvents = true };
             if (!openInDefaultTerminal)
             {
