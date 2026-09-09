@@ -2,7 +2,8 @@ param(
     [string]$ExePath = (Join-Path $PSScriptRoot 'dist\GameLibrary.exe'),
     [string]$GameSearch = 'WizardwithaGun',
     [string]$GameTitle = 'Wizardwitha Gun',
-    [string]$InstalledGame = 'E:\games\WizardwithaGun\wizardwithagun.exe'
+    [string]$InstalledGame = 'E:\games\WizardwithaGun\wizardwithagun.exe',
+    [string]$DataRoot = ''
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient
@@ -38,7 +39,12 @@ function Wait-AppWindow {
         if ($app.HasExited) { throw 'Native app exited during Wand proof.' }
         if ($app.MainWindowHandle -ne [IntPtr]::Zero) {
             $candidate = [Windows.Automation.AutomationElement]::FromHandle($app.MainWindowHandle)
-            if ((Find-ById $candidate 'SearchBox') -and (Find-ById $candidate 'GameList')) { return $candidate }
+            $status = Find-ById $candidate 'StatusText'
+            # The WPF shell is exposed before InitializeAsync has loaded the
+            # catalog. Do not start the search race until the same window says
+            # the offline/online catalog is ready.
+            if ((Find-ById $candidate 'SearchBox') -and (Find-ById $candidate 'GameList') -and
+                $status -and $status.Current.Name -match '(?i)catalog ready') { return $candidate }
         }
         Start-Sleep -Milliseconds 150
     } while ($clock.Elapsed.TotalSeconds -lt 120)
@@ -102,7 +108,9 @@ try {
     if (-not (Test-Path -LiteralPath $installedGame -PathType Leaf)) { throw 'The installed Wand proof game executable is missing.' }
     $gameProcessName = [IO.Path]::GetFileNameWithoutExtension($installedGame)
     foreach ($name in @($gameProcessName,'Wand','WeMod')) { Get-Process -Name $name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue }
-    $app = Start-Process -FilePath (Resolve-Path $ExePath).Path -ArgumentList @('--offline') -PassThru
+    $appArguments = @('--offline')
+    if (-not [string]::IsNullOrWhiteSpace($DataRoot)) { $appArguments += @('--data-dir', [IO.Path]::GetFullPath($DataRoot)) }
+    $app = Start-Process -FilePath (Resolve-Path $ExePath).Path -ArgumentList $appArguments -PassThru
     $window = Wait-AppWindow
     Add-Check 'Rebuilt native WPF app exposes a ready game list' ($window.Current.ProcessId -eq $app.Id)
     $search = Find-ById $window 'SearchBox'

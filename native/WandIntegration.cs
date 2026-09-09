@@ -257,14 +257,99 @@ internal static class WandIntegration
             if (registrationError != null)
                 return new WandLaunchResult(null, false, "Wand exact-install registration failed: " + registrationError + " No unmodified game was started.");
 
+            Process? ownedBootstrap = null;
+            bool ownedBootstrapGame = false;
+            bool bootstrapStartedByUs = false;
+            var existing = FindExactProcess(executable);
+            if (existing == null)
+            {
+                string? bootstrap = ResolveBootstrapExecutable(executable, target.VersionPath);
+                if (bootstrap != null)
+                {
+                    var bootstrapObserved = ExistingProcessIds(executable);
+                    var runningBootstrap = FindExactProcess(bootstrap);
+                    if (runningBootstrap != null)
+                    {
+                        runningBootstrap.Dispose();
+                        store.Log("Wand found the existing root bootstrap " + bootstrap + "; waiting for its exact nested executable before starting Wand.");
+                    }
+                    else
+                    {
+                        try
+                        {
+                            ownedBootstrap = Process.Start(new ProcessStartInfo(bootstrap)
+                            {
+                                WorkingDirectory = Path.GetDirectoryName(bootstrap),
+                                UseShellExecute = true
+                            });
+                            if (ownedBootstrap != null)
+                            {
+                                bootstrapStartedByUs = true;
+                                store.Log("Started the safe root bootstrap " + bootstrap + " before starting Wand so the game inherits its correct launch context.");
+                            }
+                        }
+                        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+                        {
+                            store.Log("The safe root bootstrap could not be started; continuing with the exact Wand URI: " + ex.Message);
+                        }
+                    }
+
+                    var bootstrappedGame = await WaitForNewGameAsync(executable, bootstrapObserved, TimeSpan.FromSeconds(20), cancellation);
+                    if (bootstrappedGame != null)
+                    {
+                        existing = bootstrappedGame;
+                        ownedBootstrapGame = ownedBootstrap != null;
+                        store.Log("The root bootstrap produced the exact nested executable PID " + existing.Id + "; Wand will be started before the protocol handoff.");
+                    }
+                    else
+                    {
+                        existing = FindExactProcess(executable);
+                        if (existing != null)
+                        {
+                            ownedBootstrapGame = ownedBootstrap != null;
+                            store.Log("The root bootstrap produced the exact nested executable after the initial wait; Wand will be started before the protocol handoff.");
+                        }
+                        else if (ownedBootstrap != null)
+                        {
+                            StopOwnedProcess(ownedBootstrap, "root bootstrap", store, true);
+                            ownedBootstrap = null;
+                        }
+                    }
+                }
+            }
+
+            if (bootstrapStartedByUs && existing != null)
+            {
+                // The bootstrap creates the real process before the window and
+                // engine context are stable. Give it the same settling window
+                // used by the proven manual route before Wand injects the exact
+                // nested PID.
+                store.Log("Waiting for the bootstrapped exact game to settle before starting Wand.");
+                await Task.Delay(TimeSpan.FromSeconds(8), cancellation);
+            }
+
             bool wandReady = await EnsureWandStartedAsync(wandPath, store, cancellation);
             if (!wandReady)
+            {
+                if (ownedBootstrapGame && existing != null) StopOwnedProcess(existing, "unconnected exact game", store, false);
+                if (ownedBootstrap != null) StopOwnedProcess(ownedBootstrap, "root bootstrap", store, true);
                 return new WandLaunchResult(null, false, "Wand could not be verified as running. No unmodified game was started.");
+            }
             string label = target.TitleName + " (" + target.Platform + ")";
             store.Log("Wand readiness confirmed for " + label + "; titleId=" + target.TitleId + "; gameId=" + target.GameId + ".");
 
+            if (bootstrapStartedByUs && existing != null)
+            {
+                // A wrapper-launched game can expose its exact process before its
+                // first usable window/graphics context. The proven manual route
+                // waits once more after Wand's listener is ready before sending
+                // the URI; keep that barrier bounded and only for this bootstrap
+                // path so ordinary already-running games remain responsive.
+                store.Log("Waiting for the bootstrapped exact game to expose its usable context before the Wand protocol handoff.");
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellation);
+            }
+
             const int maxAttempts = 2;
-            var existing = FindExactProcess(executable);
             if (existing != null)
             {
                 for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -273,7 +358,10 @@ internal static class WandIntegration
                     store.Log("Sending Wand protocol to the already running exact process " + executable + " (attempt " + attempt + "/" + maxAttempts + ").");
                     Process.Start(new ProcessStartInfo(BuildProtocolUri(target.TitleId, target.GameId)) { UseShellExecute = true });
                     if (await WaitForConnectionEvidenceAsync(executable, existing.Id, existingStarted, TimeSpan.FromSeconds(30), cancellation))
+                    {
+                        ownedBootstrap?.Dispose();
                         return new WandLaunchResult(existing, true, "Wand connected to the already running " + label + " game.");
+                    }
                     if (attempt < maxAttempts)
                     {
                         store.Log("Wand did not confirm the already running exact process; retrying the same PID.");
@@ -281,7 +369,9 @@ internal static class WandIntegration
                         if (!await EnsureWandStartedAsync(wandPath, store, cancellation)) break;
                     }
                 }
-                existing.Dispose();
+                if (ownedBootstrapGame) StopOwnedProcess(existing, "unconnected exact game", store, false);
+                else existing.Dispose();
+                if (ownedBootstrap != null) StopOwnedProcess(ownedBootstrap, "root bootstrap", store, true);
                 return new WandLaunchResult(null, false, "Wand could not verify a connection to the already running game. No Wand session was tracked; use direct Play or retry.");
             }
             for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -319,6 +409,55 @@ internal static class WandIntegration
         {
             store.Log("Wand protocol launch failed; no unmodified fallback was launched: " + ex.Message);
             return new WandLaunchResult(null, false, "Wand protocol could not be sent. No unmodified game was started; open Wand and retry.");
+        }
+    }
+
+    internal static string? ResolveBootstrapExecutable(string executable, string versionPath)
+    {
+        if (string.IsNullOrWhiteSpace(executable) || string.IsNullOrWhiteSpace(versionPath)) return null;
+        string fullPath;
+        try { fullPath = Path.GetFullPath(executable); }
+        catch (ArgumentException) { return null; }
+        string relative = versionPath.Trim().Replace('/', '\\').TrimStart('\\');
+        if (relative.Length == 0 || relative.Contains(':', StringComparison.Ordinal)) return null;
+        string suffix = "\\" + relative;
+        if (!fullPath.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) return null;
+        string root = fullPath[..^suffix.Length].TrimEnd('\\');
+        if (root.Length == 0) return null;
+        string? name = Path.GetFileName(fullPath);
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        string candidate = Path.Combine(root, name);
+        if (string.Equals(candidate, fullPath, StringComparison.OrdinalIgnoreCase) || !File.Exists(candidate)) return null;
+        try
+        {
+            // Only a small same-name executable beside a catalog-resolved nested
+            // binary is safe to treat as a launch-context bootstrap. This keeps
+            // the resolver's exact nested executable preference intact and avoids
+            // guessing among arbitrary installers or launchers.
+            if (new FileInfo(candidate).Length > 16 * 1024 * 1024) return null;
+        }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+        return candidate;
+    }
+
+    private static void StopOwnedProcess(Process process, string description, LibraryStore store, bool entireTree)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                if (entireTree) process.Kill(entireProcessTree: true);
+                else process.Kill();
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+        {
+            store.Log("Could not stop the " + description + ": " + ex.Message);
+        }
+        finally
+        {
+            process.Dispose();
         }
     }
 

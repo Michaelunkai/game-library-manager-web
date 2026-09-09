@@ -186,6 +186,19 @@ public static class SelfTests
             var resolved = WandIntegration.ResolveInstalledExecutable(new Game { Id = "underthewitch", Name = "Underthewitch" }, folder, store);
             Require(string.Equals(resolved, shipping, StringComparison.OrdinalIgnoreCase), "The Unreal shipping executable was displaced by the root bootstrap.");
         });
+        Check("Wand launch detects only a safe same-name root bootstrap for a nested catalog binary", () =>
+        {
+            string folder = Path.Combine(root, "wand-bootstrap-context");
+            string nested = Path.Combine(folder, "G1R", "Binaries", "Win64");
+            Directory.CreateDirectory(nested);
+            string bootstrap = Path.Combine(folder, "G1R-Win64-Shipping.exe");
+            string shipping = Path.Combine(nested, "G1R-Win64-Shipping.exe");
+            File.WriteAllText(bootstrap, "small root stub");
+            File.WriteAllText(shipping, "nested shipping binary");
+            Require(string.Equals(WandIntegration.ResolveBootstrapExecutable(shipping, @"G1R\Binaries\Win64\G1R-Win64-Shipping.exe"), bootstrap, StringComparison.OrdinalIgnoreCase), "The safe same-name root bootstrap was not detected.");
+            Require(WandIntegration.ResolveBootstrapExecutable(shipping, "Other\\G1R-Win64-Shipping.exe") == null, "A mismatched catalog path produced a bootstrap candidate.");
+            Require(WandIntegration.ResolveBootstrapExecutable(shipping, "G1R-Win64-Shipping.exe") == null, "A root-level catalog binary produced a duplicate bootstrap candidate.");
+        });
         Check("Wand title matching rejects generic parent and substring collisions", () =>
         {
             var catalog = JsonNode.Parse("{\"titles\":{\"1\":{\"id\":\"1\",\"name\":\"Railbound\",\"gameIds\":[\"11\"]},\"2\":{\"id\":\"2\",\"name\":\"FINAL FANTASY XV WINDOWS EDITION\",\"gameIds\":[\"22\"]},\"3\":{\"id\":\"3\",\"name\":\"SpeedRunners\",\"gameIds\":[\"33\"]},\"4\":{\"id\":\"4\",\"name\":\"SpeedRunners 2: King of Speed\",\"gameIds\":[\"44\"]}},\"games\":{\"11\":{\"id\":\"11\",\"titleId\":\"1\",\"platformId\":\"steam\",\"versionPath\":\"Railbound.exe\"},\"22\":{\"id\":\"22\",\"titleId\":\"2\",\"platformId\":\"steam\",\"versionPath\":\"Windows.exe\"},\"33\":{\"id\":\"33\",\"titleId\":\"3\",\"platformId\":\"steam\",\"versionPath\":\"SpeedRunners.exe\"},\"44\":{\"id\":\"44\",\"titleId\":\"4\",\"platformId\":\"steam\",\"versionPath\":\"SpeedRunners2.exe\"}}}")!.AsObject();
