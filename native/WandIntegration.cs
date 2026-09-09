@@ -260,39 +260,60 @@ internal static class WandIntegration
             bool wandReady = await EnsureWandStartedAsync(wandPath, store, cancellation);
             if (!wandReady)
                 return new WandLaunchResult(null, false, "Wand could not be verified as running. No unmodified game was started.");
-            var existing = FindExactProcess(executable);
-            var observed = ExistingProcessIds(executable);
             string label = target.TitleName + " (" + target.Platform + ")";
-            store.Log("Wand readiness confirmed for " + label + "; titleId=" + target.TitleId + "; gameId=" + target.GameId + "; observed=" + string.Join(",", observed));
+            store.Log("Wand readiness confirmed for " + label + "; titleId=" + target.TitleId + "; gameId=" + target.GameId + ".");
+
+            const int maxAttempts = 2;
+            var existing = FindExactProcess(executable);
             if (existing != null)
             {
-                var existingStarted = existing.StartTime.ToUniversalTime();
-                store.Log("Sending Wand protocol to the already running exact process " + executable + ".");
-                Process.Start(new ProcessStartInfo(BuildProtocolUri(target.TitleId, target.GameId)) { UseShellExecute = true });
-                if (await WaitForConnectionEvidenceAsync(executable, existing.Id, existingStarted, TimeSpan.FromSeconds(30), cancellation))
-                    return new WandLaunchResult(existing, true, "Wand connected to the already running " + label + " game.");
+                for (var attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    var existingStarted = existing.StartTime.ToUniversalTime();
+                    store.Log("Sending Wand protocol to the already running exact process " + executable + " (attempt " + attempt + "/" + maxAttempts + ").");
+                    Process.Start(new ProcessStartInfo(BuildProtocolUri(target.TitleId, target.GameId)) { UseShellExecute = true });
+                    if (await WaitForConnectionEvidenceAsync(executable, existing.Id, existingStarted, TimeSpan.FromSeconds(30), cancellation))
+                        return new WandLaunchResult(existing, true, "Wand connected to the already running " + label + " game.");
+                    if (attempt < maxAttempts)
+                    {
+                        store.Log("Wand did not confirm the already running exact process; retrying the same PID.");
+                        await Task.Delay(TimeSpan.FromSeconds(1), cancellation);
+                        if (!await EnsureWandStartedAsync(wandPath, store, cancellation)) break;
+                    }
+                }
                 existing.Dispose();
                 return new WandLaunchResult(null, false, "Wand could not verify a connection to the already running game. No Wand session was tracked; use direct Play or retry.");
             }
-            var launchStarted = DateTime.UtcNow;
-            store.Log("Sending Wand protocol for exact executable " + executable + ".");
-            Process.Start(new ProcessStartInfo(BuildProtocolUri(target.TitleId, target.GameId)) { UseShellExecute = true });
-            // The URI is the only launch route for Play with Wand. Wait for the exact
-            // executable; never start a second unmodified copy when the handoff fails.
-            var process = await WaitForNewGameAsync(executable, observed, TimeSpan.FromSeconds(20), cancellation);
-            store.Log(process == null
-                ? "Wand protocol did not yield a new exact executable within the launch window."
-                : "Wand protocol yielded exact executable PID " + process.Id + ".");
-            if (process != null && await WaitForConnectionEvidenceAsync(executable, process.Id, launchStarted, TimeSpan.FromSeconds(30), cancellation))
-                return new WandLaunchResult(process, true, "Wand connected to " + label + ". Tracking the exact game process.");
-            if (process != null)
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                try { if (!process.HasExited) process.Kill(); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
-                process.Dispose();
-                store.Log("Wand protocol started " + executable + " without fresh connection evidence; the exact process was stopped.");
+                if (attempt > 1)
+                {
+                    store.Log("Retrying the exact Wand protocol handoff for " + executable + " (attempt " + attempt + "/" + maxAttempts + ").");
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellation);
+                    if (!await EnsureWandStartedAsync(wandPath, store, cancellation)) break;
+                }
+                var observed = ExistingProcessIds(executable);
+                var launchStarted = DateTime.UtcNow;
+                store.Log("Sending Wand protocol for exact executable " + executable + " (attempt " + attempt + "/" + maxAttempts + ").");
+                Process.Start(new ProcessStartInfo(BuildProtocolUri(target.TitleId, target.GameId)) { UseShellExecute = true });
+                // The URI is the only launch route for Play with Wand. Wait for the exact
+                // executable; never start a second unmodified copy when the handoff fails.
+                var process = await WaitForNewGameAsync(executable, observed, TimeSpan.FromSeconds(20), cancellation);
+                store.Log(process == null
+                    ? "Wand protocol did not yield a new exact executable within the launch window."
+                    : "Wand protocol yielded exact executable PID " + process.Id + ".");
+                if (process != null && await WaitForConnectionEvidenceAsync(executable, process.Id, launchStarted, TimeSpan.FromSeconds(30), cancellation))
+                    return new WandLaunchResult(process, true, "Wand connected to " + label + ". Tracking the exact game process.");
+                if (process != null)
+                {
+                    try { if (!process.HasExited) process.Kill(); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+                    process.Dispose();
+                    store.Log("Wand protocol started " + executable + " without fresh connection evidence; the exact process was stopped.");
+                }
+                if (attempt < maxAttempts) continue;
             }
             store.Log("Wand protocol returned without starting " + executable + "; no unmodified fallback was launched.");
-            return new WandLaunchResult(null, false, "Wand did not verify a connection to the exact game. The unconnected process was stopped; open Wand and retry.");
+            return new WandLaunchResult(null, false, "Wand did not verify a connection to the exact game after bounded retries. The unconnected process was stopped; open Wand and retry.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or UriFormatException)
         {
