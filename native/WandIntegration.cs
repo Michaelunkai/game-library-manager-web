@@ -259,7 +259,7 @@ internal static class WandIntegration
 
             Process? ownedBootstrap = null;
             bool ownedBootstrapGame = false;
-            bool bootstrapStartedByUs = false;
+            bool bootstrapContextObserved = false;
             var existing = FindExactProcess(executable);
             if (existing == null)
             {
@@ -284,7 +284,6 @@ internal static class WandIntegration
                             });
                             if (ownedBootstrap != null)
                             {
-                                bootstrapStartedByUs = true;
                                 store.Log("Started the safe root bootstrap " + bootstrap + " before starting Wand so the game inherits its correct launch context.");
                             }
                         }
@@ -298,6 +297,7 @@ internal static class WandIntegration
                     if (bootstrappedGame != null)
                     {
                         existing = bootstrappedGame;
+                        bootstrapContextObserved = true;
                         ownedBootstrapGame = ownedBootstrap != null;
                         store.Log("The root bootstrap produced the exact nested executable PID " + existing.Id + "; Wand will be started before the protocol handoff.");
                     }
@@ -306,6 +306,7 @@ internal static class WandIntegration
                         existing = FindExactProcess(executable);
                         if (existing != null)
                         {
+                            bootstrapContextObserved = true;
                             ownedBootstrapGame = ownedBootstrap != null;
                             store.Log("The root bootstrap produced the exact nested executable after the initial wait; Wand will be started before the protocol handoff.");
                         }
@@ -318,7 +319,7 @@ internal static class WandIntegration
                 }
             }
 
-            if (bootstrapStartedByUs && existing != null)
+            if (bootstrapContextObserved && existing != null)
             {
                 // The bootstrap creates the real process before the window and
                 // engine context are stable. Give it the same settling window
@@ -338,7 +339,7 @@ internal static class WandIntegration
             string label = target.TitleName + " (" + target.Platform + ")";
             store.Log("Wand readiness confirmed for " + label + "; titleId=" + target.TitleId + "; gameId=" + target.GameId + ".");
 
-            if (bootstrapStartedByUs && existing != null)
+            if (bootstrapContextObserved && existing != null)
             {
                 // A wrapper-launched game can expose its exact process before its
                 // first usable window/graphics context. The proven manual route

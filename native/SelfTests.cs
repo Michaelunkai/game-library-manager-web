@@ -257,6 +257,13 @@ public static class SelfTests
             var wsl = DockerScripts.Generate(new[] { game }, state.Settings, "sh", shellTarget: "wsl2");
             Require(wsl.Contains("Target: wsl2") && wsl.Contains("/mnt/e/games") && wsl.Contains(DockerScripts.CompletionMarkerName), "WSL2 Bash path conversion or completion proof is missing.");
         });
+        Check("Duplicate selections collapse to one install identity", () =>
+        {
+            var first = new Game { Id = "duplicate-install", Name = "First selection" };
+            var second = new Game { Id = "duplicate-install", Name = "Second selection" };
+            var distinct = DockerScripts.DistinctGames(new[] { first, second });
+            Require(distinct.Length == 1 && ReferenceEquals(distinct[0], first), "Duplicate game selections were not collapsed before install generation.");
+        });
         Check("Shell completion markers expand the destination variable", () =>
         {
             var game = new Game { Id = "shell-marker-expansion", Name = "Shell marker expansion" };

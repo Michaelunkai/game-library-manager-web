@@ -51,9 +51,16 @@ public static class DockerScripts
             if (!ValidTag(game.Id)) throw new ArgumentException("Invalid Docker tag: " + game.Id);
         }
     }
+    internal static Game[] DistinctGames(IEnumerable<Game> selected)
+    {
+        if (selected == null) throw new ArgumentNullException(nameof(selected));
+        var games = selected.ToArray();
+        if (games.Any(game => game == null)) throw new ArgumentException("The selected game list contains an empty entry.", nameof(selected));
+        return games.GroupBy(game => game.Id, StringComparer.Ordinal).Select(group => group.First()).ToArray();
+    }
     public static string Generate(IEnumerable<Game> selected, Preferences settings, string format = "ps1", bool stop = false, string? shellTarget = null)
     {
-        var games = selected.ToArray();
+        var games = DistinctGames(selected);
         if (games.Length == 0) throw new ArgumentException("Select at least one game.");
         Validate(settings, games);
         if (format == "sh") return Shell(games, settings, stop, shellTarget ?? settings.ShellTarget);

@@ -21,11 +21,13 @@ public sealed class JobWindow : Window
     private readonly string? completionDestination;
     private readonly string[] completionGameIds;
     private readonly IReadOnlyDictionary<string, string> containerGameIds;
+    private readonly Func<CancellationToken, Task<IDisposable>>? acquireInstallation;
     private readonly HashSet<string> notifiedCompletions = new(StringComparer.Ordinal);
     private DateTime completionStartedAtUtc;
     private readonly TextBox output = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, FontFamily = new System.Windows.Media.FontFamily("Consolas"), FontSize = 12 };
     private readonly TextBlock status = new() { Text = "Starting…", Margin = new Thickness(0, 10, 0, 0) };
     private Process? process;
+    private CancellationTokenSource? runCancellation;
     private readonly string log;
     public bool Running { get; private set; }
     internal int? LastExitCode { get; private set; }
@@ -34,6 +36,7 @@ public sealed class JobWindow : Window
     public event Func<string, Task>? GameCompleted;
     private bool cancelled;
     private bool started;
+    private bool completionRaised;
     internal static ProcessStartInfo BuildDefaultTerminalStartInfo(string path)
     {
         if (!Path.GetExtension(path).Equals(".bat", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The default Windows terminal launcher requires a BAT script.", nameof(path));
@@ -45,7 +48,7 @@ public sealed class JobWindow : Window
         Directory.CreateDirectory(jobs);
         return Path.Combine(jobs, timestamp.ToString("yyyyMMdd-HHmmss-fff", System.Globalization.CultureInfo.InvariantCulture) + "-" + operationId.ToString("N") + ".log");
     }
-    public JobWindow(LibraryStore store, string script, string[] containers, bool openInDefaultTerminal = false, string scriptExtension = "ps1", string? completionDestination = null, IEnumerable<string>? completionGameIds = null)
+    public JobWindow(LibraryStore store, string script, string[] containers, bool openInDefaultTerminal = false, string scriptExtension = "ps1", string? completionDestination = null, IEnumerable<string>? completionGameIds = null, Func<CancellationToken, Task<IDisposable>>? acquireInstallation = null)
     {
         this.store = store; this.script = script; this.containers = containers;
         this.openInDefaultTerminal = openInDefaultTerminal;
@@ -53,6 +56,7 @@ public sealed class JobWindow : Window
         this.scriptExtension = scriptExtension.TrimStart('.').ToLowerInvariant() switch { "bat" => "bat", "sh" => "sh", _ => "ps1" };
         this.completionDestination = string.IsNullOrWhiteSpace(completionDestination) ? null : Path.GetFullPath(completionDestination);
         this.completionGameIds = completionGameIds?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToArray() ?? Array.Empty<string>();
+        this.acquireInstallation = acquireInstallation;
         var identityMap = new Dictionary<string, string>(StringComparer.Ordinal);
         for (int i = 0; i < Math.Min(containers.Length, this.completionGameIds.Length); i++)
             identityMap[containers[i]] = this.completionGameIds[i];
@@ -81,6 +85,11 @@ public sealed class JobWindow : Window
             try { store.Log("Download job escaped its error boundary: " + ex); } catch { }
             Append("Could not complete: " + ex.Message);
             Running = false;
+        }
+        finally
+        {
+            Running = false;
+            RaiseCompleted();
         }
     }
     private void Append(string? line)
@@ -115,9 +124,18 @@ public sealed class JobWindow : Window
         started = true;
         Running = true;
         using var completionCancellation = new CancellationTokenSource();
+        using var operationCancellation = new CancellationTokenSource();
+        runCancellation = operationCancellation;
         Task completionMonitor = Task.CompletedTask;
+        IDisposable? installationScope = null;
         try
         {
+            if (acquireInstallation != null)
+            {
+                status.Text = "Waiting for any other install of the same game to finish…";
+                Append(status.Text);
+                installationScope = await acquireInstallation(operationCancellation.Token);
+            }
             string path = Path.ChangeExtension(log, "." + scriptExtension);
             File.WriteAllText(path, script, scriptExtension == "bat" ? new System.Text.UTF8Encoding(false) : new System.Text.UTF8Encoding(true));
             ProcessStartInfo start;
@@ -163,16 +181,30 @@ public sealed class JobWindow : Window
         catch (Exception ex) { status.Text = "Could not complete: " + ex.Message; Append(status.Text); }
         finally
         {
-            completionCancellation.Cancel();
+            try { completionCancellation.Cancel(); }
+            catch (Exception ex) { try { store.Log("Download completion cancellation failed: " + ex.Message); } catch { } }
             try { await completionMonitor; }
             catch (OperationCanceledException) { }
             catch (Exception ex) { try { store.Log("Download completion monitor failed: " + ex); } catch { } }
             // WaitForExitAsync above also waits for redirected output to reach EOF.
             // Consumers can now update installed state without racing a still-running job.
-            Running = false; process?.Dispose(); process = null;
-            try { Completed?.Invoke(LastExitCode == 0 && !cancelled); }
-            catch (Exception ex) { store.Log("Download completion handler: " + ex.Message); }
+            try { installationScope?.Dispose(); }
+            catch (Exception ex) { try { store.Log("Download installation lock release failed: " + ex.Message); } catch { } }
+            installationScope = null;
+            Running = false;
+            try { process?.Dispose(); }
+            catch (Exception ex) { try { store.Log("Download process cleanup failed: " + ex.Message); } catch { } }
+            finally { process = null; runCancellation = null; }
+            RaiseCompleted();
         }
+    }
+
+    private void RaiseCompleted()
+    {
+        if (completionRaised) return;
+        completionRaised = true;
+        try { Completed?.Invoke(LastExitCode == 0 && !cancelled); }
+        catch (Exception ex) { try { store.Log("Download completion handler: " + ex.Message); } catch { } }
     }
 
     private async Task MonitorCompletionsAsync(CancellationToken cancellation)
@@ -207,6 +239,8 @@ public sealed class JobWindow : Window
     {
         if (!Running) return;
         cancelled = true;
+        try { runCancellation?.Cancel(); }
+        catch (ObjectDisposedException) { }
         try { if (process is { HasExited: false }) process.Kill(true); }
         catch (Exception ex) { Append("The download process could not be stopped: " + ex.Message); }
         foreach (string container in containers)

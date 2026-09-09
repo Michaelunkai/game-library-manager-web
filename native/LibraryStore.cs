@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -214,6 +215,15 @@ public sealed class LibraryStore
     public static string FormatName(string id) => System.Text.RegularExpressions.Regex.Replace(id.Replace('_', ' ').Replace('-', ' '), "([a-z])([A-Z])", "$1 $2");
     public void Log(string message)
     {
-        lock (this) File.AppendAllText(Path.Combine(Root, "activity.log"), $"{DateTime.UtcNow:O} {message}{Environment.NewLine}");
+        try
+        {
+            lock (this) File.AppendAllText(Path.Combine(Root, "activity.log"), $"{DateTime.UtcNow:O} {message}{Environment.NewLine}");
+        }
+        catch (Exception ex)
+        {
+            // Logging must never take down the UI when the profile volume is
+            // full, read-only, or temporarily locked by another process.
+            try { Debug.WriteLine("Game Library activity log unavailable: " + ex.Message + " | " + message); } catch { }
+        }
     }
 }

@@ -70,6 +70,8 @@ public partial class MainWindow : Window
     private string? adminToken;
     private readonly List<JobWindow> jobs = new();
     private readonly Dictionary<string, PlaySession> activePlays = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SemaphoreSlim> installGates = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim wandLaunchGate = new(1, 1);
     internal bool IsAdmin => adminToken != null;
     private static readonly HashSet<string> protectedTabs = new(StringComparer.Ordinal) { "not_for_me", "finished", "mybackup", "oporationsystems", "music", "win11maintaince", "3th_party_tools", "gamedownloaders" };
 
@@ -155,8 +157,12 @@ public partial class MainWindow : Window
         catch (Exception ex) { Store.Log("Shutdown state flush failed: " + ex); }
         lifetime.Cancel(); poll.Stop(); searchDelay.Stop(); playtime.Stop();
         try { tray?.Dispose(); } catch (Exception ex) { Store.Log("Tray cleanup failed: " + ex.Message); } finally { tray = null; }
-        foreach (var job in jobs.ToArray()) job.Close();
-        Store.Log("Clean shutdown");
+        foreach (var job in jobs.ToArray())
+        {
+            try { job.Close(); }
+            catch (Exception ex) { try { Store.Log("Download window cleanup failed: " + ex.Message); } catch { } }
+        }
+        try { Store.Log("Clean shutdown"); } catch { }
     }
     internal void Reload()
     {
@@ -288,6 +294,53 @@ public partial class MainWindow : Window
         SelectedSize.ToolTip = $"{selected.Length} selected; {selected.Count(g => g.SizeGb <= 0)} sizes unknown";
     }
     internal void Save() { try { Store.Save(State); } catch (Exception ex) { Error(ex); } }
+    private async Task<IDisposable> AcquireInstallScopeAsync(IEnumerable<string> gameIds, CancellationToken cancellation)
+    {
+        var ids = gameIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToArray();
+        var held = new List<SemaphoreSlim>(ids.Length);
+        try
+        {
+            foreach (var id in ids)
+            {
+                SemaphoreSlim gate;
+                lock (installGates)
+                {
+                    if (installGates.TryGetValue(id, out var existingGate) && existingGate != null)
+                    {
+                        gate = existingGate;
+                    }
+                    else
+                    {
+                        gate = new SemaphoreSlim(1, 1);
+                        installGates.Add(id, gate);
+                    }
+                }
+                await gate.WaitAsync(cancellation);
+                held.Add(gate);
+            }
+            return new InstallScope(held);
+        }
+        catch
+        {
+            for (var index = held.Count - 1; index >= 0; index--) held[index].Release();
+            throw;
+        }
+    }
+    private sealed class InstallScope : IDisposable
+    {
+        private List<SemaphoreSlim>? held;
+        internal InstallScope(List<SemaphoreSlim> held) => this.held = held;
+        public void Dispose()
+        {
+            var gates = Interlocked.Exchange(ref held, null);
+            if (gates == null) return;
+            for (var index = gates.Count - 1; index >= 0; index--) gates[index].Release();
+        }
+    }
     private void ObserveUiAction(string operation, Action action)
     {
         try { action(); }
@@ -445,12 +498,21 @@ public partial class MainWindow : Window
         string name = Path.GetFileNameWithoutExtension(executable);
         foreach (var candidate in Process.GetProcessesByName(name))
         {
+            bool keep = false;
             try
             {
-                if (observed.Contains(candidate.Id)) { candidate.Dispose(); continue; }
-                if (string.Equals(candidate.MainModule?.FileName, executable, StringComparison.OrdinalIgnoreCase)) return candidate;
+                if (observed.Contains(candidate.Id)) continue;
+                if (string.Equals(candidate.MainModule?.FileName, executable, StringComparison.OrdinalIgnoreCase))
+                {
+                    keep = true;
+                    return candidate;
+                }
             }
-            catch { candidate.Dispose(); }
+            catch { }
+            finally
+            {
+                if (!keep) try { candidate.Dispose(); } catch { }
+            }
         }
         return null;
     }
@@ -582,7 +644,10 @@ public partial class MainWindow : Window
     {
         try
         {
+            games = DockerScripts.DistinctGames(games);
+            if (games.Length == 0) { StatusText.Text = "Select games to install first."; return; }
             string destination = State.Settings.MountPath;
+            var gameIds = games.Select(g => g.Id).ToArray();
             var review = new EditorWindow(this, "Install selected games", $"{games.Length} game(s) → {State.Settings.MountPath}\nDownload size: {games.Sum(g => g.SizeGb):0.#} GB; {games.Count(g => g.SizeGb <= 0)} unknown. Existing files in each game's folder may be updated.\nChoose the Windows BAT route for your default terminal, or WSL2 Ubuntu for a native Bash .SH install.");
             var names = review.Paragraph(string.Join("\n", games.Select(g => g.Name))); names.MaxHeight = 220;
             var format = review.Choice("Install format", new[] { "Windows default terminal (.BAT)", "WSL2 Ubuntu (.SH)" }, State.Settings.ShellTarget == "wsl2" ? 1 : 0, "InstallFormat");
@@ -592,7 +657,7 @@ public partial class MainWindow : Window
                 string extension = wsl2 ? "sh" : "bat";
                 string script = DockerScripts.Generate(games, State.Settings, extension, shellTarget: wsl2 ? "wsl2" : "native-linux");
                 var byId = games.ToDictionary(g => g.Id, StringComparer.Ordinal);
-                var job = new JobWindow(Store, script, games.Select(g => DockerScripts.ContainerName(g.Id)).ToArray(), openInDefaultTerminal: !wsl2, scriptExtension: extension, completionDestination: destination, completionGameIds: byId.Keys);
+                var job = new JobWindow(Store, script, games.Select(g => DockerScripts.ContainerName(g.Id)).ToArray(), openInDefaultTerminal: !wsl2, scriptExtension: extension, completionDestination: destination, completionGameIds: gameIds, acquireInstallation: cancellation => AcquireInstallScopeAsync(gameIds, cancellation));
                 job.GameCompleted += id => byId.TryGetValue(id, out var game) ? ScanCompletedGame(game, destination) : Task.CompletedTask;
                 job.Completed += success => ObserveUiOperation("Completed download scan", () => ScanCompletedDownloads(games, destination, success));
                 jobs.Add(job); job.Closed += (_, _) => jobs.Remove(job); job.Show(); review.Close();

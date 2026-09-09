@@ -173,14 +173,19 @@ public partial class MainWindow
     }
     private async Task PlayWithWand(Game game)
     {
-        if (!TryGetLauncher(game, out var exe)) throw new FileNotFoundException("No game executable was found. Scan the installation folder or choose the game's executable.");
-        if (!Path.GetExtension(exe).Equals(".exe", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The launcher must be a Windows executable.");
-        var wandPath = ResolveWandPath();
-        if (TryActivateExistingPlay(game)) return;
-        var result = await WandIntegration.LaunchAsync(game, exe, wandPath, Store, lifetime.Token);
-        if (result.Process != null) TrackPlayProcess(game, result.Process);
-        StatusText.Text = result.Message;
-        Store.Log("Wand launch for " + game.Id + "; protocol=" + result.UsedProtocol.ToString().ToLowerInvariant() + "; started=" + (result.Process != null).ToString().ToLowerInvariant());
+        await wandLaunchGate.WaitAsync(lifetime.Token);
+        try
+        {
+            if (!TryGetLauncher(game, out var exe)) throw new FileNotFoundException("No game executable was found. Scan the installation folder or choose the game's executable.");
+            if (!Path.GetExtension(exe).Equals(".exe", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The launcher must be a Windows executable.");
+            var wandPath = ResolveWandPath();
+            if (TryActivateExistingPlay(game)) return;
+            var result = await WandIntegration.LaunchAsync(game, exe, wandPath, Store, lifetime.Token);
+            if (result.Process != null) TrackPlayProcess(game, result.Process);
+            StatusText.Text = result.Message;
+            Store.Log("Wand launch for " + game.Id + "; protocol=" + result.UsedProtocol.ToString().ToLowerInvariant() + "; started=" + (result.Process != null).ToString().ToLowerInvariant());
+        }
+        finally { wandLaunchGate.Release(); }
     }
     private bool TryGetLauncher(Game game, out string executable)
     {
