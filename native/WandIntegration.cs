@@ -136,6 +136,27 @@ internal static class WandIntegration
         try { fullPath = Path.GetFullPath(executable); }
         catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException) { return false; }
 
+        // Unity catalogs may fingerprint a managed DLL rather than the process
+        // executable. The sibling <exe>_Data tree binds that fingerprint to this
+        // exact executable; an unrelated DLL or launcher must not qualify.
+        if (segments.Length > 1 && segments[0].Equals(Path.GetFileNameWithoutExtension(fullPath) + "_Data", StringComparison.OrdinalIgnoreCase)
+            && Path.GetExtension(fullPath).Equals(".exe", StringComparison.OrdinalIgnoreCase)
+            && Path.GetExtension(segments[^1]).Equals(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!File.Exists(fullPath)) return false;
+            try
+            {
+                string fingerprint = Path.GetDirectoryName(fullPath)!;
+                foreach (string segment in segments)
+                {
+                    fingerprint = Path.Combine(fingerprint, segment);
+                    if ((File.GetAttributes(fingerprint) & FileAttributes.ReparsePoint) != 0) return false;
+                }
+                return File.Exists(fingerprint);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { return false; }
+        }
+
         if (segments.Length == 1)
             return string.Equals(Path.GetFileName(fullPath), segments[0], StringComparison.OrdinalIgnoreCase);
 
@@ -926,6 +947,7 @@ internal static class WandAudit
     internal static int Run(string report, string? dataRoot)
     {
         var store = new LibraryStore(dataRoot);
+        store.EnsureAssets();
         var state = store.LoadState();
         var games = store.LoadGames(state, store.ReadConfig()).Where(g => state.InstalledGames.Contains(g.Id)).ToArray();
         JsonObject? catalog = null;
@@ -954,11 +976,12 @@ internal static class WandAudit
             rows.Add(new { id = game.Id, name = game.Name, executable, source, exists, protocolCandidate = protocol });
         }
         bool wand = File.Exists(MainWindow.DetectWandPath() ?? "");
-        bool passed = games.Length > 0 && resolved == games.Length && wand;
+        bool passed = games.Length > 0 && resolved == games.Length && protocolCandidates == games.Length && wand;
         var payload = new
         {
             at = DateTime.UtcNow,
             passed,
+            launchVerified = false,
             executableCount = games.Length,
             resolvedCount = resolved,
             protocolCandidateCount = protocolCandidates,

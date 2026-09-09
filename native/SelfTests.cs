@@ -30,6 +30,14 @@ public static class SelfTests
         void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
         void Reject(Action action) { try { action(); } catch (Exception ex) when (ex is ArgumentException or FormatException) { return; } throw new Exception("Invalid input was accepted."); }
         var store = new LibraryStore(root); var state = new UserState();
+        Check("Windowless diagnostic failures return a report without escaping", () =>
+        {
+            string diagnosticReport = Path.Combine(root, "diagnostic-failure.json");
+            int result = Program.RunDiagnostic(diagnosticReport, () => throw new DirectoryNotFoundException("Missing fixture catalog"));
+            var failure = JsonNode.Parse(File.ReadAllText(diagnosticReport))!;
+            Require(result == 1 && failure["passed"]!.GetValue<bool>() == false && DataJson.Text(failure["error"]).Contains("Missing fixture catalog"), "Diagnostic failure escaped or was reported as successful.");
+            Require(Program.RunDiagnostic(root, () => throw new IOException("Unwritable report fixture")) == 1, "An unwritable report escaped the diagnostic boundary.");
+        });
         Check("Packaged catalog extraction", () => { store.EnsureAssets(); Require(File.Exists(Path.Combine(store.Assets, "data", "games.json")), "Missing data."); });
         Check("Packaged catalog and every cover remain available offline", () =>
         {
@@ -139,6 +147,29 @@ public static class SelfTests
             var catalog = JsonNode.Parse("{\"titles\":{\"56593\":{\"id\":\"56593\",\"name\":\"Dying Light 2 Stay Human\",\"gameIds\":[\"60921\"]}},\"games\":{\"60921\":{\"id\":\"60921\",\"titleId\":\"56593\",\"platformId\":\"steam\",\"versionPath\":\"DyingLightGame_x64_rwdi.exe\"}}}")!.AsObject();
             Require(WandIntegration.TryResolve(catalog, new Game { Name = "Dying Light 2 Stay Human" }, "DyingLightGame_x64_rwdi.exe", out var target), "Exact Wand title was not resolved.");
             Require(target.TitleId == "56593" && target.GameId == "60921" && WandIntegration.BuildProtocolUri(target.TitleId, target.GameId) == "wemod://play?titleId=56593&gameId=60921", "Wand protocol URI drifted.");
+        });
+        Check("Unity version fingerprints resolve only their paired game executable", () =>
+        {
+            string folder = Path.Combine(root, "unity-fingerprint");
+            string managed = Path.Combine(folder, "wizardwithagun_Data", "Managed");
+            Directory.CreateDirectory(managed);
+            string executable = Path.Combine(folder, "wizardwithagun.exe");
+            string fingerprint = Path.Combine(managed, "Unity.Burst.dll");
+            File.WriteAllText(executable, "fixture");
+            File.WriteAllText(fingerprint, "fixture");
+            var catalog = new JsonObject
+            {
+                ["titles"] = new JsonObject { ["75407"] = new JsonObject { ["name"] = "Wizard with a Gun", ["gameIds"] = new JsonArray("81975") } },
+                ["games"] = new JsonObject { ["81975"] = new JsonObject { ["titleId"] = "75407", ["platformId"] = "steam", ["versionPath"] = @"wizardwithagun_Data\Managed\Unity.Burst.dll" } }
+            };
+            var game = new Game { Id = "WizardwithaGun", Name = "Wizardwitha Gun" };
+            Require(WandIntegration.TryResolve(catalog, game, executable, out var target) && target.GameId == "81975", "The paired Unity fingerprint was rejected.");
+            string launcher = Path.Combine(folder, "Launcher.exe");
+            File.WriteAllText(launcher, "fixture");
+            Require(!WandIntegration.TryResolve(catalog, game, launcher, out _), "An unrelated launcher inherited the game's fingerprint.");
+            Require(!WandIntegration.ExactVersionPathMatches(executable, @"wizardwithagun_Data\..\Unity.Burst.dll"), "A traversal fingerprint was accepted.");
+            File.Delete(fingerprint);
+            Require(!WandIntegration.TryResolve(catalog, game, executable, out _), "A missing version fingerprint was accepted.");
         });
         Check("Wand custom-install request preserves the exact executable location", () =>
         {

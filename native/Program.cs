@@ -16,12 +16,15 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        if (args.Length >= 2 && args[0] == "--self-test") return SelfTests.Run(args[1]);
+        if (args.Length >= 2 && args[0] == "--self-test") return RunDiagnostic(args[1], () => SelfTests.Run(args[1]));
         if (args.Length >= 2 && args[0] == "--wand-audit")
         {
-            string? auditData = null;
-            for (var i = 2; i < args.Length; i++) if (args[i] == "--data-dir" && i + 1 < args.Length) auditData = Path.GetFullPath(args[++i]);
-            return WandAudit.Run(args[1], auditData);
+            return RunDiagnostic(args[1], () =>
+            {
+                string? auditData = null;
+                for (var i = 2; i < args.Length; i++) if (args[i] == "--data-dir" && i + 1 < args.Length) auditData = Path.GetFullPath(args[++i]);
+                return WandAudit.Run(args[1], auditData);
+            });
         }
         if (args.Length >= 2 && args[0] == "--live-sync-proof")
         {
@@ -108,6 +111,19 @@ public static class Program
             TaskScheduler.UnobservedTaskException -= taskFailure;
             AppDomain.CurrentDomain.UnhandledException -= processFailure;
             mutex.ReleaseMutex();
+        }
+    }
+    internal static int RunDiagnostic(string report, Func<int> run)
+    {
+        try { return run(); }
+        catch (Exception ex)
+        {
+            // Diagnostics run without a WPF application/error handler. Report
+            // ordinary failures here rather than invoking Windows crash UI.
+            try { LibraryStore.AtomicWrite(Path.GetFullPath(report), DataJson.Write(new { passed = false, error = ex.ToString(), at = DateTime.UtcNow })); }
+            catch { /* Even an unwritable report must return a failure code. */ }
+            try { Console.Error.WriteLine("Diagnostic failed: " + ex.Message); } catch { }
+            return 1;
         }
     }
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] public static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
