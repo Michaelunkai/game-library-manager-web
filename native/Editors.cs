@@ -289,9 +289,21 @@ public partial class MainWindow
     private void OpenSettings(object sender, RoutedEventArgs e)
     {
         var dialog = new EditorWindow(this, "Settings & backups", "Shared categories and tabs use the website backend. Wishlist, ratings, tags, launch paths, and settings are saved on this PC.");
-        using var importCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        var importCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         var importToken = importCancellation.Token;
-        dialog.Closed += (_, _) => importCancellation.Cancel();
+        bool importRunning = false, importDialogClosed = false, importCancellationDisposed = false;
+        void DisposeImportCancellation()
+        {
+            if (importCancellationDisposed) return;
+            importCancellationDisposed = true;
+            try { importCancellation.Dispose(); } catch { }
+        }
+        dialog.Closed += (_, _) =>
+        {
+            importDialogClosed = true;
+            try { importCancellation.Cancel(); } catch (ObjectDisposedException) { }
+            if (!importRunning) DisposeImportCancellation();
+        };
         var root = dialog.Text("Download folder", State.Settings.MountPath, "DownloadFolder");
         dialog.Paragraph("New installs default to E:\\games. You can choose another folder at any time; existing files are never moved automatically.");
         dialog.Action("Browse folder…", () =>
@@ -339,18 +351,27 @@ public partial class MainWindow
         }, "ExportBackup");
         dialog.ActionAsync("Import backup or website settings…", async () =>
         {
-            var picker = new Microsoft.Win32.OpenFileDialog { Title = "Import library backup", Filter = "Library backup / website settings|*.json" };
-            if (picker.ShowDialog(dialog) != true) return;
-            var raw = File.ReadAllText(picker.FileName);
-            var parsed = JsonNode.Parse(raw)?.AsObject() ?? throw new FormatException("Invalid backup document.");
-            dialog.Notice.Text = "Waiting for any active sync before applying this backup…";
-            await ImportBackupAsync(parsed, importToken);
-            if (parsed["selectedGames"] is JsonArray ids)
+            importRunning = true;
+            try
             {
-                var selection = ids.Select(n => DataJson.Text(n)).ToHashSet(StringComparer.Ordinal);
-                foreach (var game in Games) game.Selected = selection.Contains(game.Id); UpdateStats();
+                var picker = new Microsoft.Win32.OpenFileDialog { Title = "Import library backup", Filter = "Library backup / website settings|*.json" };
+                if (picker.ShowDialog(dialog) != true) return;
+                var raw = File.ReadAllText(picker.FileName);
+                var parsed = JsonNode.Parse(raw)?.AsObject() ?? throw new FormatException("Invalid backup document.");
+                dialog.Notice.Text = "Waiting for any active sync before applying this backup…";
+                await ImportBackupAsync(parsed, importToken);
+                if (parsed["selectedGames"] is JsonArray ids)
+                {
+                    var selection = ids.Select(n => DataJson.Text(n)).ToHashSet(StringComparer.Ordinal);
+                    foreach (var game in Games) game.Selected = selection.Contains(game.Id); UpdateStats();
+                }
+                dialog.Close(); StatusText.Text = "Backup imported; the previous library was preserved.";
             }
-            dialog.Close(); StatusText.Text = "Backup imported; the previous library was preserved.";
+            finally
+            {
+                importRunning = false;
+                if (importDialogClosed) DisposeImportCancellation();
+            }
         }, "ImportBackup");
         dialog.Action("Open data & logs folder", () => OpenFolder(Store.Root));
         dialog.Paragraph("Keyboard: Ctrl+K search · Ctrl+A select visible · Enter details · Esc clear · F5 refresh\nVersion 1.0 · Native WPF / Windows · " + Store.Root);
@@ -376,7 +397,7 @@ public partial class MainWindow
             if (id.Length == 0) id = "category_" + Guid.NewGuid().ToString("N")[..8];
             var tabs = Store.LoadCategories(Sync.Effective(State));
             if (tabs.Any(c => c.Id == id) || id is "wishlist" or "installed") throw new ArgumentException("A category with that identity already exists.");
-            tabs.Add(new(id, label)); QueueTabs(tabs); dialog.Close(); Reload(); _ = Refresh(false);
+            tabs.Add(new(id, label)); QueueTabs(tabs); dialog.Close(); Reload(); ObserveUiOperation("Category refresh", () => Refresh(false));
         });
         dialog.Action("Save name and visibility", () =>
         {
@@ -385,7 +406,7 @@ public partial class MainWindow
             var tabs = Store.LoadCategories(Sync.Effective(State)).Select(t => t.Id == c.Id ? new Category(c.Id, name.Text.Trim()) : t).ToList(); QueueTabs(tabs);
             var values = Hidden(Sync.Effective(State)); if (hidden.IsChecked == true) values.Add(c.Id); else values.Remove(c.Id);
             Sync.Queue(State, "hiddenTabs", "", new JsonArray(values.OrderBy(v => v).Select(v => (JsonNode?)JsonValue.Create(v)).ToArray()));
-            dialog.Close(); Reload(); _ = Refresh(false);
+            dialog.Close(); Reload(); ObserveUiOperation("Category refresh", () => Refresh(false));
         });
         void ReorderCategory(int delta)
         {
@@ -396,7 +417,7 @@ public partial class MainWindow
                 dialog.Notice.Text = delta < 0 ? "That category is already first." : "That category is already last.";
                 return;
             }
-            QueueTabs(tabs); dialog.Close(); Reload(); _ = Refresh(false);
+            QueueTabs(tabs); dialog.Close(); Reload(); ObserveUiOperation("Category refresh", () => Refresh(false));
         }
         dialog.Action("Move category up", () => ReorderCategory(-1));
         dialog.Action("Move category down", () => ReorderCategory(1));
@@ -410,7 +431,7 @@ public partial class MainWindow
             QueueTabs(Store.LoadCategories(Sync.Effective(State)).Where(t => t.Id != c.Id).ToList());
             var values = Hidden(Sync.Effective(State)); values.Remove(c.Id);
             Sync.Queue(State, "hiddenTabs", "", new JsonArray(values.Select(v => (JsonNode?)JsonValue.Create(v)).ToArray()));
-            dialog.Close(); Reload(); _ = Refresh(false);
+            dialog.Close(); Reload(); ObserveUiOperation("Category refresh", () => Refresh(false));
         });
         dialog.ShowDialog();
     }
@@ -444,7 +465,7 @@ public partial class MainWindow
                 chosen.Edit.Before = Merge.Get(Sync.Remote, chosen.Edit)?.DeepClone(); chosen.Edit.Conflict = null; Save(); dialog.Close(); Reload();
             });
         }
-        dialog.Action("Refresh / publish queued changes", () => { dialog.Close(); _ = Refresh(false); });
+        dialog.Action("Refresh / publish queued changes", () => { dialog.Close(); ObserveUiOperation("Sync refresh", () => Refresh(false)); });
         dialog.Action("Open local sync log", () => OpenFolder(Store.Root)); dialog.ShowDialog();
     }
     private sealed record PendingChoice(PendingEdit Edit) { public override string ToString() => Edit.Section + "/" + Edit.Key + (Edit.Conflict != null ? " · CONFLICT" : " · queued"); }

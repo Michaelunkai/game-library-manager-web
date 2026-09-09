@@ -182,9 +182,15 @@ public partial class MainWindow
         var dialog = new EditorWindow(this, "Refresh covers & times", games.Length == 0 ? "Select games to refresh their metadata. Existing covers and times stay available offline." : $"Refresh {games.Length} selected game(s) using the same metadata service as the website. Names and shared categories are preserved.");
         var covers = dialog.Check("Refresh cover images", true);
         var times = dialog.Check("Refresh approximate completion times", true);
-        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        var cancel = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         var cancellation = cancel.Token;
-        bool running = false;
+        bool running = false, refreshDialogClosed = false, cancellationDisposed = false;
+        void DisposeRefreshCancellation()
+        {
+            if (cancellationDisposed) return;
+            cancellationDisposed = true;
+            try { cancel.Dispose(); } catch { }
+        }
         var start = dialog.Action("Start refresh", () => { }, "StartMetadataRefresh");
         start.IsEnabled = games.Length > 0;
         start.Click += async (_, _) =>
@@ -206,10 +212,21 @@ public partial class MainWindow
                 dialog.Notice.Text = $"Updated {updated}; unavailable or title mismatch {failed}. Details are in the activity log.";
             }
             catch (OperationCanceledException) { dialog.Notice.Text = $"Stopped. {updated} completed updates were saved."; }
-            finally { running = false; Reload(); }
+            finally
+            {
+                running = false; Reload();
+                if (refreshDialogClosed) DisposeRefreshCancellation();
+            }
         };
-        dialog.Action("Stop refresh", () => cancel.Cancel());
-        dialog.Closing += (_, _) => cancel.Cancel();
+        dialog.Action("Stop refresh", () => { try { cancel.Cancel(); } catch (ObjectDisposedException) { } });
+        dialog.Closed += (_, _) =>
+        {
+            refreshDialogClosed = true;
+            try { cancel.Cancel(); } catch (ObjectDisposedException) { }
+            if (!running) DisposeRefreshCancellation();
+        };
         dialog.ShowDialog();
+        refreshDialogClosed = true;
+        if (!running) DisposeRefreshCancellation();
     }
 }
