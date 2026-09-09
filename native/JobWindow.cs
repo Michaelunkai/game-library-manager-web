@@ -37,6 +37,7 @@ public sealed class JobWindow : Window
     private bool cancelled;
     private bool started;
     private bool completionRaised;
+    private bool ownsInstallation;
     internal static ProcessStartInfo BuildDefaultTerminalStartInfo(string path)
     {
         if (!Path.GetExtension(path).Equals(".bat", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The default Windows terminal launcher requires a BAT script.", nameof(path));
@@ -57,6 +58,7 @@ public sealed class JobWindow : Window
         this.completionDestination = string.IsNullOrWhiteSpace(completionDestination) ? null : Path.GetFullPath(completionDestination);
         this.completionGameIds = completionGameIds?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToArray() ?? Array.Empty<string>();
         this.acquireInstallation = acquireInstallation;
+        ownsInstallation = acquireInstallation == null;
         var identityMap = new Dictionary<string, string>(StringComparer.Ordinal);
         for (int i = 0; i < Math.Min(containers.Length, this.completionGameIds.Length); i++)
             identityMap[containers[i]] = this.completionGameIds[i];
@@ -89,6 +91,7 @@ public sealed class JobWindow : Window
         finally
         {
             Running = false;
+            ownsInstallation = false;
             RaiseCompleted();
         }
     }
@@ -135,6 +138,7 @@ public sealed class JobWindow : Window
                 status.Text = "Waiting for any other install of the same game to finish…";
                 Append(status.Text);
                 installationScope = await acquireInstallation(operationCancellation.Token);
+                ownsInstallation = true;
             }
             string path = Path.ChangeExtension(log, "." + scriptExtension);
             File.WriteAllText(path, script, scriptExtension == "bat" ? new System.Text.UTF8Encoding(false) : new System.Text.UTF8Encoding(true));
@@ -191,6 +195,7 @@ public sealed class JobWindow : Window
             try { installationScope?.Dispose(); }
             catch (Exception ex) { try { store.Log("Download installation lock release failed: " + ex.Message); } catch { } }
             installationScope = null;
+            ownsInstallation = false;
             Running = false;
             try { process?.Dispose(); }
             catch (Exception ex) { try { store.Log("Download process cleanup failed: " + ex.Message); } catch { } }
@@ -243,6 +248,11 @@ public sealed class JobWindow : Window
         catch (ObjectDisposedException) { }
         try { if (process is { HasExited: false }) process.Kill(true); }
         catch (Exception ex) { Append("The download process could not be stopped: " + ex.Message); }
+        if (acquireInstallation != null && !ownsInstallation)
+        {
+            Append("This install was still queued behind another same-game install; the running install was left untouched.");
+            return;
+        }
         foreach (string container in containers)
         {
             if (containerGameIds.TryGetValue(container, out string? gameId)) await StopOwnedContainerAsync(container, gameId);
