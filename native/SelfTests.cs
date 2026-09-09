@@ -140,6 +140,23 @@ public static class SelfTests
             Require(WandIntegration.TryResolve(catalog, new Game { Name = "Dying Light 2 Stay Human" }, "DyingLightGame_x64_rwdi.exe", out var target), "Exact Wand title was not resolved.");
             Require(target.TitleId == "56593" && target.GameId == "60921" && WandIntegration.BuildProtocolUri(target.TitleId, target.GameId) == "wemod://play?titleId=56593&gameId=60921", "Wand protocol URI drifted.");
         });
+        Check("Wand custom-install request preserves the exact executable location", () =>
+        {
+            string executable = Path.Combine(root, "wand-custom-install", "bin", "ExactGame.exe");
+            Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
+            File.WriteAllText(executable, "fixture");
+
+            WandCustomInstallationRequest request = WandIntegration.BuildCustomInstallationRequest("115056", executable);
+            string fullPath = Path.GetFullPath(executable);
+            string expectedSku = "115056_" + fullPath.ToLowerInvariant();
+
+            Require(request.GameId == "115056"
+                && request.ExecutablePath == fullPath
+                && request.WorkingDirectory == Path.GetDirectoryName(fullPath)
+                && request.Sku == expectedSku
+                && request.CorrelationId == "custom:" + expectedSku,
+                "The native Wand handoff did not retain the exact executable and working directory.");
+        });
         Check("Wand resolution uses the stable game id and executable aliases", () =>
         {
             var catalog = JsonNode.Parse("{\"titles\":{\"12\":{\"id\":\"12\",\"slug\":\"the-vagrant\",\"name\":\"The Vagrant\",\"gameIds\":[\"34\"]}},\"games\":{\"34\":{\"id\":\"34\",\"titleId\":\"12\",\"platformId\":\"steam\",\"versionPath\":\"TheVagrant.exe\"}}}")!.AsObject();

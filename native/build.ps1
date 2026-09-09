@@ -32,6 +32,20 @@ try {
     if ($FrameworkDependent) { $selfContained = 'false' }
     & $dotnetPath publish GameLibrary.Native.csproj -c Release -r win-x64 --self-contained $selfContained -o dist
     if ($LASTEXITCODE -ne 0) { throw ('Publish failed: exit ' + $LASTEXITCODE) }
+    # The single-file publisher carries the managed payload into the EXE but may
+    # omit native Node addons from the publish directory. Copy the exact bundled
+    # Wand bridge runtime from the RID-specific build output so the installed EXE
+    # remains self-contained and never falls back to a developer profile path.
+    $builtTools = Join-Path $nativeRoot 'bin\Release\net10.0-windows\win-x64\tools'
+    $publishedTools = Join-Path $nativeRoot 'dist\tools'
+    if (Test-Path -LiteralPath $builtTools -PathType Container) {
+        foreach ($file in @(Get-ChildItem -LiteralPath $builtTools -File -Recurse)) {
+            $relative = $file.FullName.Substring($builtTools.Length + 1)
+            $destination = Join-Path $publishedTools $relative
+            [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
+            Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
+        }
+    }
     $exe = Join-Path $nativeRoot 'dist\GameLibrary.exe'
     Get-Item -LiteralPath $exe | Select-Object FullName,Length,LastWriteTime
     Write-Output ('SHA256: ' + (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash)

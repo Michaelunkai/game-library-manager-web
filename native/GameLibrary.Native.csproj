@@ -22,5 +22,7 @@
     <EmbeddedResource Include="Assets/catalog.sha256" />
     <Resource Include="Assets/GameLibrary.ico" />
     <Compile Remove="tests/**/*.cs" />
+    <None Update="tools\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="tools\wand-runtime\classic-level\prebuilds\win32-x64\classic-level.node" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 namespace GameLibrary.Native;
 
 internal sealed record WandTarget(string TitleId, string GameId, string TitleName, string Platform, string VersionPath);
+internal sealed record WandCustomInstallationRequest(string GameId, string ExecutablePath, string WorkingDirectory, string Sku, string CorrelationId);
 internal sealed record WandLaunchResult(Process? Process, bool UsedProtocol, string Message);
 
 internal static class WandIntegration
@@ -44,6 +45,23 @@ internal static class WandIntegration
 
     internal static string BuildProtocolUri(string titleId, string gameId) =>
         "wemod://play?titleId=" + Uri.EscapeDataString(titleId) + "&gameId=" + Uri.EscapeDataString(gameId);
+
+    internal static WandCustomInstallationRequest BuildCustomInstallationRequest(string gameId, string executable)
+    {
+        if (string.IsNullOrWhiteSpace(gameId)) throw new ArgumentException("Wand game id is required.", nameof(gameId));
+        if (string.IsNullOrWhiteSpace(executable)) throw new ArgumentException("An exact executable path is required.", nameof(executable));
+
+        string fullPath = Path.GetFullPath(executable);
+        if (!Path.IsPathFullyQualified(fullPath) || !string.Equals(Path.GetExtension(fullPath), ".exe", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Wand custom installations require an absolute .exe path.", nameof(executable));
+        if (!File.Exists(fullPath)) throw new FileNotFoundException("The exact game executable was not found.", fullPath);
+
+        string? workingDirectory = Path.GetDirectoryName(fullPath);
+        if (string.IsNullOrWhiteSpace(workingDirectory)) throw new ArgumentException("The exact executable has no working directory.", nameof(executable));
+
+        string sku = gameId.Trim() + "_" + fullPath.ToLowerInvariant();
+        return new WandCustomInstallationRequest(gameId.Trim(), fullPath, workingDirectory, sku, "custom:" + sku);
+    }
 
     internal static bool TryResolve(JsonObject catalog, Game game, string executable, out WandTarget target)
     {
@@ -235,6 +253,10 @@ internal static class WandIntegration
 
         try
         {
+            string? registrationError = await EnsureCustomInstallationAsync(target, executable, store, cancellation);
+            if (registrationError != null)
+                return new WandLaunchResult(null, false, "Wand exact-install registration failed: " + registrationError + " No unmodified game was started.");
+
             bool wandReady = await EnsureWandStartedAsync(wandPath, store, cancellation);
             if (!wandReady)
                 return new WandLaunchResult(null, false, "Wand could not be verified as running. No unmodified game was started.");
@@ -277,6 +299,98 @@ internal static class WandIntegration
             store.Log("Wand protocol launch failed; no unmodified fallback was launched: " + ex.Message);
             return new WandLaunchResult(null, false, "Wand protocol could not be sent. No unmodified game was started; open Wand and retry.");
         }
+    }
+
+    private static async Task<string?> EnsureCustomInstallationAsync(WandTarget target, string executable, LibraryStore store, CancellationToken cancellation)
+    {
+        WandCustomInstallationRequest request;
+        try
+        {
+            request = BuildCustomInstallationRequest(target.GameId, executable);
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            store.Log("Wand exact-install registration rejected the executable: " + ex.Message);
+            return "the exact executable path is invalid or unavailable.";
+        }
+
+        string? bridge = FindCustomInstallationBridge();
+        if (bridge == null)
+        {
+            store.Log("Wand exact-install bridge was not found; refusing a path-ambiguous protocol launch.");
+            return "the native Wand registration bridge is not installed.";
+        }
+
+        string node = FindNodeExecutable();
+        var startInfo = new ProcessStartInfo(node)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = Path.GetDirectoryName(bridge)!
+        };
+        startInfo.ArgumentList.Add(bridge);
+        startInfo.ArgumentList.Add(request.GameId);
+        startInfo.ArgumentList.Add(request.ExecutablePath);
+
+        try
+        {
+            using var process = Process.Start(startInfo);
+            if (process == null) return "the native Wand registration bridge could not be started.";
+            var standardOutput = process.StandardOutput.ReadToEndAsync();
+            var standardError = process.StandardError.ReadToEndAsync();
+            try
+            {
+                await process.WaitForExitAsync(cancellation);
+            }
+            catch (OperationCanceledException)
+            {
+                try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+                await standardOutput;
+                await standardError;
+                throw;
+            }
+
+            await standardOutput;
+            await standardError;
+            if (process.ExitCode != 0)
+            {
+                store.Log("Wand exact-install bridge exited with code " + process.ExitCode + "; the exact mapping was not confirmed.");
+                return "the exact Wand installation mapping was not confirmed.";
+            }
+
+            store.Log("Wand exact-install mapping confirmed for gameId=" + request.GameId + "; executable=" + request.ExecutablePath + "; workingDirectory=" + request.WorkingDirectory + ".");
+            return null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or FileNotFoundException)
+        {
+            store.Log("Wand exact-install bridge could not run: " + ex.Message);
+            return "the native Wand registration bridge could not run.";
+        }
+    }
+
+    private static string? FindCustomInstallationBridge()
+    {
+        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "tools", "wemod_add_custom_install.js"),
+            Path.Combine(AppContext.BaseDirectory, "wemod_add_custom_install.js"),
+            string.IsNullOrWhiteSpace(userProfile) ? string.Empty : Path.Combine(userProfile, ".codex", "skills", "mods", "scripts", "wemod_add_custom_install.js")
+        };
+        return candidates.FirstOrDefault(path => path.Length > 0 && File.Exists(path));
+    }
+
+    private static string FindNodeExecutable()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "nodejs", "node.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "nodejs", "node.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "nodejs", "node.exe")
+        };
+        return candidates.FirstOrDefault(File.Exists) ?? "node.exe";
     }
 
     private static Process? FindExactProcess(string executable)

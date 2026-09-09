@@ -75,13 +75,22 @@ public partial class MainWindow
     internal static string TrailerUrl(Game game) => "https://www.youtube.com/results?search_query=" + Uri.EscapeDataString(game.Name + " trailer");
     internal static string? DetectWandPath()
     {
-        var candidates = new[]
+        string localWandRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Wand");
+        var candidates = new List<string>
         {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Wand", "Wand.exe"),
+            Path.Combine(localWandRoot, "Wand.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Wand", "Wand.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Wand", "Wand.exe")
         };
-        return candidates.FirstOrDefault(p => File.Exists(p));
+        try
+        {
+            candidates.AddRange(Directory.EnumerateDirectories(localWandRoot, "app-*", SearchOption.TopDirectoryOnly)
+                .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
+                .Select(path => Path.Combine(path, "Wand.exe")));
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        return candidates.FirstOrDefault(File.Exists);
     }
     private string ResolveWandPath() => !string.IsNullOrWhiteSpace(State.Settings.WandPath) && File.Exists(State.Settings.WandPath) ? State.Settings.WandPath : DetectWandPath() ?? "";
     private void OpenWand()
@@ -177,7 +186,20 @@ public partial class MainWindow
     {
         if (State.LaunchPaths.TryGetValue(game.Id, out var saved) && File.Exists(saved))
         {
-            executable = saved;
+            string selected = saved;
+            if (LooksLikeBootstrapExecutable(saved))
+            {
+                string? folder = Path.GetDirectoryName(Path.GetFullPath(saved));
+                string? corrected = folder == null ? null : WandIntegration.ResolveInstalledExecutable(game, folder, Store);
+                if (!string.IsNullOrWhiteSpace(corrected) && !string.Equals(corrected, saved, StringComparison.OrdinalIgnoreCase))
+                {
+                    selected = corrected;
+                    State.LaunchPaths[game.Id] = corrected;
+                    Save();
+                    Store.Log("Corrected bootstrap launcher for " + game.Id + " to the exact game executable: " + corrected);
+                }
+            }
+            executable = selected;
             return true;
         }
         var folders = game.IsLocal && State.LocalGames.TryGetValue(game.Id, out var local)
@@ -197,6 +219,21 @@ public partial class MainWindow
         Store.Log("Auto-selected game executable for " + game.Id + ": " + discovered);
         executable = discovered;
         return true;
+    }
+    private static bool LooksLikeBootstrapExecutable(string executable)
+    {
+        try
+        {
+            string stem = Path.GetFileNameWithoutExtension(executable).ToLowerInvariant();
+            if (stem.Contains("launcher", StringComparison.Ordinal)
+                || stem.Contains("bootstrap", StringComparison.Ordinal)
+                || stem.Contains("updater", StringComparison.Ordinal)
+                || stem.Contains("installer", StringComparison.Ordinal)) return true;
+            return new FileInfo(executable).Length < 512 * 1024;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+        catch (ArgumentException) { return false; }
     }
     private void OpenSettings(object sender, RoutedEventArgs e)
     {
